@@ -139,7 +139,8 @@ export class PowerMeter extends Container {
     this.trainGlow.width = r.h * 1.4;
     this.trainGlow.height = r.h * 0.8;
     this.train.texture = trainT;
-    this.train.anchor.set(0.85, 0.78);
+    // the nose leads: at power 0 the train sits on the track, clear of the label
+    this.train.anchor.set(0.15, 0.78);
     this.train.height = r.h * 0.45;
     this.train.scale.x = this.train.scale.y;
     this.addChild(this.trainGlow, this.train);

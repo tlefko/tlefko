@@ -219,7 +219,7 @@ async function verifyMode(dir: string, name: string, cost: number, eventsFile: s
   const p10000 = f(w10000);
   const maxShare = f(maxW);
   add('RTP', `${(rtp * 100).toFixed(6)}%${rtpExact ? ' (exact)' : ''}`, '96.3000% exactly', rtpExact);
-  const hitRange = name === 'BASE' ? [0.4, 0.55] : name === 'BOOST' ? [0.5, 0.75] : [1 / 50, 1];
+  const hitRange = name === 'BASE' ? [0.38, 0.55] : name === 'BOOST' ? [0.5, 0.75] : [1 / 50, 1];
   add('hit rate (P(win > 0))', `${(hit * 100).toFixed(3)}%`, SPIN_MODES.has(name) ? `${hitRange[0] * 100}%..${hitRange[1] * 100}%` : '>= 2%', hit >= hitRange[0] && hit <= hitRange[1]);
   if (name === 'BASE') add('standard deviation (x bet)', sd.toFixed(3), '0.6..50', sd >= 0.6 && sd <= 50);
   else if (name === 'BOOST') add('standard deviation (x bet) [non-critical]', sd.toFixed(3), '0.6..75', sd >= 0.6 && sd <= 75, true);

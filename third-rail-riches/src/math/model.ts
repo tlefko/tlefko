@@ -79,9 +79,9 @@ export function fsDist(scale: number, p3: number): number[] {
 
 export const TUNED: Model = {
   base: {
-    pay: payWeights(0.6, 0.85, 0.75),
+    pay: [0.25, 0.18, 0.13, 0.09, 0.12, 0.09, 0.07, 0.04, 0.03],
     loco: 0.05,
-    wild: 0.03,
+    wild: 0.04,
     coin: 0.095,
     signal: 0.12,
     security: 0.08,
@@ -90,10 +90,10 @@ export const TUNED: Model = {
     coinWeights: [30, 26, 18, 10, 6, 4, 2.4, 1.2, 0.6, 0.2, 0.05, 0.01, 0, 0],
   },
   boost: {
-    pay: payWeights(0.6, 0.85, 0.75),
+    pay: [0.25, 0.18, 0.13, 0.09, 0.12, 0.09, 0.07, 0.04, 0.03],
     loco: 0.06,
     minLoco: 1,
-    wild: 0.03,
+    wild: 0.04,
     coin: 0.1,
     signal: 0.12,
     security: 0.08,

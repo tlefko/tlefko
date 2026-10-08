@@ -1250,6 +1250,13 @@ table.kv.desc td:nth-child(2) {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.dg-map {
+  display: block;
+  width: min(100%, 360px);
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+}
 .dg-step.wide .dg-board {
   aspect-ratio: 5 / 3;
 }

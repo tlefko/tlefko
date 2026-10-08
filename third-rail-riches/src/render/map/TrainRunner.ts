@@ -321,7 +321,9 @@ export class TrainRunner extends Container {
     }
     this.tau.v = -0.25;
     this.place(gap);
-    const beatDur = brisk() ? T(0.3) : T(0.38);
+    // a run with nothing on it (no coins, no signals, no checks, no crash) rolls through briskly
+    const quiet = !spin.crashes.length && spin.trains.every((tr) => !tr.coins.length && !tr.steps.some((x) => x.event));
+    const beatDur = (brisk() ? T(0.3) : T(0.38)) * (quiet ? 0.6 : 1);
     await this.clock(0, gap, beatDur * 0.9, 'power1.in');
     for (let b = 1; b <= Math.ceil(maxBeat); b++) {
       const intoBlock = blockAt.has(b);
@@ -400,6 +402,14 @@ export class TrainRunner extends Container {
         r.tally.alpha = Math.min(1, head.alpha * 1.5);
       }
     }
+  }
+
+  /** Keep a label `halfW` wide inside the map panel. */
+  private clampX(x: number, halfW: number): number {
+    const f = this.L.frame;
+    const lo = f.x + halfW + this.L.frameT;
+    const hi = f.x + f.w - halfW - this.L.frameT;
+    return lo < hi ? Math.max(lo, Math.min(hi, x)) : f.x + f.w / 2;
   }
 
   private headPoint(r: Run): Pt {
@@ -556,9 +566,9 @@ export class TrainRunner extends Container {
     ring.destroy();
     // the verdict
     const stamp = displayText(clear ? t('allClear') : t('incident'), { size: S * 0.42, tone: clear ? 'green' : 'crimson', treatment: 'label' });
-    stamp.position.set(c.x, c.y - S * 0.85);
-    this.labels.addChild(stamp);
     const k = Math.min(1, (S * 2.6) / Math.max(1, stamp.inkWidth));
+    stamp.position.set(this.clampX(c.x, (stamp.inkWidth * k) / 2), c.y - S * 0.85);
+    this.labels.addChild(stamp);
     stamp.scale.set(k * 2.2);
     stamp.rotation = clear ? -0.08 : 0.08;
     gsap.to(stamp.scale, { x: k, y: k, duration: T(0.2), ease: 'power3.in' });
@@ -576,8 +586,8 @@ export class TrainRunner extends Container {
       tally.set(tally.value, r.tr.repay);
       gsap.fromTo(tally.scale, { x: 1.5, y: 1.5 }, { x: 1, y: 1, duration: T(0.4), ease: 'back.out(3)' });
       const sub = displayText(t('delayRepay'), { size: S * 0.26, tone: 'gold', treatment: 'label' });
-      sub.position.set(c.x, c.y - S * 0.48);
       sub.scale.set(Math.min(1, (S * 2.4) / Math.max(1, sub.inkWidth)));
+      sub.position.set(this.clampX(c.x, (sub.inkWidth * sub.scale.x) / 2), c.y - S * 0.48);
       this.labels.addChild(sub);
       gsap.from(sub, { alpha: 0, y: sub.y + S * 0.2, duration: T(0.25) });
       await wait(T(0.55));
@@ -762,13 +772,13 @@ export class TrainRunner extends Container {
     gsap.to(scorch, { alpha: 0.6, duration: T(0.3) });
     // CRASH! on the cloud
     const word = displayText(t('crashCaps'), { size: S * 0.85, tone: 'fire', treatment: 'banner' });
-    const kw = Math.min(1, (S * 3.6) / Math.max(1, word.inkWidth));
-    word.position.set(at.x, at.y - S * 0.1);
+    const kw = Math.min(1, Math.min(S * 3.6, this.L.frame.w * 0.62) / Math.max(1, word.inkWidth));
+    word.position.set(this.clampX(at.x, (word.inkWidth * kw) / 2), at.y - S * 0.1);
     word.rotation = -0.1;
     this.labels.addChild(word);
     gsap
       .timeline({ onComplete: () => word.destroy() })
-      .fromTo(word.scale, { x: kw * 2.6, y: kw * 2.6 }, { x: kw, y: kw, duration: T(0.16), ease: 'power4.in' })
+      .fromTo(word.scale, { x: kw * 1.9, y: kw * 1.9 }, { x: kw, y: kw, duration: T(0.16), ease: 'power4.in' })
       .to(word, { rotation: 0.05, duration: T(0.6), ease: 'elastic.out(1, 0.35)' })
       .to(word, { y: word.y - S * 0.9, duration: T(0.45), ease: 'power2.in' }, T(1.15))
       .to(word, { alpha: 0, duration: T(0.3) }, T(1.3));

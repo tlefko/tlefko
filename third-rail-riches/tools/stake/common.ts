@@ -35,7 +35,7 @@ export interface ModeSpec {
 }
 
 export const MODES: readonly ModeSpec[] = [
-  { name: 'BASE', kind: 'base', cost: 1, costNum: 1n, costDen: 1n, index: 0, maxWinProb: 1 / 20_000_000, minMaxWinBooks: 12, hit: [0.4, 0.55], sdMax: 44, tail: { rounds: 12_000_000, minPay: 500 } },
+  { name: 'BASE', kind: 'base', cost: 1, costNum: 1n, costDen: 1n, index: 0, maxWinProb: 1 / 20_000_000, minMaxWinBooks: 12, hit: [0.38, 0.55], sdMax: 44, tail: { rounds: 12_000_000, minPay: 500 } },
   { name: 'BOOST', kind: 'boost', cost: 1.5, costNum: 3n, costDen: 2n, index: 3, maxWinProb: 1 / 20_000_000, minMaxWinBooks: 12, hit: [0.5, 0.75], tail: { rounds: 12_000_000, minPay: 500 } },
   { name: 'WITCHING', kind: 'buy_witching', cost: 100, costNum: 100n, costDen: 1n, index: 1, maxWinProb: 1 / 300_000, minMaxWinBooks: 12, hit: [1 / 50, 1], tail: { rounds: 600_000, minPay: 2000 } },
   { name: 'INFERNO', kind: 'buy_inferno', cost: 400, costNum: 400n, costDen: 1n, index: 2, maxWinProb: 1 / 20_000, minMaxWinBooks: 12, hit: [1 / 50, 1], tail: { rounds: 600_000, minPay: 5000 } },

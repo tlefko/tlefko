@@ -21,42 +21,46 @@ const rtp = (mode: string) => {
   return typeof v === 'number' ? `${(v > 1.5 ? v : v * 100).toFixed(2)}%` : '96.30%';
 };
 const maxWin = (mode: string) => num(STATS[mode]?.maxWin ?? MAX_WIN);
-const payMod = import.meta.glob('../math/paytable.ts', { eager: true }) as Record<string, { PAYTABLE?: readonly (readonly number[])[]; REEL_LABELS?: readonly string[] }>;
+const payMod = import.meta.glob('../math/paytable.ts', { eager: true }) as Record<string, { PAYTABLE?: readonly (readonly number[])[]; RUN_LABELS?: readonly string[] }>;
 const PT = Object.values(payMod)[0] ?? {};
 const art = (svg: string, cls = '') => `<span class="art ${cls}">${svg}</span>`;
 /**
- * The train diagram for the rules: a little 4 x 3 board drawn with the game's own symbols, with the
- * route a Locomotive takes (its row, then the branches a Junction sends up and down) drawn over it,
- * and the coins it collects ringed.
+ * The route diagram for the rules: a stretch of the map drawn with the game's own symbols: a Red
+ * Line train departs its terminal, collects two Fare Coins, and a Signal at the interchange sends
+ * it down the Green Line to collect a third. The route is drawn over the stations, the collected
+ * coins are ringed.
  */
-const TRAIN_BOARD = [
-  ['s0', 'c', 's1', 'c', 's2'],
-  ['L', 's3', 'J', 'c', 'c'],
-  ['s1', 'c', 's0', 's2', 'c'],
-];
-let trainArt: Record<string, string> | null = null;
-function trainDiagram(caption: string): string {
-  const A = (trainArt ??= {
-    s0: uri(SYMBOL_ART[0].idle()),
-    s1: uri(SYMBOL_ART[1].idle()),
-    s2: uri(SYMBOL_ART[2].idle()),
-    s3: uri(SYMBOL_ART[3].idle()),
-    c: uri(SYMBOL_ART[ART.COIN_SILVER].idle()),
+let routeArt: Record<string, string> | null = null;
+function routeDiagram(caption: string): string {
+  const A = (routeArt ??= {
     L: uri(SYMBOL_ART[ART.LOCO].win!()),
-    J: uri(SYMBOL_ART[ART.SIGNAL].win!()),
+    c: uri(SYMBOL_ART[ART.COIN_SILVER].idle()),
+    g: uri(SYMBOL_ART[ART.COIN_GOLD].idle()),
+    S: uri(SYMBOL_ART[ART.SIGNAL].win!()),
+    s0: uri(SYMBOL_ART[0].idle()),
+    s2: uri(SYMBOL_ART[2].idle()),
+    s5: uri(SYMBOL_ART[5].idle()),
   });
-  const cols = TRAIN_BOARD[0].length;
-  const rows = TRAIN_BOARD.length;
-  const collected = new Set(['1,3', '1,4', '0,3', '2,4']);
-  const cells = TRAIN_BOARD.map((row, r) =>
-    row.map((code, c) => `<span class="dg-cell${collected.has(`${r},${c}`) ? ' lit' : ''}"><img class="dg-sym" src="${A[code]}" alt=""/></span>`).join(''),
-  ).join('');
-  // route: row 1 from the locomotive to the right edge; from the junction's column, up to row 0 and down to row 2
-  const x = (c: number) => ((c + 0.5) / cols) * 100;
-  const y = (r: number) => ((r + 0.5) / rows) * 100;
-  const route = `<svg class="dg-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M${x(0)} ${y(1)} H100 M${x(2)} ${y(1)} V${y(0)} H100 M${x(2)} ${y(1)} V${y(2)} H100" fill="none" stroke="#3fc8ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity=".9"/></svg>`;
-  return `<div class="diagram one" role="img" aria-label="${caption}"><figure class="dg-step wide"><div class="dg-board" style="grid-template-columns:repeat(${cols},1fr)">${cells}${route}</div><figcaption>${caption}</figcaption></figure></div>`;
+  // stations on a 5 x 3 grid of map units: the Red line along y = 0, the Green line down from x = 3
+  const st: [number, number, string, boolean][] = [
+    [0, 0, 'L', false],
+    [1, 0, 'c', true],
+    [2, 0, 'g', true],
+    [3, 0, 'S', false],
+    [4, 0, 's0', false],
+    [4, 1, 's2', false],
+    [4, 2, 'c', true],
+    [2, 1, 's5', false],
+  ];
+  const X = (x: number) => 10 + x * 20;
+  const Y = (y: number) => 14 + y * 26;
+  const lines = `<path d="M${X(0)} ${Y(0)} H${X(4)}" stroke="#e8443a" stroke-width="5" stroke-linecap="round"/>
+    <path d="M${X(2)} ${Y(1)} L${X(3)} ${Y(0)} L${X(4)} ${Y(1)} V${Y(2)}" stroke="#20b877" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M${X(0) + 6} ${Y(0)} H${X(3)} Q${X(3) + 6} ${Y(0)} ${X(3) + 8} ${Y(0) + 8} L${X(4)} ${Y(1)} V${Y(2)}" stroke="#ffe08a" stroke-width="2" fill="none" stroke-dasharray="3 3" stroke-linecap="round"/>`;
+  const nodes = st
+    .map(([x, y, code, ring]) => `<circle cx="${X(x)}" cy="${Y(y)}" r="8.5" fill="#121822" stroke="${ring ? '#ffe08a' : '#c9a85a'}" stroke-width="${ring ? 2 : 1.2}"/><image href="${A[code]}" x="${X(x) - 7.5}" y="${Y(y) - 7.5}" width="15" height="15"/>`)
+    .join('');
+  return `<div class="diagram one" role="img" aria-label="${caption}"><figure class="dg-step wide"><svg class="dg-map" viewBox="0 0 100 80" aria-hidden="true"><rect x="0" y="0" width="100" height="80" rx="4" fill="#0f2140"/>${lines}${nodes}</svg><figcaption>${caption}</figcaption></figure></div>`;
 }
 
 type Offer = { mode: 'WITCHING' | 'INFERNO'; title: StringKey; blurb: StringKey; vol: StringKey; cls: string; sym: number };
@@ -196,7 +200,7 @@ export function openInfo(c: Controller) {
   // exact symbol wins at the current stake: every decimal the win needs, never rounded (fmtWin)
   const v = (x: number) => fmtWin(winApi(x, c.betApi));
   const table = PT.PAYTABLE ?? [];
-  const labels = PT.REEL_LABELS ?? ['3', '4', '5', '6'];
+  const labels = PT.RUN_LABELS ?? ['3', '4', '5', '6', '7'];
   const order = [8, 7, 6, 5, 4, 3, 2, 1, 0];
   const head = `<tr><th></th>${[...labels].reverse().map((l) => `<th>${l}</th>`).join('')}</tr>`;
   const rows = order.map((s) => `<tr><td class="sym">${art(SYMBOL_ART[s].idle())}</td>${[...(table[s] ?? [])].reverse().map((p) => `<td class="tabular">${v(p)}</td>`).join('')}</tr>`).join('');
@@ -227,7 +231,11 @@ export function openInfo(c: Controller) {
       <p>${t('rCoin', { min: num(COIN_VALUES[0]), maxc: num(COIN_VALUES[COIN_VALUES.length - 1]), bet: B })}</p>
       <h4>${t('rJunctionTitle')}</h4>
       <div class="rule-row">${art(SYMBOL_ART[ART.SIGNAL].win!(), 'mini')}<p>${t('rJunction')}</p></div>
-      ${trainDiagram(t('rJunction'))}</section>
+      ${routeDiagram(t('rDiagram'))}
+      <h4>${t('rSecurityTitle')}</h4>
+      <div class="rule-row">${art(SYMBOL_ART[ART.SECURITY].win!(), 'mini')}<p>${t('rSecurity')}</p></div>
+      <h4>${t('rCrashTitle')}</h4>
+      <p>${t('rCrash')}</p></section>
     <section><h3>${t('rFsTitle')}</h3>
       <div class="rule-row">${art(SYMBOL_ART[10].idle(), 'mini')}<p>${t('rFs1')}</p></div>
       <p>${t('rFs2')}</p>
@@ -242,7 +250,8 @@ export function openInfo(c: Controller) {
       <div class="rule-row special">${art(SYMBOL_ART[10].idle(), 'mini')}<p>${t('rPayTicket')}</p></div>
       <div class="rule-row special">${art(SYMBOL_ART[ART.COIN_GOLD].idle(), 'mini')}<p>${t('rPayCoin')}</p></div>
       <div class="rule-row special">${art(SYMBOL_ART[ART.LOCO].idle(), 'mini')}<p>${t('rPayLoco')}</p></div>
-      <div class="rule-row special">${art(SYMBOL_ART[ART.SIGNAL].idle(), 'mini')}<p>${t('rPaySwitch')}</p></div></section>
+      <div class="rule-row special">${art(SYMBOL_ART[ART.SIGNAL].idle(), 'mini')}<p>${t('rPaySwitch')}</p></div>
+      <div class="rule-row special">${art(SYMBOL_ART[ART.SECURITY].idle(), 'mini')}<p>${t('rPaySecurity')}</p></div></section>
     <section><h3>${t('rModesTitle')}</h3><table class="kv">
       <tr><td>${t('rBaseGame')}</td><td class="tabular">${t('rCost', { x: 1, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('BASE') })}</td><td class="tabular">${t('rMax', { max: maxWin('BASE') })}</td></tr>
       ${boostOn ? `<tr><td>${t('boostName')}</td><td class="tabular">${t('rCost', { x: BOOST_COST, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('BOOST') })}</td><td class="tabular">${t('rMax', { max: maxWin('BOOST') })}</td></tr>` : ''}

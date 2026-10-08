@@ -23,6 +23,8 @@ export interface MapGeom {
   S: number;
   /** Station spacing. */
   unit: number;
+  /** Portrait: the map is transposed (lines run top to bottom). */
+  rot?: boolean;
 }
 
 /** Line colours: [main, light core, deep]. */
@@ -37,9 +39,16 @@ export const LINE_NUMERALS = ['I', 'II', 'III', 'IV'];
 const f = (n: number) => n.toFixed(1);
 
 /** Station centre in panel px. */
+/** A map point (map units) in panel px (transposed on portrait). */
+export function mapPx(g: MapGeom, mx: number, my: number) {
+  const [u, v] = g.rot ? [my, mx] : [mx, my];
+  return { x: g.t + g.S / 2 + u * g.unit, y: g.t + g.S / 2 + v * g.unit };
+}
+
+/** Station centre in panel px. */
 export function stationPx(g: MapGeom, id: number) {
   const s = STATIONS[id];
-  return { x: g.t + g.S / 2 + s.x * g.unit, y: g.t + g.S / 2 + s.y * g.unit };
+  return mapPx(g, s.x, s.y);
 }
 
 function linePath(g: MapGeom, li: number): string {
@@ -101,7 +110,7 @@ function field(g: MapGeom): string {
   const oy = t + S / 2;
   for (let x = ox - step * Math.ceil((ox - x0) / step); x < x0 + fw; x += step) grid.push(`M${f(x)} ${f(y0)} V${f(y0 + fh)}`);
   for (let y = oy - step * Math.ceil((oy - y0) / step); y < y0 + fh; y += step) grid.push(`M${f(x0)} ${f(y)} H${f(x0 + fw)}`);
-  const P = (mx: number, my: number) => ({ x: ox + mx * unit, y: oy + my * unit });
+  const P = (mx: number, my: number) => mapPx(g, mx, my);
   // the river: in from the west under the Blue line's west end, bending north-east between the lines, out east
   const a = P(-0.8, 2.55);
   const b = P(1.6, 1.9);

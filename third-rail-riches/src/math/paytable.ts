@@ -13,10 +13,10 @@ export const TIERS = RUN_LABELS.length;
 
 /** PAYTABLE[sym][run - 3] in bet multiples. */
 export const PAYTABLE: readonly (readonly number[])[] = [
-  [0.4, 1, 3, 8, 20], // L1 pretzel
-  [0.4, 1, 3, 8, 20], // L2 coffee cup
-  [0.6, 1.5, 4, 10, 30], // L3 newspaper
-  [0.6, 1.5, 4, 10, 30], // L4 umbrella
+  [0.2, 0.6, 2, 6, 15], // L1 pretzel
+  [0.3, 0.8, 2.5, 7, 20], // L2 coffee cup
+  [0.4, 1, 3, 8, 25], // L3 newspaper
+  [0.5, 1.2, 3.5, 9, 30], // L4 umbrella
   [1, 2.5, 6, 15, 50], // H4 pigeon
   [1.2, 3, 8, 20, 60], // H3 alley cat
   [1.5, 4, 10, 30, 100], // H2 Officer Bulldog

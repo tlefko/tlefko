@@ -105,16 +105,16 @@ export class MapView extends Container {
 
   /** Panel geometry in panel px (the frame's top-left is the origin). */
   geom(L: Layout): MapGeom {
-    return { w: L.frame.w, h: L.frame.h, t: L.frameT, S: L.S, unit: L.unit };
+    return { w: L.frame.w, h: L.frame.h, t: L.frameT, S: L.S, unit: L.unit, rot: L.rotated };
   }
 
   async layout(L: Layout, res: number) {
     const stamp = ++this.stamp;
     const g = this.geom(L);
     const [panel, ...glows] = await Promise.all([
-      svgTexture(`map-panel-${Math.round(g.w)}x${Math.round(g.h)}`, mapPanelSvg(g), g.w * res, g.h * res),
+      svgTexture(`map-panel-${Math.round(g.w)}x${Math.round(g.h)}${g.rot ? 'r' : ''}`, mapPanelSvg(g), g.w * res, g.h * res),
       // the glows are blurred: half resolution is plenty
-      ...LINES.map((_, li) => svgTexture(`map-glow${li}-${Math.round(g.w)}`, lineGlowSvg(g, li), (g.w * res) / 2, (g.h * res) / 2)),
+      ...LINES.map((_, li) => svgTexture(`map-glow${li}-${Math.round(g.w)}x${Math.round(g.h)}${g.rot ? 'r' : ''}`, lineGlowSvg(g, li), (g.w * res) / 2, (g.h * res) / 2)),
     ]);
     if (stamp !== this.stamp) return;
     this.L = L;
