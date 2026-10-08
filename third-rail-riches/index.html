@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0a0d16" />
+    <meta name="description" content="Powder Keg Cove by Psycho Games: a 6x5 cascading cluster slot with exploding Powder Keg wilds, Kaboom Bombs, the Captain's Wheel and a 50,000x max win." />
+    <title>Powder Keg Cove</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f2447'/%3E%3Cpath d='M38 21 Q44 13 51 12' stroke='%231b1311' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3Cpath d='M38 21 Q44 13 51 12' stroke='%23eddcbc' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Cpath d='M17 24 Q12 38 17 52 Q32 60 47 52 Q52 38 47 24 Q32 17 17 24 Z' fill='%23a8672f' stroke='%231b1311' stroke-width='3.5'/%3E%3Cpath d='M14 32 Q32 38 50 32 M14 45 Q32 51 50 45' stroke='%23f4b73a' stroke-width='4' fill='none'/%3E%3Ccircle cx='52' cy='11' r='6' fill='%23ffc233'/%3E%3Ccircle cx='52' cy='11' r='2.6' fill='%23fff3b8'/%3E%3C/svg%3E" />
+    <link rel="preload" href="./boot/logo.webp" as="image" />
+    <style>
+      /* Loading screen, inline so it paints before any script: the real cove scene dimmed the way
+         the intro dims it, the real logo, and a braided fuse whose spark burns toward a powder keg
+         as the game loads (window.__bootP, driven by the game's boot phases). When the game is ready the spark
+         reaches the keg, it blows, and the flash hands over to the intro (.boom, then .gone).
+         Every box has a fixed size, so nothing moves when tips change or text wraps. */
+      @font-face{font-family:"PK Boot";src:url(./boot/luckiest-guy.woff2) format("woff2");font-display:block}
+      #boot{--fuse-w:min(460px,78vw,110vh);--fuse-h:clamp(22px,6.2vh,54px);position:fixed;inset:0;z-index:100;overflow:hidden;background:#0a0d16;transition:opacity .45s cubic-bezier(.4,0,.2,1)}
+      #boot.gone{opacity:0;pointer-events:none}
+      .boot-scene{position:absolute;inset:0;background:#0a0d16 url(./boot/scene-land.webp) center/cover no-repeat;filter:brightness(.4) saturate(.9) blur(1.5px);transform:scale(1.03)}
+      @media (max-aspect-ratio:1/1){.boot-scene{background-image:url(./boot/scene-port.webp)}}
+      .boot-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 45% at 50% 50%,rgba(255,170,80,.16),rgba(255,140,50,0) 70%),radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 42%,rgba(2,6,16,.8) 100%)}
+      .boot-inner{position:absolute;inset:0;display:grid;grid-template-rows:auto auto auto;place-content:center;justify-items:center;row-gap:min(22px,2.6vh);padding:12px 16px}
+      .boot-logo{display:block;width:min(560px,82vw,54vh);height:auto;aspect-ratio:760/472;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6));animation:boot-in .7s cubic-bezier(.2,.9,.3,1.2) both}
+      /* the fuse: braided rope, a charred length behind the spark, the keg at the end */
+      .boot-fuse{position:relative;width:var(--fuse-w);height:var(--fuse-h);margin-right:calc(var(--fuse-h) * .5);animation:boot-fade .5s .15s both}
+      .boot-rope,.boot-burn{position:absolute;left:0;top:50%;height:calc(var(--fuse-h) * .36);min-height:9px;transform:translateY(-50%);border-radius:99px}
+      .boot-burn,.boot-rail{right:calc(var(--fuse-h) * 1.05)}
+      .boot-burn{overflow:hidden}
+      /* the burnt stretch and the spark glide on the compositor (transform animations started by
+         the boot script), so they keep moving while the game builds textures on the main thread */
+      .boot-char,.boot-mover{transform:translateX(-100%);will-change:transform}
+      .boot-mover{transform:translateX(0)}
+      .boot-rope{right:calc(var(--fuse-h) * 1.05);border:2.5px solid #1b1311;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23c9a36e'/%3E%3Cpath d='M-2 16 L10 0 M6 16 L18 0' stroke='%23eddcbc' stroke-width='4.5'/%3E%3Cpath d='M-4 16 L8 0 M4 16 L16 0 M12 16 L24 0' stroke='%23946a3c' stroke-width='1.3' opacity='.8'/%3E%3C/svg%3E") left center/auto 100% repeat-x;box-shadow:0 3px 0 rgba(0,0,0,.35),inset 0 -3px 0 rgba(27,19,17,.25)}
+      .boot-char{position:absolute;inset:0;border:2.5px solid #1b1311;border-radius:99px;background:linear-gradient(180deg,#3a2c26,#1b1311 70%)}
+      .boot-char::after{content:"";position:absolute;right:-3px;top:-3px;bottom:-3px;width:26px;border-radius:99px;background:linear-gradient(90deg,rgba(255,122,31,0),#d9340f 45%,#ff7a1f 75%,#ffc233);filter:blur(1px)}
+      .boot-char::before{content:"";position:absolute;inset:2px 26px 2px 4px;background:radial-gradient(circle at 20% 50%,rgba(255,122,31,.5) 0 1.5px,transparent 2.5px) 0 0/19px 100%,radial-gradient(circle at 60% 40%,rgba(255,194,51,.35) 0 1px,transparent 2px) 7px 0/23px 100%;opacity:.8}
+      .boot-rail{position:absolute;left:0;top:50%;height:0}
+      .boot-mover{position:absolute;left:0;top:0;width:100%;height:0}
+      .boot-spark{position:absolute;top:0;left:0;width:calc(var(--fuse-h) * 1.25);height:calc(var(--fuse-h) * 1.25);transform:translate(-50%,-50%);pointer-events:none}
+      .boot-spark img{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 0 12px rgba(255,170,60,.95));animation:boot-flick .16s ease-in-out infinite alternate}
+      .boot-spark i{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:#ffc233;box-shadow:0 0 6px 2px rgba(255,160,50,.8);opacity:0;animation:boot-fly .7s linear infinite}
+      .boot-spark i:nth-child(2){--dx:-26px;--dy:-30px;animation-delay:.05s}
+      .boot-spark i:nth-child(3){--dx:-38px;--dy:-8px;animation-delay:.22s;animation-duration:.6s}
+      .boot-spark i:nth-child(4){--dx:-18px;--dy:22px;animation-delay:.38s}
+      .boot-spark i:nth-child(5){--dx:6px;--dy:-34px;animation-delay:.5s;animation-duration:.8s}
+      .boot-spark i:nth-child(6){--dx:-44px;--dy:-22px;animation-delay:.3s;width:3px;height:3px;margin:-1.5px}
+      .boot-spark b{position:absolute;left:30%;top:10%;width:60%;height:60%;border-radius:50%;background:radial-gradient(circle,rgba(200,190,180,.35),rgba(200,190,180,0) 70%);opacity:0;animation:boot-smoke 1.6s ease-out infinite}
+      .boot-spark b:nth-of-type(2){animation-delay:.8s}
+      .boot-keg{position:absolute;right:calc(var(--fuse-h) * -.62);top:50%;height:calc(var(--fuse-h) * 2.2);width:auto;transform:translateY(-52%);filter:drop-shadow(0 6px 8px rgba(0,0,0,.5));transform-origin:50% 85%}
+      #boot.near .boot-keg{animation:boot-wobble .22s ease-in-out infinite alternate}
+      .boot-tip{position:relative;width:min(560px,86vw);height:calc(clamp(14px,2.3vh,21px) * 1.25 * 3);font-size:clamp(14px,2.3vh,21px);display:flex;align-items:center;justify-content:center}
+      .boot-tip span{display:block;max-width:100%;text-align:center;font-family:"PK Boot",system-ui,sans-serif;line-height:1.25;letter-spacing:.02em;color:#f7ecd6;-webkit-text-stroke:3.5px #1b1311;paint-order:stroke fill;text-shadow:0 3px 0 #1b1311;overflow-wrap:break-word;transition:opacity .3s,transform .3s}
+      .boot-tip span b{color:#ffc233;font-weight:400}
+      .boot-tip.out span,.boot-tip.wait span{opacity:0;transform:translateY(6px)}
+      .boot-title:empty{display:none}
+      .boot-title{position:absolute;left:50%;bottom:max(46px,calc(env(safe-area-inset-bottom) + 40px));transform:translateX(-50%);width:min(36ch,90vw);text-align:center;font:15px/1.4 system-ui,sans-serif;color:#ffd0c8;text-shadow:0 2px 3px #000}
+      .boot-foot{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));left:0;right:0;text-align:center;font:13px "PK Boot",system-ui,sans-serif;letter-spacing:.2em;color:rgba(247,236,214,.5)}
+      /* the keg blows: it swells and flashes, a hot light fills the screen, then the intro takes over */
+      .boot-flash{position:absolute;inset:0;pointer-events:none;opacity:0;transform-origin:var(--fx,70%) var(--fy,55%);background:radial-gradient(circle at var(--fx,70%) var(--fy,55%),#fff3b8 0,#ffc233 12%,rgba(255,122,31,.85) 30%,rgba(217,52,15,.35) 55%,rgba(217,52,15,0) 80%)}
+      #boot.boom .boot-flash{animation:boot-flash .55s cubic-bezier(.2,.8,.3,1) forwards}
+      #boot.boom .boot-keg{animation:boot-pop .22s cubic-bezier(.3,1.6,.5,1) forwards}
+      #boot.boom .boot-spark{opacity:0}
+      #boot.boom .boot-inner{animation:boot-shake .3s linear}
+      @keyframes boot-in{from{opacity:0;transform:translateY(14px) scale(.92)}to{opacity:1;transform:none}}
+      @keyframes boot-fade{from{opacity:0}to{opacity:1}}
+      @keyframes boot-flick{from{transform:scale(.9) rotate(-8deg)}to{transform:scale(1.14) rotate(9deg)}}
+      @keyframes boot-fly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx,-30px),var(--dy,-20px)) scale(.3)}}
+      @keyframes boot-smoke{0%{opacity:0;transform:translate(0,0) scale(.5)}25%{opacity:.8}100%{opacity:0;transform:translate(-18px,-34px) scale(1.8)}}
+      @keyframes boot-wobble{from{transform:translateY(-52%) rotate(-5deg) scale(1.02)}to{transform:translateY(-54%) rotate(5deg) scale(1.06)}}
+      @keyframes boot-pop{0%{transform:translateY(-52%) scale(1)}60%{transform:translateY(-55%) scale(1.5);filter:brightness(2.2) drop-shadow(0 0 22px #ffc233)}100%{transform:translateY(-55%) scale(1.9);opacity:0;filter:brightness(3) drop-shadow(0 0 30px #fff3b8)}}
+      @keyframes boot-flash{0%{opacity:0;transform:scale(.3)}22%{opacity:.85;transform:scale(1.2)}100%{opacity:0;transform:scale(2.2)}}
+      @keyframes boot-shake{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-4px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-1px)}}
+      @media (max-height:420px){.boot-foot{display:none}.boot-inner{row-gap:6px}}
+      @media (prefers-reduced-motion:reduce){.boot-spark img,.boot-spark i,.boot-spark b,.boot-logo,.boot-fuse,#boot.near .boot-keg,#boot.boom .boot-inner,#boot.boom .boot-keg{animation:none}.boot-spark i,.boot-spark b{display:none}#boot.boom .boot-flash{animation:none;opacity:0}}
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage"></div>
+      <div id="hud"></div>
+      <div id="overlay"></div>
+    </div>
+    <div id="boot" aria-live="polite">
+      <div class="boot-scene"></div>
+      <div class="boot-glow"></div>
+      <div class="boot-inner">
+        <img class="boot-logo" src="./boot/logo.webp" alt="Powder Keg Cove" width="760" height="472" />
+        <div class="boot-fuse" aria-hidden="true"><div class="boot-rope"></div><div class="boot-burn"><div class="boot-char"></div></div><img class="boot-keg" src="./boot/keg.webp" alt="" /><div class="boot-rail"><div class="boot-mover"><div class="boot-spark"><b></b><b></b><img src="./boot/spark.webp" alt="" /><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+        <div class="boot-tip"><span>Clusters of <b>5+</b> matching symbols win, then cascade</span></div>
+      </div>
+      <div class="boot-title"></div>
+      <div class="boot-foot">PSYCHO GAMES</div>
+      <div class="boot-flash"></div>
+    </div>
+    <script>
+      (function () {
+        var boot = document.getElementById('boot');
+        var box = boot.querySelector('.boot-tip');
+        var el = box.querySelector('span');
+        var tips = [
+          'Clusters of <b>5+</b> matching symbols win, then cascade',
+          '<b>Kaboom Bombs</b> grow with every keg blast, then blow when their fuse runs out',
+          '<b>Powder Kegs</b> light up in a win, double every cluster, then explode',
+          'Every win lights the <b>Powder Fuse</b>. A fully lit fuse spins the <b>Captain\'s Wheel</b>',
+          '<b>3+</b> treasure chests start <b>Moonlight Raid</b> free spins',
+          'Max win <b>50,000x</b>'
+        ];
+        var i = 0;
+        // another language: keep the English line hidden until the game hands over its own tips
+        var lang = (new URLSearchParams(location.search).get('lang') || 'en').toLowerCase();
+        if (lang !== 'en') box.classList.add('wait');
+        /** Shrink the current tip (never the box) until it fits its three lines. */
+        function fit() {
+          el.style.fontSize = '';
+          var size = parseFloat(getComputedStyle(box).fontSize);
+          for (var n = 0; n < 12 && el.offsetHeight > box.clientHeight + 1 && size > 10; n++) el.style.fontSize = (size -= 1) + 'px';
+        }
+        function show(k) {
+          i = k % tips.length;
+          el.innerHTML = tips[i];
+          fit();
+        }
+        window.__setTips = function (list) {
+          if (!list || !list.length) return;
+          tips = list;
+          show(0);
+          box.classList.remove('wait');
+        };
+        if (window.__tips) window.__setTips(window.__tips);
+        setTimeout(function () { box.classList.remove('wait'); }, 1500);
+        fit();
+        var timer = setInterval(function () {
+          if (!boot.isConnected || boot.classList.contains('gone')) return clearInterval(timer);
+          box.classList.add('out');
+          setTimeout(function () { show(i + 1); box.classList.remove('out'); }, 300);
+        }, 2600);
+        addEventListener('resize', fit);
+        // measure again once the lettering font is in (the first fit ran on fallback metrics)
+        if (document.fonts && document.fonts.load) document.fonts.load('16px "PK Boot"').then(fit, function () {});
+        // Progress: the game reports each boot phase as (reached, next, expected ms). The fuse glides
+        // toward 90% of the way to `next` over the expected time, then creeps on toward it if the
+        // phase runs long, so it never parks and never steps back. Each glide is a Web Animation on
+        // transform (it runs on the compositor, so the spark keeps burning while the main thread
+        // builds the game) with an explicit start time, starting where the last glide is at that
+        // moment and at the speed it is moving: however late the compositor picks it up, the curve
+        // continues without a leap. Position and speed come from the curves themselves, never from
+        // reading the (possibly stale) animated style back.
+        var fuse = boot.querySelector('.boot-char'), mover = boot.querySelector('.boot-mover');
+        var floor = 0, tail = 0, done = false, anims = [null, null];
+        var cur = { from: 0, to: 0, t0: 0, dur: 1, b: [0.25, 0.25, 0.75, 0.75] };
+        function tf(k, p) { return 'translateX(' + ((k ? p : p - 1) * 100).toFixed(3) + '%)'; }
+        /** cubic-bezier(b) at x: [y, dy/dx]. */
+        function ease(b, x) {
+          var s = x, i, X, dX;
+          for (i = 0; i < 10; i++) {
+            X = 3 * b[0] * s * (1 - s) * (1 - s) + 3 * b[2] * s * s * (1 - s) + s * s * s - x;
+            dX = 3 * b[0] * (1 - s) * (1 - s) + 6 * (b[2] - b[0]) * s * (1 - s) + 3 * (1 - b[2]) * s * s;
+            if (Math.abs(X) < 1e-6 || Math.abs(dX) < 1e-6) break;
+            s = Math.min(1, Math.max(0, s - X / dX));
+          }
+          var Y = 3 * b[1] * s * (1 - s) * (1 - s) + 3 * b[3] * s * s * (1 - s) + s * s * s;
+          var dY = 3 * b[1] * (1 - s) * (1 - s) + 6 * (b[3] - b[1]) * s * (1 - s) + 3 * (1 - b[3]) * s * s;
+          return [Y, Math.abs(dX) > 1e-6 ? dY / dX : 0];
+        }
+        /** Where the fuse is at time t, and how fast it moves (fraction per ms). */
+        function at(t) {
+          var u = (t - cur.t0) / cur.dur;
+          if (u >= 1) return [cur.to, 0];
+          if (u <= 0) return [cur.from, 0];
+          var e = ease(cur.b, u);
+          return [cur.from + (cur.to - cur.from) * e[0], ((cur.to - cur.from) * e[1]) / cur.dur];
+        }
+        /**
+         * Glide to p over ms (at least long enough to stay under `vmax`, a fraction of the fuse per
+         * ms: a fast device never flings the spark), leaving at the current speed and arriving at
+         * `endSlope` x the average speed.
+         */
+        function glide(p, ms, endSlope, vmax) {
+          var t = document.timeline ? document.timeline.currentTime : performance.now();
+          var here = at(t), from = here[0];
+          if (p <= from + 1e-4) return;
+          ms = Math.max(ms, (p - from) / (vmax || 0.0009));
+          // initial slope = current speed relative to this glide's average speed; a steep start gets a
+          // short first handle (y1 stays below 1, so the curve never overshoots its target)
+          var s0 = Math.min(9, Math.max(0, (here[1] * ms) / (p - from)));
+          var x1 = s0 > 3 ? 0.9 / s0 : 0.3;
+          var b = [x1, x1 * s0, 0.6, 1 - 0.4 * endSlope];
+          cur = { from: from, to: p, t0: t, dur: ms, b: b };
+          var css = 'cubic-bezier(' + b.map(function (v) { return v.toFixed(3); }).join(',') + ')';
+          for (var k = 0; k < 2; k++) {
+            var e = k ? mover : fuse;
+            e.style.transform = tf(k, p);
+            if (anims[k]) anims[k].cancel();
+            anims[k] = null;
+            if (e.animate) {
+              anims[k] = e.animate([{ transform: tf(k, from) }, { transform: tf(k, p) }], { duration: ms, easing: css, fill: 'backwards' });
+              anims[k].startTime = t;
+            }
+          }
+          if (p > 0.8) boot.classList.add('near');
+        }
+        function clock() { return document.timeline ? document.timeline.currentTime : performance.now(); }
+        var phase = null;
+        /** The phase ran past its expected time: creep on toward its end, slowing, never parking. */
+        function overrun() {
+          if (!done && phase) glide(phase.p + (phase.next - phase.p) * 0.99, phase.ms * 1.4, 0.3);
+        }
+        window.__bootP = function (p, next, ms) {
+          if (done || p < floor) return;
+          floor = p;
+          clearTimeout(tail);
+          if (p >= 1) {
+            done = true;
+            return glide(1, 300, 0, 0.004);
+          }
+          if (!(next > p)) next = Math.min(1, p + 0.1);
+          ms = ms || 800;
+          phase = { p: p, next: next, ms: ms, end: clock() + ms };
+          glide(p + (next - p) * 0.9, ms, 0.5);
+          tail = setTimeout(overrun, ms);
+        };
+        // Real progress inside a phase (the game counts finished art rasters): when it is ahead of
+        // the timed glide, the fuse catches up to it, then carries on with the phase's timing.
+        window.__bootSub = function (q) {
+          if (done || !phase) return;
+          q = Math.min(q, phase.p + (phase.next - phase.p) * 0.95);
+          if (q <= at(clock())[0] + 0.004) return;
+          clearTimeout(tail);
+          glide(q, 450, 0.6);
+          tail = setTimeout(function () {
+            var left = phase.end - clock();
+            if (left > 300) {
+              glide(phase.p + (phase.next - phase.p) * 0.9, left, 0.5);
+              tail = setTimeout(overrun, left);
+            } else overrun();
+          }, 450);
+        };
+        // phase 0: the game's script is still downloading
+        requestAnimationFrame(function () { window.__bootP(0, 0.3, 2000); });
+        // the flash starts at the keg
+        var keg = boot.querySelector('.boot-keg');
+        function aim() {
+          var r = keg.getBoundingClientRect();
+          if (!r.width) return;
+          boot.style.setProperty('--fx', ((r.left + r.width / 2) / innerWidth * 100).toFixed(1) + '%');
+          boot.style.setProperty('--fy', ((r.top + r.height / 2) / innerHeight * 100).toFixed(1) + '%');
+        }
+        keg.addEventListener('load', aim);
+        addEventListener('resize', aim);
+        aim();
+      })();
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,1414 @@
+{
+ "version": "d70ce823",
+ "sfx": [
+  {
+   "id": "uiClick",
+   "name": "uiClick",
+   "variant": 0,
+   "desc": "soft wooden peg tick",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "uiToggle",
+   "name": "uiToggle",
+   "variant": 0,
+   "desc": "two-step wooden latch click",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "uiOpen",
+   "name": "uiOpen",
+   "variant": 0,
+   "desc": "brass spyglass slides open + a tiny ping",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "uiClose",
+   "name": "uiClose",
+   "variant": 0,
+   "desc": "spyglass slides shut with a soft wooden thock",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "betUp",
+   "name": "betUp",
+   "variant": 0,
+   "desc": "a doubloon clinks onto the stack, stepping up",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "betDown",
+   "name": "betDown",
+   "variant": 0,
+   "desc": "a doubloon lifted off the stack, stepping down",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "spinPress",
+   "name": "spinPress",
+   "variant": 0,
+   "desc": "rope-and-pulley lever: wooden thock, rope run, pulley squeak",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "buy",
+   "name": "buy",
+   "variant": 0,
+   "desc": "heavy coin pouch drops, the chest latch snaps shut, a small bell",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "error",
+   "name": "error",
+   "variant": 0,
+   "desc": "gentle two-note muted-horn womp over a soft tuba",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "iris",
+   "name": "iris",
+   "variant": 0,
+   "desc": "bosun's call for the iris wipe: pipe up, warble, fall away",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boostOn",
+   "name": "boostOn",
+   "variant": 0,
+   "desc": "Powder Boost on: a brass switch click and a fuse fizzing up",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boostOff",
+   "name": "boostOff",
+   "variant": 0,
+   "desc": "Powder Boost off: a click and the fuse fizzling out with a puff",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "lowPowerClick",
+   "name": "lowPowerClick",
+   "variant": 0,
+   "desc": "a lantern shutter click (low-power toggle): metal click and a glass tink",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_0",
+   "name": "reelDrop",
+   "variant": 0,
+   "desc": "wooden cargo crate thunks down as a column lands",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_1",
+   "name": "reelDrop",
+   "variant": 1,
+   "desc": "wooden cargo crate thunks down as a column lands",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_2",
+   "name": "reelDrop",
+   "variant": 2,
+   "desc": "wooden cargo crate thunks down as a column lands",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_3",
+   "name": "reelDrop",
+   "variant": 3,
+   "desc": "wooden cargo crate thunks down as a column lands",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_4",
+   "name": "reelDrop",
+   "variant": 4,
+   "desc": "wooden cargo crate thunks down as a column lands",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelStop",
+   "name": "reelStop",
+   "variant": 0,
+   "desc": "last column: a heavier crate with a little wooden clatter",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symbolFall_0",
+   "name": "symbolFall",
+   "variant": 0,
+   "desc": "very light air whoosh for cascading symbols",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symbolFall_1",
+   "name": "symbolFall",
+   "variant": 1,
+   "desc": "very light air whoosh for cascading symbols",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symbolFall_2",
+   "name": "symbolFall",
+   "variant": 2,
+   "desc": "very light air whoosh for cascading symbols",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "cascade_0",
+   "name": "cascade",
+   "variant": 0,
+   "desc": "short tumble of small wooden crates",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "cascade_1",
+   "name": "cascade",
+   "variant": 1,
+   "desc": "short tumble of small wooden crates",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "pop_0",
+   "name": "pop",
+   "variant": 0,
+   "desc": "a win pops: soft grog-bottle cork and a puff",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "pop_1",
+   "name": "pop",
+   "variant": 1,
+   "desc": "a win pops: soft grog-bottle cork and a puff",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "pop_2",
+   "name": "pop",
+   "variant": 2,
+   "desc": "a win pops: soft grog-bottle cork and a puff",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "sixLand",
+   "name": "sixLand",
+   "variant": 0,
+   "desc": "a cold Powder Keg lands: heavy barrel thunk, iron hoops, a gunpowder rattle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "sixIgnite",
+   "name": "sixIgnite",
+   "variant": 0,
+   "desc": "the keg fuse lights: match strike, flare, fuse hiss catching",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "fsLand_1",
+   "name": "fsLand",
+   "variant": 1,
+   "desc": "treasure chest thuds down, coins jingle, a bell plink rises with index 1..6",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "fsLand_2",
+   "name": "fsLand",
+   "variant": 2,
+   "desc": "treasure chest thuds down, coins jingle, a bell plink rises with index 1..6",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "fsLand_3",
+   "name": "fsLand",
+   "variant": 3,
+   "desc": "treasure chest thuds down, coins jingle, a bell plink rises with index 1..6",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "fsLand_4",
+   "name": "fsLand",
+   "variant": 4,
+   "desc": "treasure chest thuds down, coins jingle, a bell plink rises with index 1..6",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "fsLand_5",
+   "name": "fsLand",
+   "variant": 5,
+   "desc": "treasure chest thuds down, coins jingle, a bell plink rises with index 1..6",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "fsLand_6",
+   "name": "fsLand",
+   "variant": 6,
+   "desc": "treasure chest thuds down, coins jingle, a bell plink rises with index 1..6",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_0",
+   "name": "win",
+   "variant": 0,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_1",
+   "name": "win",
+   "variant": 1,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_2",
+   "name": "win",
+   "variant": 2,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_3",
+   "name": "win",
+   "variant": 3,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_4",
+   "name": "win",
+   "variant": 4,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_5",
+   "name": "win",
+   "variant": 5,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_6",
+   "name": "win",
+   "variant": 6,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win_7",
+   "name": "win",
+   "variant": 7,
+   "desc": "xylophone flourish onto a concertina chord; index = cascade number (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_0",
+   "name": "coin",
+   "variant": 0,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_1",
+   "name": "coin",
+   "variant": 1,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_2",
+   "name": "coin",
+   "variant": 2,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_3",
+   "name": "coin",
+   "variant": 3,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_4",
+   "name": "coin",
+   "variant": 4,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_5",
+   "name": "coin",
+   "variant": 5,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_6",
+   "name": "coin",
+   "variant": 6,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coin_7",
+   "name": "coin",
+   "variant": 7,
+   "desc": "single heavy gold doubloon clink (coin showers)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "cashBronze",
+   "name": "cashBronze",
+   "variant": 0,
+   "desc": "small prize: two doubloons and a celesta chime",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "cashSilver",
+   "name": "cashSilver",
+   "variant": 0,
+   "desc": "medium prize: doubloon trio and a two-note glockenspiel",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "cashGold",
+   "name": "cashGold",
+   "variant": 0,
+   "desc": "big prize: a spill of doubloons, ship's bell ding-ding, glockenspiel sparkle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "multAdd",
+   "name": "multAdd",
+   "variant": 0,
+   "desc": "upward swoosh into a glockenspiel run and a ship's bell",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelAppear",
+   "name": "wheelAppear",
+   "variant": 0,
+   "desc": "whoosh in, the helm seats with a wooden clunk, a creak and brass clicks",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelSpin",
+   "name": "wheelSpin",
+   "variant": 0,
+   "desc": "loop: brass pawl clicks and a soft wooden creak while the helm spins",
+   "kind": "loop",
+   "bank": "core"
+  },
+  {
+   "id": "wheelTick_0",
+   "name": "wheelTick",
+   "variant": 0,
+   "desc": "single brass pawl click (slowing helm)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelTick_1",
+   "name": "wheelTick",
+   "variant": 1,
+   "desc": "single brass pawl click (slowing helm)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelTick_2",
+   "name": "wheelTick",
+   "variant": 2,
+   "desc": "single brass pawl click (slowing helm)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelTick_3",
+   "name": "wheelTick",
+   "variant": 3,
+   "desc": "single brass pawl click (slowing helm)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelLand",
+   "name": "wheelLand",
+   "variant": 0,
+   "desc": "the helm locks with a clack and the ship's bell rings twice",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "howl",
+   "name": "howl",
+   "variant": 0,
+   "desc": "Sparks the parrot squawks \"rraawk!\" with a whistled tail (KEG DROP)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "multMul",
+   "name": "multMul",
+   "variant": 0,
+   "desc": "multiplier slam: fuse fizz into a cannon thump and a brass/concertina stab",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelPullback",
+   "name": "wheelPullback",
+   "variant": 0,
+   "desc": "the helm is hauled back before the spin: slowing brass ratchet clicks and a timber strain",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelLandClunk",
+   "name": "wheelLandClunk",
+   "variant": 0,
+   "desc": "the helm lands: a heavy wooden clunk with an iron latch (no bell)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelIconLift",
+   "name": "wheelIconLift",
+   "variant": 0,
+   "desc": "the landed icon lifts out of the wheel: a rising glockenspiel/celesta chime with a soft swoosh",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wheelBombReveal",
+   "name": "wheelBombReveal",
+   "variant": 0,
+   "desc": "a bomb comes up on the wheel: snare roll into a low \"dun-DUN!\" on brass, tuba and timpani, then a fuse catching",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barTick_0",
+   "name": "barTick",
+   "variant": 0,
+   "desc": "tiny counting tick (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barTick_1",
+   "name": "barTick",
+   "variant": 1,
+   "desc": "tiny counting tick (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barTick_2",
+   "name": "barTick",
+   "variant": 2,
+   "desc": "tiny counting tick (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barApply",
+   "name": "barApply",
+   "variant": 0,
+   "desc": "multiplier slam: cannon thump, snare, brass and accordion chord",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bonusTrigger",
+   "name": "bonusTrigger",
+   "variant": 0,
+   "desc": "treasure chest lid creaks open, doubloons spill, cymbal and a choir \"aah\"",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bonusIntro",
+   "name": "bonusIntro",
+   "variant": 0,
+   "desc": "pirate-band sting: snare roll, brass and accordion \"ta-da\" with a cannon",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bonusEnd",
+   "name": "bonusEnd",
+   "variant": 0,
+   "desc": "shave-and-a-haircut cadence (trad.) on accordion, xylophone and tuba to close a bonus",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "retrigger",
+   "name": "retrigger",
+   "variant": 0,
+   "desc": "more spins: ship's bell ding-ding over a glockenspiel and concertina run",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinStart",
+   "name": "bigWinStart",
+   "variant": 0,
+   "desc": "fanfare hit: brass and accordion stab, cannon, crash, timpani",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_0",
+   "name": "bigWinTier",
+   "variant": 0,
+   "desc": "tier step-up: pickup into a brass/accordion stab (index 0..3 climbs)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_1",
+   "name": "bigWinTier",
+   "variant": 1,
+   "desc": "tier step-up: pickup into a brass/accordion stab (index 0..3 climbs)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_2",
+   "name": "bigWinTier",
+   "variant": 2,
+   "desc": "tier step-up: pickup into a brass/accordion stab (index 0..3 climbs)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_3",
+   "name": "bigWinTier",
+   "variant": 3,
+   "desc": "tier step-up: pickup into a brass/accordion stab (index 0..3 climbs)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinEnd",
+   "name": "bigWinEnd",
+   "variant": 0,
+   "desc": "closing fanfare: V-I brass and accordion \"ta-da\" with a drum roll and cannon",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "maxWin",
+   "name": "maxWin",
+   "variant": 0,
+   "desc": "MAX WIN: drum roll, a three-gun cannon salute, full brass, accordion and choir",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "tierSlam",
+   "name": "tierSlam",
+   "variant": 0,
+   "desc": "a big-win tier title slams in: cannon crack, a wooden slam, doubled snare and crash (unpitched)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "sealStamp",
+   "name": "sealStamp",
+   "variant": 0,
+   "desc": "a wax seal stamped down: a padded thud, a wet wax splat and a tiny sizzle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "clusterTrace",
+   "name": "clusterTrace",
+   "variant": 0,
+   "desc": "a winning cluster is traced: a soft pentatonic glockenspiel shimmer",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "anticipationStart",
+   "name": "anticipationStart",
+   "variant": 0,
+   "desc": "heartbeat thump, a straining rope creak and a rising tremolo swell",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "anticipationEnd",
+   "name": "anticipationEnd",
+   "variant": 0,
+   "desc": "release: soft down-whoosh, a frame-drum settle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "anticipation",
+   "name": "anticipation",
+   "variant": 0,
+   "desc": "loop: heartbeat and creaking rigging over an endlessly rising (Shepard) tremolo string bed",
+   "kind": "loop",
+   "bank": "core"
+  },
+  {
+   "id": "explode_1",
+   "name": "explode",
+   "variant": 1,
+   "desc": "Powder Keg blows: cartoon gunpowder BOOM with wooden debris; index 1..6 = chain position (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "explode_2",
+   "name": "explode",
+   "variant": 2,
+   "desc": "Powder Keg blows: cartoon gunpowder BOOM with wooden debris; index 1..6 = chain position (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "explode_3",
+   "name": "explode",
+   "variant": 3,
+   "desc": "Powder Keg blows: cartoon gunpowder BOOM with wooden debris; index 1..6 = chain position (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "explode_4",
+   "name": "explode",
+   "variant": 4,
+   "desc": "Powder Keg blows: cartoon gunpowder BOOM with wooden debris; index 1..6 = chain position (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "explode_5",
+   "name": "explode",
+   "variant": 5,
+   "desc": "Powder Keg blows: cartoon gunpowder BOOM with wooden debris; index 1..6 = chain position (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "explode_6",
+   "name": "explode",
+   "variant": 6,
+   "desc": "Powder Keg blows: cartoon gunpowder BOOM with wooden debris; index 1..6 = chain position (climbs)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "blastDebris_0",
+   "name": "blastDebris",
+   "variant": 0,
+   "desc": "wood splinters landing with a short fuse sizzle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "blastDebris_1",
+   "name": "blastDebris",
+   "variant": 1,
+   "desc": "wood splinters landing with a short fuse sizzle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "blastDebris_2",
+   "name": "blastDebris",
+   "variant": 2,
+   "desc": "wood splinters landing with a short fuse sizzle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "blastDebris_3",
+   "name": "blastDebris",
+   "variant": 3,
+   "desc": "wood splinters landing with a short fuse sizzle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_1",
+   "name": "meterFlame",
+   "variant": 1,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_2",
+   "name": "meterFlame",
+   "variant": 2,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_3",
+   "name": "meterFlame",
+   "variant": 3,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_4",
+   "name": "meterFlame",
+   "variant": 4,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_5",
+   "name": "meterFlame",
+   "variant": 5,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_6",
+   "name": "meterFlame",
+   "variant": 6,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_7",
+   "name": "meterFlame",
+   "variant": 7,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_8",
+   "name": "meterFlame",
+   "variant": 8,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_9",
+   "name": "meterFlame",
+   "variant": 9,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFlame_10",
+   "name": "meterFlame",
+   "variant": 10,
+   "desc": "one spark catches on the powder fuse: crackle, tick and ping; index 1..10 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "meterFull",
+   "name": "meterFull",
+   "variant": 0,
+   "desc": "fuse fully lit: the hiss swells into a ship's bell and a cannon thump",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "hounds_1",
+   "name": "hounds",
+   "variant": 1,
+   "desc": "KEG DROP: kegs thump onto the board one after another, the last one rolls; index = count",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "hounds_2",
+   "name": "hounds",
+   "variant": 2,
+   "desc": "KEG DROP: kegs thump onto the board one after another, the last one rolls; index = count",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "hounds_3",
+   "name": "hounds",
+   "variant": 3,
+   "desc": "KEG DROP: kegs thump onto the board one after another, the last one rolls; index = count",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "hounds_4",
+   "name": "hounds",
+   "variant": 4,
+   "desc": "KEG DROP: kegs thump onto the board one after another, the last one rolls; index = count",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "hounds_5",
+   "name": "hounds",
+   "variant": 5,
+   "desc": "KEG DROP: kegs thump onto the board one after another, the last one rolls; index = count",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "inferno",
+   "name": "inferno",
+   "variant": 0,
+   "desc": "BROADSIDE: a rolling volley of cannon fire sweeping left to right",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_2",
+   "name": "boost",
+   "variant": 2,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_3",
+   "name": "boost",
+   "variant": 3,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_4",
+   "name": "boost",
+   "variant": 4,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_5",
+   "name": "boost",
+   "variant": 5,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_7",
+   "name": "boost",
+   "variant": 7,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_10",
+   "name": "boost",
+   "variant": 10,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_15",
+   "name": "boost",
+   "variant": 15,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boost_20",
+   "name": "boost",
+   "variant": 20,
+   "desc": "GROG: tankards clink, a glug, the crew whoops \"hey!\"; index = new level 2..20 (brighter)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wildLand_0",
+   "name": "wildLand",
+   "variant": 0,
+   "desc": "cold Powder Keg lands: heavy wooden barrel thunk with a faint gunpowder rattle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wildLand_1",
+   "name": "wildLand",
+   "variant": 1,
+   "desc": "cold Powder Keg lands: heavy wooden barrel thunk with a faint gunpowder rattle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wildLand_2",
+   "name": "wildLand",
+   "variant": 2,
+   "desc": "cold Powder Keg lands: heavy wooden barrel thunk with a faint gunpowder rattle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombLand",
+   "name": "bombLand",
+   "variant": 0,
+   "desc": "the Kaboom Bomb lands: a cast-iron thunk on the deck, one bounce, a short roll, its fuse spitting",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombFuseLoop",
+   "name": "bombFuseLoop",
+   "variant": 0,
+   "desc": "loop: a lit bomb fuse hissing and spitting sparks, with a little sputter",
+   "kind": "loop",
+   "bank": "core"
+  },
+  {
+   "id": "bombTick",
+   "name": "bombTick",
+   "variant": 0,
+   "desc": "the fuse counter drops: a clockwork tock, a spark and a low marimba \"dunk\"",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombHotLoop",
+   "name": "bombHotLoop",
+   "variant": 0,
+   "desc": "loop: the bomb glowing red-hot, a frying sizzle that breathes, iron ticks and a low shiver",
+   "kind": "loop",
+   "bank": "core"
+  },
+  {
+   "id": "bombGrow_1",
+   "name": "bombGrow",
+   "variant": 1,
+   "desc": "the bomb swells after a keg blast: an inflating whistle and squeezebox swell into a springy \"pop\"; index 1..5 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombGrow_2",
+   "name": "bombGrow",
+   "variant": 2,
+   "desc": "the bomb swells after a keg blast: an inflating whistle and squeezebox swell into a springy \"pop\"; index 1..5 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombGrow_3",
+   "name": "bombGrow",
+   "variant": 3,
+   "desc": "the bomb swells after a keg blast: an inflating whistle and squeezebox swell into a springy \"pop\"; index 1..5 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombGrow_4",
+   "name": "bombGrow",
+   "variant": 4,
+   "desc": "the bomb swells after a keg blast: an inflating whistle and squeezebox swell into a springy \"pop\"; index 1..5 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombGrow_5",
+   "name": "bombGrow",
+   "variant": 5,
+   "desc": "the bomb swells after a keg blast: an inflating whistle and squeezebox swell into a springy \"pop\"; index 1..5 rises",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombBlast_1",
+   "name": "bombBlast",
+   "variant": 1,
+   "desc": "the Kaboom Bomb detonates: bigger than a keg, with a low-end whump; index 1..5 = blast size (5 = the 5x5 monster)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombBlast_2",
+   "name": "bombBlast",
+   "variant": 2,
+   "desc": "the Kaboom Bomb detonates: bigger than a keg, with a low-end whump; index 1..5 = blast size (5 = the 5x5 monster)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombBlast_3",
+   "name": "bombBlast",
+   "variant": 3,
+   "desc": "the Kaboom Bomb detonates: bigger than a keg, with a low-end whump; index 1..5 = blast size (5 = the 5x5 monster)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombBlast_4",
+   "name": "bombBlast",
+   "variant": 4,
+   "desc": "the Kaboom Bomb detonates: bigger than a keg, with a low-end whump; index 1..5 = blast size (5 = the 5x5 monster)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombBlast_5",
+   "name": "bombBlast",
+   "variant": 5,
+   "desc": "the Kaboom Bomb detonates: bigger than a keg, with a low-end whump; index 1..5 = blast size (5 = the 5x5 monster)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombChain_0",
+   "name": "bombChain",
+   "variant": 0,
+   "desc": "a chained bomb goes off: a spit of fuse and a punchy blast (variations for chains)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombChain_1",
+   "name": "bombChain",
+   "variant": 1,
+   "desc": "a chained bomb goes off: a spit of fuse and a punchy blast (variations for chains)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bombChain_2",
+   "name": "bombChain",
+   "variant": 2,
+   "desc": "a chained bomb goes off: a spit of fuse and a punchy blast (variations for chains)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "endRumble",
+   "name": "endRumble",
+   "variant": 0,
+   "desc": "the deck starts to shake: a rumble and timpani roll building before the remaining bombs blow",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capBelt",
+   "name": "capBelt",
+   "variant": 0,
+   "desc": "Cap'n Kaboom pulls the bomb from his belt: leather creak, buckle jingle, iron slapped into his palm",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capChargePip_1",
+   "name": "capChargePip",
+   "variant": 1,
+   "desc": "a charge lamp flares on the Captain's rig: a little flame and a glassy ping; index 1..3 rises (D, F#, A)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capChargePip_2",
+   "name": "capChargePip",
+   "variant": 2,
+   "desc": "a charge lamp flares on the Captain's rig: a little flame and a glassy ping; index 1..3 rises (D, F#, A)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capChargePip_3",
+   "name": "capChargePip",
+   "variant": 3,
+   "desc": "a charge lamp flares on the Captain's rig: a little flame and a glassy ping; index 1..3 rises (D, F#, A)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capChargeFull",
+   "name": "capChargeFull",
+   "variant": 0,
+   "desc": "fully charged: a fizzing surge into a bright two-note \"rea-DY!\" on brass and concertina",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capWindup",
+   "name": "capWindup",
+   "variant": 0,
+   "desc": "the Captain winds up: arm whooshes speeding up over a creaking stretch and a rising whistle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capThrow",
+   "name": "capThrow",
+   "variant": 0,
+   "desc": "the throw: a grunted \"hup!\", a big whoosh and the fuse fizzing away across the deck",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capPegTap_0",
+   "name": "capPegTap",
+   "variant": 0,
+   "desc": "the Captain's peg leg taps the deck (variations)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capPegTap_1",
+   "name": "capPegTap",
+   "variant": 1,
+   "desc": "the Captain's peg leg taps the deck (variations)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "capPegTap_2",
+   "name": "capPegTap",
+   "variant": 2,
+   "desc": "the Captain's peg leg taps the deck (variations)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "parrotSquawk",
+   "name": "parrotSquawk",
+   "variant": 0,
+   "desc": "Sparks the parrot: a sharp, higher \"AWK-awk!\" with a flap (shorter than the KEG DROP squawk \"howl\")",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "parrotFlap_0",
+   "name": "parrotFlap",
+   "variant": 0,
+   "desc": "Sparks flaps his wings (variations)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "parrotFlap_1",
+   "name": "parrotFlap",
+   "variant": 1,
+   "desc": "Sparks flaps his wings (variations)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symCrab",
+   "name": "symCrab",
+   "variant": 0,
+   "desc": "crab win accent: a quick claw snip-snap",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symOcto",
+   "name": "symOcto",
+   "variant": 0,
+   "desc": "octopus win accent: a wet squelch and a bubble",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symShark",
+   "name": "symShark",
+   "variant": 0,
+   "desc": "shark win accent: a snapping chomp",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symParrot",
+   "name": "symParrot",
+   "variant": 0,
+   "desc": "parrot win accent: a tiny squawk and a flap",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symAnchor",
+   "name": "symAnchor",
+   "variant": 0,
+   "desc": "anchor win accent: a slow swinging chain creak and a soft iron clink",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symShell",
+   "name": "symShell",
+   "variant": 0,
+   "desc": "shell win accent: a clam snaps shut and a pearl twinkles",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symMap",
+   "name": "symMap",
+   "variant": 0,
+   "desc": "map win accent: a crinkle of paper and a small ding",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symCompass",
+   "name": "symCompass",
+   "variant": 0,
+   "desc": "compass win accent: the needle whirrs and settles with a tick",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "introSting",
+   "name": "introSting",
+   "variant": 0,
+   "desc": "welcome aboard: ship's bell ding-ding, a concertina run into an open-fifth brass \"ta-da\" and a distant cannon",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "playSting",
+   "name": "playSting",
+   "variant": 0,
+   "desc": "PLAY pressed: a wooden button thock, an accordion run up and an open-fifth brass \"ta-da\"",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "carouselWhoosh",
+   "name": "carouselWhoosh",
+   "variant": 0,
+   "desc": "the splash carousel slides: a soft card swoosh",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coachPop",
+   "name": "coachPop",
+   "variant": 0,
+   "desc": "a coach-mark tip pops up: a soft cork pop and a tiny ping",
+   "kind": "sfx",
+   "bank": "core"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "base",
+   "title": "Powder Keg Cove",
+   "desc": "base game: jaunty 6/8 sea shanty, concertina lead with fiddle answers, D dorian, 96 bpm (dotted quarter)",
+   "bpm": 96,
+   "beatsPerBar": 2,
+   "bars": 32,
+   "stems": []
+  },
+  {
+   "id": "tantrum",
+   "title": "Light the Fuse",
+   "desc": "fuse/wheel moments: hot G minor hornpipe, fiddle runs, stabbing brass, driving snare, 150 bpm",
+   "bpm": 150,
+   "beatsPerBar": 4,
+   "bars": 32,
+   "stems": []
+  },
+  {
+   "id": "witching",
+   "title": "Moonlight Raid",
+   "desc": "free spins: spooky nocturnal shanty, solo cello and ghost choir over drones, moonlit glock, ship's bell, D minor, 80 bpm; tension stem via intensity()",
+   "bpm": 80,
+   "beatsPerBar": 4,
+   "bars": 16,
+   "stems": [
+    "tension"
+   ]
+  },
+  {
+   "id": "limbo",
+   "title": "Davy Jones' Waltz",
+   "desc": "hidden bonus: ethereal underwater waltz, music box + celesta + choir, D minor to F major, 90 bpm 3/4",
+   "bpm": 90,
+   "beatsPerBar": 3,
+   "bars": 24,
+   "stems": []
+  },
+  {
+   "id": "bigwin",
+   "title": "Plunder Fanfare",
+   "desc": "big-win celebration: triumphant cartoon brass march with accordion flourishes, Bb major, 120 bpm, 8 bars",
+   "bpm": 120,
+   "beatsPerBar": 4,
+   "bars": 8,
+   "stems": []
+  }
+ ]
+}

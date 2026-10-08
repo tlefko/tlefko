@@ -1,0 +1,38 @@
+{
+  "BASE": {
+    "rtp": 0.962,
+    "maxWin": 50000,
+    "cost": 1,
+    "hitRate": 0.3209,
+    "maxWinOdds": 5000000,
+    "sd": 44,
+    "books": 401348
+  },
+  "BOOST": {
+    "rtp": 0.962,
+    "maxWin": 50000,
+    "cost": 1.5,
+    "hitRate": 0.32298,
+    "maxWinOdds": 2500000,
+    "sd": 62.96,
+    "books": 402309
+  },
+  "WITCHING": {
+    "rtp": 0.962,
+    "maxWin": 50000,
+    "cost": 100,
+    "hitRate": 0.9975,
+    "maxWinOdds": 40000,
+    "sd": 738.52,
+    "books": 60160
+  },
+  "INFERNO": {
+    "rtp": 0.962,
+    "maxWin": 50000,
+    "cost": 500,
+    "hitRate": 1,
+    "maxWinOdds": 60000,
+    "sd": 849.28,
+    "books": 60252
+  }
+}

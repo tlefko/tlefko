@@ -1,0 +1,90 @@
+:root {
+  --ink: #1b1311;
+  --ink-2: #1d191b;
+  --ink-3: #2a2527;
+  --paper: #f7ecd6;
+  --paper-dim: #b9b1a3;
+  --line: rgba(244, 239, 227, 0.12);
+  --accent: #5fd6cc; /* moonlit sea teal */
+  --accent-deep: #1b8f9e;
+  --fire: #ff7a1f;
+  --fire-hot: #ffc233;
+  --crimson: #d42c24;
+  --crimson-light: #ff6f5e;
+  --crimson-deep: #7a1210;
+  --gold: #f4b73a;
+  --gold-light: #fff0b0;
+  --gold-deep: #9c5f10;
+  /* wood and parchment (palette C in src/art/kit.ts) */
+  --wood-light: #d99b5f;
+  --wood: #a8672f;
+  --wood-mid: #7a4520;
+  --wood-dark: #4f2a13;
+  --wood-deep: #2e170a;
+  --parch: #eddcbc;
+  --parch-ink: #3a2418;
+  --ease-ui: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-enter: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-swift: cubic-bezier(0.16, 1, 0.3, 1);
+  --font-ui: 'Inter Variable', Inter, system-ui, -apple-system, sans-serif;
+  --font-display: 'Rye', 'Luckiest Guy', serif;
+  --font-cartoon: 'Luckiest Guy', 'Arial Black', sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #0a0d16;
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+}
+
+#stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+[hidden] {
+  display: none !important;
+}
