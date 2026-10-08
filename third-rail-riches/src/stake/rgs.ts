@@ -132,7 +132,7 @@ interface Pack {
   books: { w: number; b: Book }[];
 }
 
-const DEMO_KEY = 'powder-keg-cove.demo.v1';
+const DEMO_KEY = 'third-rail-riches.demo.v1';
 /**
  * The demo plays in the `?currency=` of the URL (default USD), so the HUD and paytable can be
  * checked in any currency outside replay. Amounts are scaled to roughly match a dollar's value, which

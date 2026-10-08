@@ -31,7 +31,7 @@ mkdirSync(out, { recursive: true });
 const GAME = basename(process.cwd()).replace(/^sq-fix$/, 'squirrel-stash');
 // per game: the mode costs (src/stake/book.ts / src/math/types.ts) and the 1.5x mode, if any
 const COSTS = {
-  'powder-keg-cove': { BASE: 1, BOOST: 1.5, WITCHING: 100, INFERNO: 500 },
+  'third-rail-riches': { BASE: 1, BOOST: 1.5, WITCHING: 100, INFERNO: 400 },
   'lucifers-lullaby': { BASE: 1, WITCHING: 100, INFERNO: 500 },
   'marigold-mariachi': { BASE: 1, FIESTA: 100, PARADE: 250 },
   'salamanders-gold': { BASE: 1, STOKE: 1.5, BUY: 100, SUPER: 400 },

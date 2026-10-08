@@ -1,5 +1,5 @@
 /**
- * Powder Keg Cove audio runtime.
+ * Third Rail Riches audio runtime.
  *
  * A small Web Audio player for the pre-rendered assets in public/audio (built by tools/audio-lab;
  * Tone.js is only used offline, never at runtime). SFX live in two sprite banks, music tracks are

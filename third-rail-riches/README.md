@@ -1,93 +1,75 @@
-# Powder Keg Cove
+# Third Rail Riches
 
-An original cluster-pays slot by Psycho Games, built for **Stake Engine** (static math books + RGS).
-**Demo credits only** outside Stake: the demo plays from bundled books with no deposit, withdrawal
-or cash value.
+An original 1930s cartoon subway slot by Psycho Games, built for **Stake Engine** (static math books +
+RGS) on the Powder Keg Cove engine. **Demo credits only** outside Stake: the demo plays from bundled
+books with no deposit, withdrawal or cash value.
 
-It runs on the same engine and math as Lucifer's Lullaby (mechanics, paytable, RTP and max win are
-identical); everything the player sees and hears is new. The art bible is `docs/ART.md`.
-
-Demo: https://powder-keg-cove.vercel.app (Vercel project `powder-keg-cove`, scope `tlefkos-projects`).
-It is a separate project from Lucifer's Lullaby (`lucifers-lullaby`), so deploying one never touches
-the other.
+The engine (Pixi scene, HUD, RGS client, Stake math pipeline, QA tools) is shared with Powder Keg
+Cove; the **mechanics, math, RTP, art, music and copy are all new**. Art bible: `docs/ART.md`. Math:
+`docs/MATH.md`. Audio: `docs/AUDIO.md`, `docs/SOUNDS.md`.
 
 ## The game
 
-- 6 reels x 5 rows, cascading **cluster pays** (5+ matching symbols connected up/down/left/right).
-- **Powder Kegs** (wild) land cold. A keg in a winning cluster lights its fuse, stays as a x2 wild for
-  the next cascade, then explodes and clears its 3x3 area. Blasts light cold kegs and set off lit ones.
-- **The Powder Fuse**: +1 spark per winning cluster, +2 per explosion. A fully lit fuse (10) spins the
-  **Captain's Wheel**: a keg drop, a broadside row of kegs, grog (+ to the plunder multiplier) or
-  doubloons.
-- **Moonlight Raid** free spins: 3/4/5+ treasure chests give 8/10/12 spins, 3+ during the bonus give +5.
-  The fuse and the plunder multiplier carry over between free spins.
-- **Buys**: Moonlight Raid 100x; Blackpowder Raid 500x (10 spins, plunder x5, fuse at 5).
-- Max win 50,000x in every mode. RTP target 96.20% for every mode; see `docs/MATH.md` for the
-  verified numbers and the Stake book files.
-- Cast: **Cap'n Kaboom** (left, lit linstock, peg leg) and **Sparks** the parrot (right, on a barrel).
-- Code keeps the engine's internal names (BRIM, TANTRUM, hounds, inferno, witching); the table in
-  `docs/ART.md` maps them to the theme names.
-
-## Stake Engine
-
-- `src/stake`: URL params, RGS client (authenticate / play / end-round / event / replay), a demo RGS
-  over `public/demo-books`, currency formatting, book <-> round conversion.
-- Replay mode (`?replay=true&game=...&event=...`), social-casino wording, jurisdiction flags
-  (disabled buy / autoplay / turbo / spacebar, session timer, net position) are all handled in
-  `src/game/Controller.ts` and `src/ui`.
-- 16 languages (`src/i18n`, English source in `en.ts`).
-- Brand assets: `tools/brand/tile.ts` writes the game tile BG/FG (3:4, `TILE=wide` for 16:9,
-  `TILE=focus` for a single-subject FG) to `../_brand/powder-keg-cove`, with Stake-ready copies in
-  `stake/`; `tools/brand/boot.mjs` regenerates the loading screen assets in `public/boot` from the
-  running game; the provider logo comes from `tools/brand/logo.mjs`.
+- **6 reels x 4 rows, 4,096 ways**: matching symbols on 3+ adjacent reels from the left win in any
+  row position. The **Live Wire** (wild) lands on reels 2-6.
+- **Locomotives** land on reel 1. After the way wins, Conductor Casey blows his whistle and every
+  Locomotive pulls out along its row, collecting the cash value of every **Fare Coin** it reaches
+  (bronze / silver / gold / platinum, 0.2x to 1,000x).
+- **Junctions** (reels 2-5) branch a passing train into the rows above and below; branches can
+  branch again. Every cell is run once, so every coin is collected once.
+- **Rush Hour** free spins: 3/4/5/6 Golden Tickets give 8/10/12/15 spins. Fare Coins are **sticky**
+  until a train collects them; every collected coin is a passenger on the **POWER** meter, and at
+  5 / 12 / 22 / 35 passengers the train multiplier steps x2 / x3 / x5 / x10 with +3 spins each.
+  3+ tickets retrigger +5.
+- **Buys**: Rush Hour 100x; **Last Train** 400x (10 spins, train multiplier x2 from the start and a
+  **Golden Locomotive** held on reel 1 that runs its row every spin).
+- **Express Pass** (1.5x bet): a Locomotive on every spin.
+- **RTP 96.30%** in every mode (exact in the published weights), **max win 10,000x**. Stake 2-Star
+  and 3-Star dashboards: 0 failing classes.
+- Cast: **Conductor Casey** (left, signal lantern and whistle) and **Rivets** the subway rat (right,
+  on a stack of suitcases).
+- Code keeps the engine's mode names: `WITCHING` = Rush Hour, `INFERNO` = Last Train, `BOOST` =
+  Express Pass.
 
 ## Stack
 
-Vite + TypeScript, **PixiJS 8** (WebGL scene), **GSAP 3** (every motion), DOM HUD and menus. All art is
-original SVG, rasterised at the exact device-pixel size at runtime (`src/art`, `src/render/textures.ts`).
-Music and SFX are composed in Tone.js and rendered offline to MP3 (`tools/audio-lab`); the game ships a
-small Web Audio player.
+Vite + TypeScript, **PixiJS 8**, **GSAP 3**, DOM HUD. All art is original SVG authored in code and
+rasterised at the device-pixel size at runtime. Music and SFX are composed in Tone.js and rendered
+offline to MP3 (`tools/audio-lab`).
 
 ```
-src/math      engine, model, paytable, RNG (the rules; unit tested)
-src/art       every illustration as SVG: symbols (sea, critters, captain, keg), rigs (crew),
-              scene, props, fx; shared ink + cel kit (kit.ts) and geometry helpers (geo.ts)
-src/render    Pixi views: grid, wheel, win bar, fuse meter, characters, overlays, film grain
+src/math      engine, model, paytable, RNG (unit tested)
+src/art       every illustration as SVG (symbols, specials, train, characters, station, logo)
+src/render    Pixi views: board, trains, POWER meter, win bar, characters, overlays
 src/game      Scene, Presenter (choreography), Controller (flow, wallet, autoplay)
-src/ui        HUD, menus, rules/paytable
-src/audio     runtime audio player (assets in public/audio)
-tools/art     art review sheets: npx tsx tools/art/sheet.ts <symbols|sea|critters|crew|rig|...> 2
-tools/qa      QA gates (below);  tools/sim  RTP simulator + tuner
+src/stake     RGS client, demo RGS, book format, dev scenarios
+src/ui        HUD, menus, rules / symbol wins
+tools/sim     Monte Carlo simulator;   tools/stake  Stake book generator + verifier
+tools/art     art review sheets;       tools/brand  Stake tile + loading-screen assets
 ```
 
 ## Run
 
 ```bash
 npm install
-npm run dev          # http://localhost:5318   (add ?debug for QA hooks)
-npm run build && npm run preview   # production build on :5319
+npm run dev                      # http://localhost:5318   (?debug for QA hooks)
+npm run build && npm run preview
 ```
 
-`?debug` (demo mode only) exposes `window.__ll` (`forceBook(id)` plays that demo book next, `ctrl`, `scene`, `rgs`).
+`?debug` (demo only) exposes `window.__ll`: `ctrl.devScenario(name)` plays an engine-built round
+(`train`, `junction`, `multi`, `ways`, `tease`, `bonus`, `rushBig`, `lastTrain`, `express`,
+`maxWin`), `forceBook(id)` plays a demo book next.
 
-## QA (run against the production preview, `npm run preview`)
-
-| Gate | Command | Checks |
-|---|---|---|
-| Types + unit tests | `npm run typecheck && npm test` | math tests (clusters, blasts, wheel, cap, record/fast parity) |
-| Stake math | `npx tsx tools/stake/verify.ts --dir stake-math/publish` | index/books/CSV schema, RTP per mode, hit rate, std dev, max-win odds, tail checks (see `docs/MATH.md`) |
-| Soak | `node tools/qa/soak.mjs http://127.0.0.1:5319/?debug super [chrome\|webkit]` | 22 real rounds through the UI against the demo RGS: random books plus scenario books (chain blasts, all 4 wheel outcomes, bonus, 50,000x max win), both buys, min/max bet. Balance = before - cost + win in game, RGS and HUD; no stuck rounds; zero page errors and zero console output |
-| Layout | `node tools/qa/layout.mjs [url] [--selftest]` | 12 viewports 360 to 2560 plus Stake's mini-player (480x270, 400x300): no overflow, HUD collisions or clipped text, text >= 12.5px, 40px tap targets, board/bar/meter/logo on screen, characters clear of the board |
-| Performance | `node tools/qa/perf.mjs` | boot + bytes on throttled 4G; rAF pacing through the heaviest base book, desktop and a 4x-CPU phone |
-| Replay | open `/?replay=true&mode=BASE&event=<id>&amount=1000000&social=true` | replay bar, Play / Play again, social wording |
-| Motion review | `node tools/qa/record.mjs <name> 1440x900 16 '<js>'` | real video, tiled into contact sheets |
-| Screens | `node tools/qa/shot.mjs <url> 390x844@3,1440x900` | full-resolution screenshots |
-
-## Deploy
-
-The exact tested `dist` is uploaded as a prebuilt deployment (no remote build), then the live
-`index-*.js` hash is checked against the local build:
+## Math
 
 ```bash
-npm run deploy      # = deploy/deploy.sh (cache headers live in deploy/vercel-output-config.json)
+npx vitest run                                         # rules, routing, books, i18n
+npx tsx tools/sim/cli.ts --kind all --rounds 2e6       # natural RTP per mode
+npx tsx tools/stake/generate.ts --out stake-math/publish --base 400000 --boost 400000 --witching 60000 --inferno 60000 --seed 1
+npx tsx tools/stake/verify.ts --dir stake-math/publish --stats src/stake/stats.json
+npx tsx tools/stake/scenarios.ts && npx tsx tools/stake/demo.ts   # QA picks + public/demo-books
 ```
+
+## Brand
+
+`npx tsx tools/brand/tile.ts` (and `TILE=wide`) writes the Stake tile BG/FG to `tools/brand/out`.

@@ -1,9 +1,9 @@
 {
-  "name": "powder-keg-cove",
+  "name": "third-rail-riches",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Powder Keg Cove: a 6x5 cascading cluster slot with exploding powder-keg wilds and the Captain's Wheel, played with simulated demo credits only.",
+  "description": "Third Rail Riches: a 6x4 ways slot where locomotives run their row collecting Fare Coins, junctions branch trains, and Rush Hour free spins power up the train multiplier, played with simulated demo credits only.",
   "scripts": {
     "dev": "vite --port 5318 --strictPort",
     "build": "tsc -p tsconfig.json --noEmit && vite build",

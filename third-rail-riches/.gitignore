@@ -9,3 +9,4 @@ stake-math
 .DS_Store
 stake-upload
 .env*
+tools/brand/out

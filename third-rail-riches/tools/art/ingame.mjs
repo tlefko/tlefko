@@ -24,7 +24,7 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 // skip the intro carousel (the player's own "Don't show again"), then tap PLAY until the splash hands over
 await page.addInitScript(() => {
   try {
-    localStorage.setItem('powder-keg-cove.intro.skip', '1');
+    localStorage.setItem('third-rail-riches.intro.skip', '1');
   } catch {
     /* no storage */
   }

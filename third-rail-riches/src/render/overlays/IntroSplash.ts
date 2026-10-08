@@ -19,9 +19,9 @@ import type { Conductor } from '../characters/Conductor';
 import type { Rat } from '../characters/Rat';
 
 /* ============================================================================================
- * Opening sequence (track S): the logo drops in and bounces, a light sweep runs across it, Cap'n
- * Kaboom and Sparks pop up at their posts, and a carousel of plank cards runs live mini-demos of
- * the features (Kaboom Bomb, Powder Kegs, Captain's Wheel, Powder Boost, max win). A big PLAY
+ * Opening sequence: the logo drops in and bounces, a light sweep runs across it, Conductor Casey
+ * and Rivets pop up at their posts, and a carousel of cards runs live mini-demos of the features
+ * (trains, Junctions, the POWER ladder, Express Pass, max win). A big PLAY
  * plaque pulses at the bottom; a tap anywhere (the gesture that unlocks audio) hands over to the
  * game: the cards fall away, the logo flies to its corner and the shade lifts off the live scene.
  * "Don't show again" (per game, localStorage) skips straight to a single PLAY tap over the game.

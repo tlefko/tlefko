@@ -80,10 +80,10 @@ export function deckTile(w = 320, h = 96): string {
   const n = 2;
   const pw = w / n;
   let body = `<defs>${lg('p', [
-    [0, mix(C.maroon, C.maroonLight, 0.12)],
-    [0.16, mix(C.maroon, C.maroonDeep, 0.18)],
-    [0.7, mix(C.maroon, C.maroonDeep, 0.5)],
-    [1, mix(C.maroon, C.maroonDeep, 0.72)],
+    [0, mix(C.maroon, C.maroonLight, 0.08)],
+    [0.14, mix(C.maroon, C.maroonDeep, 0.3)],
+    [0.7, mix(C.maroon, C.maroonDeep, 0.62)],
+    [1, mix(C.maroon, C.maroonDeep, 0.85)],
   ])}${lg('s', [
     [0, '#fff', 0],
     [0.5, '#fff', 0.06],
@@ -123,6 +123,11 @@ export function deckTile(w = 320, h = 96): string {
  * band (the station's trim colour). w x h tile.
  */
 export function railTile(w = 64, h = 16): string {
+  // the bar draws this strip a little shorter than its box (14 or 10 px): it stretches, never letterboxes
+  return railStrip(w, h).replace('<svg ', '<svg preserveAspectRatio="none" ');
+}
+
+function railStrip(w: number, h: number): string {
   const b0 = 1.6;
   const b1 = h * 0.58;
   const e0 = b1 + 1.4;

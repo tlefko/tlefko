@@ -279,7 +279,7 @@ export class TrainLayer extends Container {
     const tx = rig.root.x - rig.len * 0.45;
     const ty = rig.root.y - S * 0.15;
     v.showValueText(false);
-    this.fx.coins(v.x, v.y, quality.low ? 2 : 5, 2, 0.6);
+    this.fx.coins(v.x, v.y, quality.low ? 1 : 2, 2, 0.35);
     this.fx.glint(v.x, v.y, 0.45);
     gsap
       .timeline({ onComplete: () => this.grid.release(v as SymbolView) })

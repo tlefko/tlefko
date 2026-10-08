@@ -1,5 +1,5 @@
 /** Per-player preferences (speed, sound, quality). Never holds money: balances come from the RGS. */
-const KEY = 'powder-keg-cove.settings.v1';
+const KEY = 'third-rail-riches.settings.v1';
 /**
  * Never stored or restored, even if some code sets them: Stake requires the bet to start at the
  * default level on every load (an open round restores its own bet from the RGS).

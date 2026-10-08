@@ -61,7 +61,7 @@ for (const [w, h, dpr] of VIEWPORTS) {
   await page.waitForTimeout(1200);
   await page.mouse.click(w / 2, h / 2); // dismiss the splash
   await page.waitForTimeout(2600);
-  await page.evaluate(() => (window.__ll.scene.captain.react('idle'), window.__ll.scene.parrot.react('idle')));
+  await page.evaluate(() => (window.__ll.scene.conductor.react('idle'), window.__ll.scene.rat.react('idle')));
   await page.waitForTimeout(400);
   if (selftest) await page.addStyleTag({ content: '.meter.bal{min-width:1200px !important}' });
   await page.waitForTimeout(200);
@@ -135,7 +135,7 @@ for (const [w, h, dpr] of VIEWPORTS) {
         const t0 = performance.now();
         while (performance.now() - t0 < ms) {
           await sleep(34);
-          const b = tight(who, `${who === scene.captain ? 'Captain' : 'Parrot'} ${st}:`);
+          const b = tight(who, `${who === scene.conductor ? 'Conductor' : 'Rat'} ${st}:`);
           if (REACH.includes(st)) reach = union(reach, b);
           else env = union(env, b);
         }
@@ -144,11 +144,11 @@ for (const [w, h, dpr] of VIEWPORTS) {
       }
       return { env, reach, seen };
     };
-    const capIdle = tight(scene.captain);
-    const parIdle = tight(scene.parrot);
-    const cap = quick ? { env: capIdle, reach: null, seen: [] } : await sweep(scene.captain, ['cheer', 'shock', 'dance', 'laugh', 'pray', 'duck', 'watch'], 950);
+    const capIdle = tight(scene.conductor);
+    const parIdle = tight(scene.rat);
+    const cap = quick ? { env: capIdle, reach: null, seen: [] } : await sweep(scene.conductor, ['cheer', 'shock', 'dance', 'laugh', 'pray', 'duck', 'watch'], 950);
     // the charged bomb in his hand, then the throw (wind-up to release and follow-through)
-    const c = scene.captain;
+    const c = scene.conductor;
     if (!quick && typeof c.setCharge === 'function' && typeof c.throwBomb === 'function') {
       try {
         c.setCharge(3, 3);
@@ -169,7 +169,7 @@ for (const [w, h, dpr] of VIEWPORTS) {
         /* rig without a throw yet */
       }
     }
-    const par = quick ? { env: parIdle, reach: null, seen: [] } : await sweep(scene.parrot, ['happy', 'squawk', 'worried', 'watch', 'duck'], 850);
+    const par = quick ? { env: parIdle, reach: null, seen: [] } : await sweep(scene.rat, ['happy', 'squeak', 'worried', 'watch', 'duck'], 850);
     return {
       W: innerWidth,
       H: innerHeight,
@@ -180,8 +180,8 @@ for (const [w, h, dpr] of VIEWPORTS) {
       hud,
       clipped,
       small,
-      captain: bnd(scene.captain),
-      parrot: bnd(scene.parrot),
+      captain: bnd(scene.conductor),
+      parrot: bnd(scene.rat),
       capIdle,
       parIdle,
       capEnv: cap.env,

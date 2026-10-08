@@ -7,7 +7,7 @@ rm -rf .vercel/output && mkdir -p .vercel/output/static
 cp -R dist/. .vercel/output/static/
 cp deploy/vercel-output-config.json .vercel/output/config.json
 npx vercel deploy --prebuilt --prod --yes --scope tlefkos-projects
-LIVE=https://powder-keg-cove.vercel.app
+LIVE=https://third-rail-riches.vercel.app
 want=$(grep -o 'assets/index-[^"]*\.js' dist/index.html | head -1)
 for i in 1 2 3 4 5 6; do
   got=$(curl -s "$LIVE/?cb=$RANDOM" | grep -o 'assets/index-[^"]*\.js' | head -1)

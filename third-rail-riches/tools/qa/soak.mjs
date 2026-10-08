@@ -1,9 +1,9 @@
 // Functional soak (v2, Stake flow): plays real rounds through the actual UI against the demo RGS
 // (random books + scenario books found in the demo pack) and checks money, settlement,
 // completion and page errors after every round.
-// Covers the Kaboom Bomb and Powder Boost: bomb scenarios found by content in the BASE and BOOST
-// packs, engine-built dev scenarios (ctrl.devBomb, docs/BOMB.md) and Boost rounds, whose balance
-// drops by 1.5x the bet.
+// Covers trains, Junctions, the free spins and Express Pass: scenarios found by content in the BASE
+// and BOOST packs, engine-built dev scenarios (ctrl.devScenario) and Express Pass rounds, whose
+// balance drops by 1.5x the bet.
 // Usage: node tools/qa/soak.mjs [url] [speed=super] [browser=chrome|webkit]
 import { chromium, webkit } from '@playwright/test';
 
@@ -40,20 +40,12 @@ const found = await page.evaluate(async () => {
         const list = (cand[key] ??= []);
         if (list.length < 8 && !list.some((x) => x.id === b.id)) list.push({ id: b.id, mode });
       };
-      for (const s of spin.steps ?? []) {
-        if (s.wheel) add(`wheel ${s.wheel.outcome.kind}`);
-        if (s.explosions?.length >= 2) add('chain blast');
-        if (s.thrown?.some((t) => t.source === 'charge')) add('bomb thrown');
-        if (s.explosions?.some((e) => e.bomb?.radius === 2)) add('bomb 5x5');
-        if (s.explosions?.some((e) => e.bomb?.cause === 'fuse')) add('bomb fuse');
-        if (s.finale) add('bomb finale');
-        if (s.growth?.length) add('bomb growth');
-        const isBomb = new Map((s.explosions ?? []).map((e) => [e.id, !!e.bomb]));
-        if (s.explosions?.some((e) => e.chain.some((id) => e.bomb || isBomb.get(id)))) add('bomb chain');
-      }
-      if (spin.initial?.some((c) => c.sym === 11)) add('bomb natural');
+      if (spin.trains?.some((t) => t.coins.length)) add('train haul');
+      if (spin.trains?.some((t) => t.parent >= 0)) add('junction branch');
+      if ((spin.trains ?? []).filter((t) => t.parent < 0).length >= 2) add('two locomotives');
+      if (spin.ways?.length) add('way win');
       if (b.events.some((e) => e.type === 'bonusStart')) add('bonus trigger');
-      if (spins.slice(1).some((sp) => sp.steps.some((st) => st.explosions.some((e) => e.bomb)))) add('bomb in free spins');
+      if (spins.slice(1).some((sp) => sp.levelAfter > sp.levelBefore)) add('power level-up');
       if (fin?.maxWin || spin.maxWin) add('max win');
       if (b.payoutMultiplier === 0) add('no win');
     }
@@ -81,11 +73,13 @@ const scenarios = [
   ...Array.from({ length: 8 }, () => ({ name: 'base random', mode: 'BASE' })),
   ...Array.from({ length: 6 }, () => ({ name: 'boost random', mode: 'BOOST' })),
   ...Object.entries(found).map(([name, v]) => ({ name, mode: v.mode, book: v.id })),
-  // engine-built dev scenarios (docs/BOMB.md), played through ctrl.devBomb
-  { name: 'dev big', mode: 'BASE', dev: 'big' },
-  { name: 'dev megaChain', mode: 'BASE', dev: 'megaChain' },
-  { name: 'dev boost', mode: 'BOOST', dev: 'boost' },
-  { name: 'dev freeSpins', mode: 'WITCHING', dev: 'freeSpins' },
+  // engine-built dev scenarios (src/stake/devScenarios.ts), played through ctrl.devScenario
+  { name: 'dev junction', mode: 'BASE', dev: 'junction' },
+  { name: 'dev multi', mode: 'BASE', dev: 'multi' },
+  { name: 'dev express', mode: 'BOOST', dev: 'express' },
+  { name: 'dev rushBig', mode: 'WITCHING', dev: 'rushBig' },
+  { name: 'dev lastTrain', mode: 'INFERNO', dev: 'lastTrain' },
+  { name: 'dev maxWin', mode: 'INFERNO', dev: 'maxWin' },
   { name: 'buy witching', mode: 'WITCHING' },
   { name: 'buy inferno', mode: 'INFERNO' },
   { name: 'min bet', mode: 'BASE', bet: 'min' },
@@ -93,7 +87,7 @@ const scenarios = [
   { name: 'boost min bet', mode: 'BOOST', bet: 'min' },
   { name: 'boost max bet', mode: 'BOOST', bet: 'max' },
 ];
-const COST = { BASE: 1, BOOST: 1.5, WITCHING: 100, INFERNO: 500 };
+const COST = { BASE: 1, BOOST: 1.5, WITCHING: 100, INFERNO: 400 };
 const API = 1e6;
 const fmt = (api) => `$${(api / API).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -115,7 +109,7 @@ for (const [i, sc] of scenarios.entries()) {
     const spin = sc.mode === 'BASE' || sc.mode === 'BOOST';
     ctrl.setBoost(sc.mode === 'BOOST');
     const boostOk = ctrl.boost === (sc.mode === 'BOOST') && ctrl.spinMode === (sc.mode === 'BOOST' ? 'BOOST' : 'BASE');
-    if (sc.dev) void ctrl.devBomb(sc.dev);
+    if (sc.dev) void ctrl.devScenario(sc.dev);
     else {
       if (sc.book) window.__ll.forceBook(sc.book);
       if (spin) ctrl.spinPressed();
@@ -169,9 +163,8 @@ for (const [i, sc] of scenarios.entries()) {
 }
 await page.evaluate(() => window.__ll.ctrl.setBoost(false));
 const missing = [
-  'wheel hounds', 'wheel inferno', 'wheel boost', 'wheel cash', 'wheel bomb', 'chain blast', 'bonus trigger', 'max win',
-  'bomb natural', 'bomb thrown', 'bomb 5x5', 'bomb fuse', 'bomb finale', 'bomb growth', 'bomb chain', 'bomb in free spins',
-  'boost bomb natural', 'boost bomb thrown', 'boost bonus trigger',
+  'train haul', 'junction branch', 'two locomotives', 'way win', 'bonus trigger', 'power level-up', 'no win',
+  'boost train haul', 'boost junction branch', 'boost bonus trigger',
 ].filter((k) => !(k in found));
 console.log(`\n${scenarios.length - failures}/${scenarios.length} passed in ${((Date.now() - t0) / 1000).toFixed(0)}s; page errors: ${errors.length}; console output: ${logs.length}`);
 if (missing.length) console.log(`scenarios not present in the demo pack: ${missing.join(', ')}`);
