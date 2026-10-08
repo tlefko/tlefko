@@ -142,22 +142,9 @@ for (const [i, sc] of scenarios.entries()) {
     done = await page.evaluate((n) => (window.__ll.ctrl.presenter.skipCard(), window.__ll.ctrl.rounds > n && !window.__ll.ctrl.busy), before.rounds);
     if (done) break;
   }
-  // let the HUD count-up finish (headless software rendering draws only a few frames a second)
-  await page
-    .waitForFunction(
-      () => {
-        const el = document.querySelector('[data-k="balance"]');
-        const v = el.getAttribute('aria-label') || el.textContent;
-        window.__soakLast ??= { v, n: 0 };
-        if (window.__soakLast.v === v) window.__soakLast.n++;
-        else window.__soakLast = { v, n: 0 };
-        return window.__soakLast.n >= 4;
-      },
-      null,
-      { timeout: 8000, polling: 300 },
-    )
-    .catch(() => undefined);
-  await page.evaluate(() => (window.__soakLast = undefined));
+  // let the HUD count-up reach the balance (headless software rendering draws only a frame or two a second)
+  await page.waitForFunction(() => window.__ll.ctrl.hud.shownBalance?.v === window.__ll.ctrl.balanceApi, null, { timeout: 12000, polling: 250 }).catch(() => undefined);
+  await page.waitForTimeout(300);
   const res = await page.evaluate(async () => {
     const { ctrl, rgs } = window.__ll;
     return {
