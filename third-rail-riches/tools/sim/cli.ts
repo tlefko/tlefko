@@ -52,12 +52,12 @@ for (const kind of kinds) {
   console.log(`\n== ${kind} (${s.rounds} rounds, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   console.log(`RTP ${pct(rtp)} +- ${pct(ci)}  mean ${mean.toFixed(3)}x  sd ${sd.toFixed(1)}x  hit ${pct(s.hits / s.rounds)}  max ${(s.maxH / 100).toFixed(0)}x  capped ${s.capped}`);
   console.log(
-    `paid spin: ways ${(b.waysH / 100 / s.rounds).toFixed(4)}x  trains ${(b.trainH / 100 / s.rounds).toFixed(4)}x  locos/spin ${(b.locos / b.spins).toFixed(3)}  branches/spin ${(b.branches / b.spins).toFixed(3)}  coins landed ${(b.coinsLanded / b.spins).toFixed(2)} collected ${(b.coinsCollected / b.spins).toFixed(3)}`,
+    `paid spin: routes ${(b.routesH / 100 / s.rounds).toFixed(4)}x  trains ${(b.trainH / 100 / s.rounds).toFixed(4)}x (crash ${(b.crashH / 100 / s.rounds).toFixed(4)}x)  locos/spin ${(b.locos / b.spins).toFixed(3)}  crash 1 in ${(b.spins / Math.max(1, b.crashes)).toFixed(0)}  redirects ${(b.redirects / b.spins).toFixed(3)}  clear ${(b.clears / b.spins).toFixed(3)} held ${(b.helds / b.spins).toFixed(3)}  coins ${(b.coinsLanded / b.spins).toFixed(2)} got ${(b.coinsCollected / b.spins).toFixed(3)}`,
   );
   if (s.bonuses) {
     console.log(`bonus: 1 in ${(s.rounds / s.bonuses).toFixed(1)}  avg ${(s.bonusH / 100 / s.bonuses).toFixed(1)}x  (${pct(s.bonusH / 100 / s.rounds / cost)} of cost)  spins ${(s.freeSpins / s.bonuses).toFixed(2)}  retrig ${(s.retriggers / s.bonuses).toFixed(3)}`);
     console.log(
-      `free spin: ways ${(f.waysH / 100 / f.spins).toFixed(3)}x  trains ${(f.trainH / 100 / f.spins).toFixed(3)}x  locos ${(f.locos / f.spins).toFixed(3)}  branches ${(f.branches / f.spins).toFixed(3)}  coins landed ${(f.coinsLanded / f.spins).toFixed(2)} collected ${(f.coinsCollected / f.spins).toFixed(2)}  level-ups/bonus ${(f.levelUps / s.bonuses).toFixed(2)}`,
+      `free spin: routes ${(f.routesH / 100 / f.spins).toFixed(3)}x  trains ${(f.trainH / 100 / f.spins).toFixed(3)}x  locos ${(f.locos / f.spins).toFixed(3)}  crashes ${(f.crashes / f.spins).toFixed(3)}  coins landed ${(f.coinsLanded / f.spins).toFixed(2)} collected ${(f.coinsCollected / f.spins).toFixed(2)}  level-ups/bonus ${(f.levelUps / s.bonuses).toFixed(2)}`,
     );
   }
   console.log('over: ' + OVER.map((x) => `>=${x}x 1 in ${s.over[x] ? (s.rounds / s.over[x]).toFixed(0) : '-'}`).join('  '));

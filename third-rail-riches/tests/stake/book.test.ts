@@ -10,6 +10,7 @@ const noIds = (s: SpinResult) => ({
   ...s,
   grid: s.grid.map(({ id, ...c }) => (void id, c)),
   trains: s.trains.map((t) => ({ ...t, coins: t.coins.map(({ id, ...c }) => (void id, c)) })),
+  crashes: s.crashes.map((x) => ({ ...x, wreck: x.wreck.map(({ id, ...w }) => (void id, w)) })),
 });
 
 describe('books', () => {
@@ -30,7 +31,7 @@ describe('books', () => {
           expect(b.kind).toBe(r.bonus.kind);
           expect(b.awarded).toBe(r.bonus.awarded);
           expect(b.totalSpins).toBe(r.bonus.totalSpins);
-          expect(b.goldenRow).toBe(r.bonus.goldenRow);
+          expect(b.goldenAt).toBe(r.bonus.goldenAt);
           expect(b.powerStart).toBe(r.bonus.powerStart);
           expect(b.retriggers).toEqual(r.bonus.retriggers);
           expect(b.bonusWin).toBeCloseTo(r.bonus.bonusWin, 6);
@@ -39,7 +40,7 @@ describe('books', () => {
           for (let i = 1; i < b.spins.length; i++) {
             for (const p of b.spins[i].held) expect(b.spins[i].grid[p].id).toBe(b.spins[i - 1].grid[p].id);
           }
-          for (const s of b.spins) for (const t of s.trains) for (const c of t.coins) expect(c.id).toBe(s.grid[c.pos].id);
+          for (const s of b.spins) for (const t of s.trains) for (const c of t.coins) expect(c.id).toBe(s.grid[c.at].id);
         }
       }
     }

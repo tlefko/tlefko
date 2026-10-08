@@ -155,7 +155,7 @@ for (const [id, t] of Object.entries(M.TRACKS)) {
 }
 
 // spectrograms for a few SFX
-for (const id of ['whistle', 'trainDepart', 'trainRun', 'ticketLand_6', 'coinLand_3', 'wildLand_0', 'bonusTrigger', 'anticipation', 'maxWin', 'reelDrop_0', 'symCat']) {
+for (const id of ['whistle', 'trainDepart', 'trainRun', 'ticketLand_6', 'coinLand_3', 'wildLand_0', 'bonusTrigger', 'anticipation', 'maxWin', 'reelDrop_0', 'symCat', 'flapRattle_0', 'securityAlarm', 'crashImpact', 'wreckScatter', 'signalSwitch']) {
   const tmp = path.join(TMP, `${id}.wav`);
   if (fs.existsSync(tmp)) spectrogram(tmp, path.join(SPEC_DIR, `sfx-${id}.png`), id, 700, 260);
 }

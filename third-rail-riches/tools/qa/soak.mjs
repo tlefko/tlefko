@@ -41,9 +41,12 @@ const found = await page.evaluate(async () => {
         if (list.length < 8 && !list.some((x) => x.id === b.id)) list.push({ id: b.id, mode });
       };
       if (spin.trains?.some((t) => t.coins.length)) add('train haul');
-      if (spin.trains?.some((t) => t.parent >= 0)) add('junction branch');
-      if ((spin.trains ?? []).filter((t) => t.parent < 0).length >= 2) add('two locomotives');
-      if (spin.ways?.length) add('way win');
+      if (spin.crashes?.length) add('crash');
+      if (spin.trains?.some((t) => t.steps.some((x) => x.event === 'redirect'))) add('signal redirect');
+      if (spin.trains?.some((t) => t.steps.some((x) => x.event === 'clear'))) add('security all clear');
+      if (spin.trains?.some((t) => t.steps.some((x) => x.event === 'held'))) add('security incident');
+      if ((spin.trains ?? []).length >= 2) add('two locomotives');
+      if (spin.routes?.length) add('route win');
       if (b.events.some((e) => e.type === 'bonusStart')) add('bonus trigger');
       if (spins.slice(1).some((sp) => sp.levelAfter > sp.levelBefore)) add('power level-up');
       if (fin?.maxWin || spin.maxWin) add('max win');

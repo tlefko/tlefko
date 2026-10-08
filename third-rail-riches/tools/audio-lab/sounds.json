@@ -1,5 +1,5 @@
 {
- "version": "b7c39095",
+ "version": "c4fe0ca6",
  "sfx": [
   {
    "id": "uiClick",
@@ -846,6 +846,158 @@
    "name": "coachPop",
    "variant": 0,
    "desc": "a coach-mark tip pops up: a soft cork pop and a tiny ping",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_0",
+   "name": "flapRattle",
+   "variant": 0,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_1",
+   "name": "flapRattle",
+   "variant": 1,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_2",
+   "name": "flapRattle",
+   "variant": 2,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_3",
+   "name": "flapRattle",
+   "variant": 3,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapSettle_0",
+   "name": "flapSettle",
+   "variant": 0,
+   "desc": "the last flap lands on the new symbol: a satisfying wood-and-tin clack with a tiny rebound (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapSettle_1",
+   "name": "flapSettle",
+   "variant": 1,
+   "desc": "the last flap lands on the new symbol: a satisfying wood-and-tin clack with a tiny rebound (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapSettle_2",
+   "name": "flapSettle",
+   "variant": 2,
+   "desc": "the last flap lands on the new symbol: a satisfying wood-and-tin clack with a tiny rebound (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainStep_0",
+   "name": "trainStep",
+   "variant": 0,
+   "desc": "a train moves one station: a quick, quiet clickety-clack (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainStep_1",
+   "name": "trainStep",
+   "variant": 1,
+   "desc": "a train moves one station: a quick, quiet clickety-clack (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainStep_2",
+   "name": "trainStep",
+   "variant": 2,
+   "desc": "a train moves one station: a quick, quiet clickety-clack (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "signalSwitch",
+   "name": "signalSwitch",
+   "variant": 0,
+   "desc": "a Signal changes aspect: relay click, the lamp humming up, then the heavy points sliding over and locking with a clunk",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "securityAlarm",
+   "name": "securityAlarm",
+   "variant": 0,
+   "desc": "a Security Check: a two-tone station klaxon (hi-lo, hi-lo) and a scanner sweeping the train, a tick of the alarm bell",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "allClear",
+   "name": "allClear",
+   "variant": 0,
+   "desc": "ALL CLEAR, Delay Repay x2: a bright three-note chime climbing F, A, C and a rubber-stamp thump",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "incident",
+   "name": "incident",
+   "variant": 0,
+   "desc": "INCIDENT, train held: a low \"denied\" buzzer, a heavy air-brake hiss and a dull stamp",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "crashRumble",
+   "name": "crashRumble",
+   "variant": 0,
+   "desc": "two trains closing in: a rising rush from both sides, motors screaming up, wheels hammering faster (0.6 s, plays right before crashImpact)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "crashImpact",
+   "name": "crashImpact",
+   "variant": 0,
+   "desc": "two trains collide: heavy iron impact, crunching metal, glass shattering, a deep boom with a sub thump, then bolts and debris bouncing down",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wreckScatter",
+   "name": "wreckScatter",
+   "variant": 0,
+   "desc": "the wreck scatters coins and bolts: a spray of clinks flying out, jingling and tumbling into a pile",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "crashMult",
+   "name": "crashMult",
+   "variant": 0,
+   "desc": "the x2 crash multiplier slams onto the coin pile: a heavy iron-and-brass stamp with kick, snare and a coin jump",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "routeTrace",
+   "name": "routeTrace",
+   "variant": 0,
+   "desc": "a route win lights up: a light electric zip running along the glowing line, a glint at the end",
    "kind": "sfx",
    "bank": "core"
   }

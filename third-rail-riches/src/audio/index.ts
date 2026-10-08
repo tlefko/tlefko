@@ -18,7 +18,9 @@ export type SfxName =
   | 'win' | 'clusterTrace' | 'symPretzel' | 'symCoffee' | 'symNewspaper' | 'symUmbrella' | 'symPigeon' | 'symCat' | 'symBulldog' | 'symRat' | 'symConductor'
   | 'whistle' | 'trainDepart' | 'trainExit' | 'trainBrake' | 'coinCollect' | 'switchThrow' | 'branch' | 'haulCount' | 'haulMult' | 'barTick' | 'barApply'
   | 'anticipationStart' | 'anticipationEnd' | 'bonusTrigger' | 'bonusIntro' | 'bonusEnd' | 'retrigger' | 'powerStep' | 'levelUp' | 'goldenArrive'
-  | 'bigWinStart' | 'bigWinTier' | 'bigWinEnd' | 'maxWin' | 'tierSlam' | 'introSting' | 'playSting' | 'carouselWhoosh' | 'coachPop';
+  | 'bigWinStart' | 'bigWinTier' | 'bigWinEnd' | 'maxWin' | 'tierSlam' | 'introSting' | 'playSting' | 'carouselWhoosh' | 'coachPop'
+  | 'flapRattle' | 'flapSettle' | 'trainStep' | 'signalSwitch' | 'securityAlarm' | 'allClear' | 'incident'
+  | 'crashRumble' | 'crashImpact' | 'wreckScatter' | 'crashMult' | 'routeTrace';
 /** Music tracks: base game, Rush Hour free spins, Last Train buy, big win, and the short Power Surge anticipation bed. */
 export type Track = 'base' | 'rush' | 'last' | 'bigwin' | 'surge' | 'none';
 export type LoopName = 'anticipation' | 'trainRun';
@@ -88,6 +90,19 @@ const PARAMS: Partial<Record<SfxName, Partial<SfxParams>>> = {
   tierSlam: { voices: 1, minGap: 0.2, priority: 3, duck: [0.35, 1.2] },
   haulMult: { voices: 2, priority: 2, duck: [0.25, 0.8] },
   barApply: { voices: 2, priority: 2, duck: [0.25, 0.8] },
+  // the live subway map
+  flapRattle: { voices: 8, minGap: 0.012, jitter: 0.04, gain: 0.9, priority: 0 },
+  flapSettle: { voices: 6, minGap: 0.012, jitter: 0.03, priority: 0 },
+  trainStep: { voices: 4, minGap: 0.04, jitter: 0.03, priority: 0 },
+  routeTrace: { voices: 3, minGap: 0.05, jitter: 0.02 },
+  signalSwitch: { voices: 2, minGap: 0.08, priority: 2 },
+  securityAlarm: { voices: 1, minGap: 0.25, priority: 2, duck: [0.25, 0.9] },
+  allClear: { voices: 1, minGap: 0.2, priority: 2, duck: [0.2, 0.7] },
+  incident: { voices: 1, minGap: 0.2, priority: 2, duck: [0.25, 0.9] },
+  crashRumble: { voices: 1, minGap: 0.2, priority: 3, duck: [0.2, 0.6] },
+  crashImpact: { voices: 1, minGap: 0.3, priority: 4, duck: [0.55, 1.6] },
+  wreckScatter: { voices: 2, minGap: 0.1, priority: 2 },
+  crashMult: { voices: 1, minGap: 0.15, priority: 3, duck: [0.3, 0.6] },
 };
 /** Sounds whose index is a rising step (clamped, then pitched up a little past the last step). */
 const STEPPED = new Set<string>(['ticketLand', 'coinCollect', 'bigWinTier']);

@@ -43,7 +43,7 @@ function trainDiagram(caption: string): string {
     s3: uri(SYMBOL_ART[3].idle()),
     c: uri(SYMBOL_ART[ART.COIN_SILVER].idle()),
     L: uri(SYMBOL_ART[ART.LOCO].win!()),
-    J: uri(SYMBOL_ART[ART.SWITCH].win!()),
+    J: uri(SYMBOL_ART[ART.SIGNAL].win!()),
   });
   const cols = TRAIN_BOARD[0].length;
   const rows = TRAIN_BOARD.length;
@@ -226,7 +226,7 @@ export function openInfo(c: Controller) {
       <div class="rule-row coins">${coinRow}</div>
       <p>${t('rCoin', { min: num(COIN_VALUES[0]), maxc: num(COIN_VALUES[COIN_VALUES.length - 1]), bet: B })}</p>
       <h4>${t('rJunctionTitle')}</h4>
-      <div class="rule-row">${art(SYMBOL_ART[ART.SWITCH].win!(), 'mini')}<p>${t('rJunction')}</p></div>
+      <div class="rule-row">${art(SYMBOL_ART[ART.SIGNAL].win!(), 'mini')}<p>${t('rJunction')}</p></div>
       ${trainDiagram(t('rJunction'))}</section>
     <section><h3>${t('rFsTitle')}</h3>
       <div class="rule-row">${art(SYMBOL_ART[10].idle(), 'mini')}<p>${t('rFs1')}</p></div>
@@ -242,7 +242,7 @@ export function openInfo(c: Controller) {
       <div class="rule-row special">${art(SYMBOL_ART[10].idle(), 'mini')}<p>${t('rPayTicket')}</p></div>
       <div class="rule-row special">${art(SYMBOL_ART[ART.COIN_GOLD].idle(), 'mini')}<p>${t('rPayCoin')}</p></div>
       <div class="rule-row special">${art(SYMBOL_ART[ART.LOCO].idle(), 'mini')}<p>${t('rPayLoco')}</p></div>
-      <div class="rule-row special">${art(SYMBOL_ART[ART.SWITCH].idle(), 'mini')}<p>${t('rPaySwitch')}</p></div></section>
+      <div class="rule-row special">${art(SYMBOL_ART[ART.SIGNAL].idle(), 'mini')}<p>${t('rPaySwitch')}</p></div></section>
     <section><h3>${t('rModesTitle')}</h3><table class="kv">
       <tr><td>${t('rBaseGame')}</td><td class="tabular">${t('rCost', { x: 1, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('BASE') })}</td><td class="tabular">${t('rMax', { max: maxWin('BASE') })}</td></tr>
       ${boostOn ? `<tr><td>${t('boostName')}</td><td class="tabular">${t('rCost', { x: BOOST_COST, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('BOOST') })}</td><td class="tabular">${t('rMax', { max: maxWin('BOOST') })}</td></tr>` : ''}

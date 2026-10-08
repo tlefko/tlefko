@@ -743,7 +743,7 @@ class JunctionDemo extends Demo {
     const board = [
       [1, ART.LOCO, 2],
       [ART.COIN_SILVER, 6, 3],
-      [7, ART.SWITCH, 0],
+      [7, ART.SIGNAL, 0],
       [ART.COIN_GOLD, ART.COIN_SILVER, ART.COIN_BRONZE],
     ];
     board.forEach((col, c) => col.forEach((key, r) => s.set(s.i(c, r), key)));
@@ -795,7 +795,7 @@ class JunctionDemo extends Demo {
     tl.to(this.trains[0], { x: x(3) + p * 1.6, duration: 1.6, ease: 'none' }, 0.6);
     // the junction (column 2) throws
     tl.call(() => {
-      s.set(s.i(2, 1), ART.SWITCH, 'win');
+      s.set(s.i(2, 1), ART.SIGNAL, 'win');
       const g = this.at(s.cells[s.i(2, 1)]);
       this.k.fx.sparks(g.x, g.y, 10, 0.7);
       [1, 2].forEach((j) => {

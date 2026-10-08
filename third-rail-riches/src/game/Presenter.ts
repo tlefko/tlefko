@@ -4,7 +4,7 @@ import gsap from 'gsap';
 import type { Scene } from './Scene';
 import { sound } from './sound';
 import { T, wait, done, speed } from '../render/timing';
-import { cellCenter, type Layout } from '../render/layout';
+import { mapPoint, stationCenter, type Layout } from '../render/layout';
 import { bitmapNum, displayText, type DisplayText, type NumTone } from '../render/text';
 import { softDotTexture } from '../render/textures';
 import { Iris } from '../render/overlays/Iris';
@@ -14,8 +14,8 @@ import { quality } from '../render/quality';
 import { coinLabel, type SymbolView } from '../render/grid/SymbolView';
 import { coinTier } from '../art/symbols';
 import { RETRIGGER_SPINS } from '../math/model';
-import { LEVEL_SPINS, MAX_WIN, ROWS, Sym, multOfLevel, type BonusKind, type RoundResult, type SpinResult, type WayWin } from '../math/types';
-import type { SpecialKind } from '../render/grid/GridView';
+import { LEVEL_SPINS, MAX_WIN, Sym, multOfLevel, type BonusKind, type RoundResult, type RouteWin, type SpinResult } from '../math/types';
+import type { SpecialKind } from '../render/map/MapView';
 
 export interface HudBridge {
   bonus(on: boolean, kind?: BonusKind): void;
@@ -95,9 +95,9 @@ export class Presenter {
     for (const l of [...this.loops]) this.setLoop(l, false);
   }
 
-  /** The grid's one-beat sounds come through the funnel; coin values ride above the particles. */
-  private hookGrid() {
-    const grid = this.scene.grid;
+  /** The map's one-beat sounds come through the funnel; coin values ride above the particles. */
+  private hookMap() {
+    const grid = this.scene.map;
     if (!grid) return;
     grid.sfx = (id, o) => this.play(id, o);
     const sh = this.scene.shake;
@@ -118,7 +118,7 @@ export class Presenter {
   /** Coin faces print values at this formatter (the bet changed, or the game just started). */
   setCoinFormat(fmt: (v: number) => string) {
     coinLabel.fmt = fmt;
-    this.scene.grid?.refreshValues();
+    this.scene.map?.refreshValues();
   }
 
   constructor(private scene: Scene) {
@@ -131,7 +131,7 @@ export class Presenter {
     const gen = ++this.prepareGen;
     const L = this.scene.L;
     const res = this.scene.stage.resolution;
-    this.hookGrid();
+    this.hookMap();
     this.iris.resize(L.W, L.H);
     if (gen !== this.prepareGen) return;
     for (const b of this.banners.values()) b.d.destroy();
@@ -219,10 +219,11 @@ export class Presenter {
   /* ------------------------------------------------------------------ */
   async spin(s: SpinResult, ctx: PresentCtx, inBonus: boolean): Promise<void> {
     const sc = this.scene;
-    const { grid, winBar, reels, meter } = sc;
+    const { map, winBar, meter } = sc;
     sc.busy = true;
     this.unslam();
-    this.hookGrid();
+    this.hookMap();
+    sc.trains.clear();
     winBar.format = ctx.fmt;
     winBar.reset(0, null);
     this.barTotal = 0;
@@ -234,17 +235,26 @@ export class Presenter {
     sc.rat.react('idle');
     sc.conductor.lanternGlow?.(inBonus);
     // a held Golden Locomotive switches its headlamp off for the new spin
-    for (const p of s.held) void grid.views[p]?.setLit(false, false);
+    for (const p of s.held) void map.views[p]?.setLit(false, false);
 
     let anticipating = false;
-    await grid.spinIn(
+    let settled = 0;
+    const W = sc.L.W;
+    await map.spinIn(
       s.grid,
       new Set(s.held),
       {
-        onColumnLanded: (reel, last) => this.play(last ? 'reelStop' : 'reelDrop', { index: reel }),
+        onRattle: (p) => {
+          const c = map.stationPoint(p);
+          this.play('flapRattle', { index: p, volume: 0.55, pan: (c.x / W) * 1.2 - 0.6 });
+        },
+        onSettle: (p) => {
+          const c = map.stationPoint(p);
+          settled++;
+          this.play('flapSettle', { index: settled, volume: 0.7, pan: (c.x / W) * 1.2 - 0.6 });
+        },
         onSpecial: (v, kind, idx) => this.landed(v, kind, idx),
-        onAnticipation: (rs, on) => {
-          reels.setAnticipation(sc.L, rs, on ? 1 : 0);
+        onAnticipation: (_st, on) => {
           if (on === anticipating) return;
           anticipating = on;
           this.setLoop('anticipation', on);
@@ -253,28 +263,25 @@ export class Presenter {
           sc.conductor.react(on ? 'pray' : 'idle');
           sc.rat.react(on ? 'worried' : 'idle');
         },
-        onHeartbeat: () => reels.beat(),
       },
       true,
     );
-    reels.setAnticipation(sc.L, [], 0);
 
     const flights: Promise<void>[] = [];
-    // way wins
-    if (s.ways.length) {
+    // route wins
+    if (s.routes.length) {
       this.play('win');
-      s.ways.slice(0, 4).forEach((w, k) => this.play(SYM_SFX[w.sym] ?? 'win', k ? { delay: 0.07 * k } : undefined));
+      s.routes.slice(0, 4).forEach((w, k) => this.play(SYM_SFX[w.sym] ?? 'win', k ? { delay: 0.07 * k } : undefined));
       sc.rat.react('happy', 0.8);
-      if (s.ways.some((w) => w.sym === Sym.TOP)) sc.conductor.react('laugh', 0.9);
-      await grid.celebrate(s.ways);
-      const labels = this.wayLabels(s.ways, ctx);
-      flights.push(...labels);
+      if (s.routes.some((w) => w.sym === Sym.TOP)) sc.conductor.react('laugh', 0.9);
+      await map.celebrate(s.routes);
+      flights.push(...this.routeLabels(s.routes, ctx));
       await wait(T(0.3));
-      await grid.undim();
+      await map.undim();
     }
     // trains
     if (s.trains.length) await this.runTrains(s, ctx, inBonus, flights);
-    else if (s.grid.some((c) => c.sym === Sym.COIN) && !inBonus && s.grid.some((c) => c.sym === Sym.COIN && (c.value ?? 0) >= 10)) {
+    else if (!inBonus && s.grid.some((c) => c.sym === Sym.COIN && (c.value ?? 0) >= 10)) {
       // big coins and no train to collect them: Rivets is gutted
       sc.rat.react('worried', 0.8);
     }
@@ -287,7 +294,7 @@ export class Presenter {
     this.quietSince = performance.now();
   }
 
-  /** A special symbol touches down on the drop. */
+  /** A special symbol lands on its station. */
   private landed(v: SymbolView, kind: SpecialKind, idx: number) {
     const sc = this.scene;
     const S = sc.L.S;
@@ -313,12 +320,16 @@ export class Presenter {
       }
       case 'loco':
         this.play(v.cell.golden ? 'goldenArrive' : 'locoLand');
-        sc.fx.dust(v.x, v.y + S * 0.4, true);
-        this.shake(v.cell.golden ? 0.6 : 0.3);
+        sc.fx.dust(v.x, v.y + S * 0.3, true);
+        this.shake(v.cell.golden ? 0.6 : 0.25);
         sc.conductor.react('watch', 0.8);
         break;
-      case 'switch':
+      case 'signal':
         this.play('switchLand');
+        break;
+      case 'security':
+        this.play('switchLand', { volume: 0.7 });
+        sc.rat.react('watch', 0.6);
         break;
       case 'wild':
         this.play('wildLand');
@@ -327,13 +338,13 @@ export class Presenter {
     }
   }
 
-  /** One label per way win over its cells; each flies to the bar and adds its pay there. */
-  private wayLabels(ways: WayWin[], ctx: PresentCtx): Promise<void>[] {
+  /** One label per route win over its stations; each flies to the bar and adds its pay there. */
+  private routeLabels(routes: RouteWin[], ctx: PresentCtx): Promise<void>[] {
     const sc = this.scene;
-    return ways.map((w, k) => {
-      const p = this.centroid(w.positions);
-      const tone: NumTone = w.sym === Sym.TOP ? 'gold' : w.sym >= Sym.H4 ? 'gold' : 'white';
-      const lbl = this.popLabel(ctx.fmt(w.pay), p.x, p.y + (k % 2) * sc.L.S * 0.3, tone, 0.5);
+    return routes.map((w, k) => {
+      const p = this.centroid(w.stations);
+      const tone: NumTone = w.sym >= Sym.H4 ? 'gold' : 'white';
+      const lbl = this.popLabel(ctx.fmt(w.pay), p.x, p.y - sc.L.S * 0.55 + (k % 2) * sc.L.S * 0.3, tone, 0.5);
       return wait(T(0.18 + k * 0.06))
         .then(() => this.flyTo(lbl, sc.winBar.mainCenter(), 0.38, 0.06))
         .then(() => {
@@ -345,73 +356,110 @@ export class Presenter {
   }
 
   /**
-   * The trains: Casey's whistle, headlamps on, the run (coins hop in, Junctions throw and branch),
-   * then the haul gathers in the middle; in the free spins the POWER multiplier slams into it and
-   * every collected passenger moves the POWER train on.
+   * The trains: Casey checks his watch and blows the whistle, the headlamps come on, the trains roll
+   * out of their terminals and run the network (TrainRunner plays every beat: coins, signals,
+   * security checks, crashes). Each finished train (or settled crash pile) hands its tally over:
+   * in the base game it flies straight to the bar; in the free spins the tallies gather at Grand
+   * Junction, the POWER multiplier slams into the total and it flies to the bar.
    */
   private async runTrains(s: SpinResult, ctx: PresentCtx, inBonus: boolean, flights: Promise<void>[]) {
     const sc = this.scene;
-    const { grid, L, meter } = sc;
-    const locos = s.trains.filter((tr) => tr.parent < 0);
+    const { map, L, meter } = sc;
     sc.rat.react('watch', 1.2);
     this.play('whistle');
     const disp = sc.conductor.dispatch?.() ?? Promise.resolve();
-    await Promise.all(locos.map((tr, i) => wait(T(0.06 * i)).then(() => grid.views[tr.row]?.setLit(true))));
+    await Promise.all(s.trains.map((tr, i) => wait(T(0.06 * i)).then(() => map.views[tr.start]?.setLit(true))));
     await Promise.race([disp, wait(T(0.45))]);
     this.play('trainDepart');
     this.setLoop('trainRun', true);
-    const gather = { x: L.grid.x + L.grid.w / 2, y: L.grid.y + L.grid.h * 0.5 };
-    let collected = 0;
+    const multiplied = inBonus && s.mult > 1;
+    const gather = mapPoint(L, 3, 2);
+    let gathered = 0;
+    let gatherLbl: BitmapText | null = null;
     let power = s.powerBefore;
     let meterQ: Promise<void> = Promise.resolve();
-    await sc.trains.run(
-      s,
-      {
-        fmt: ctx.fmt,
-        onCollect: (coin) => {
-          collected++;
-          this.play('coinCollect', { index: Math.min(12, collected) });
-          if (coin.value >= 50) this.shake(0.35);
-          if (inBonus) {
-            power++;
-            const to = power;
-            const c = cellCenter(L, Math.floor(coin.pos / ROWS), coin.pos % ROWS);
-            this.spark(c, meter.trainPoint());
-            meterQ = meterQ.then(() => meter.advance(to, (p) => this.play('powerStep', { index: ((p - 1) % 12) + 1 })));
-          }
-        },
-        onSwitch: () => this.play('switchThrow'),
-        onBranch: () => this.play('branch'),
+    await sc.trains.run(s, {
+      fmt: ctx.fmt,
+      sfx: (id, o) => this.play(id, o),
+      shake: (p) => this.shake(p),
+      punch: (x, y, p) => this.punch(x, y, p),
+      onCoin: (from) => {
+        if (!inBonus) return;
+        power++;
+        const to = power;
+        this.spark(from, meter.trainPoint());
+        meterQ = meterQ.then(() => meter.advance(to, (p) => this.play('powerStep', { index: ((p - 1) % 12) + 1 })));
       },
-      gather,
-    );
+      onDepart: () => sc.conductor.react('watch', 1.5),
+      onRedirect: () => sc.rat.react('watch', 0.6),
+      onSecurity: (phase) => {
+        if (phase === 'alarm') {
+          sc.conductor.react('pray', 1.2);
+          sc.rat.react('worried', 1.2);
+        } else if (phase === 'clear') {
+          sc.conductor.react('laugh', 0.9);
+          sc.rat.react('happy', 0.9);
+        } else {
+          sc.conductor.react('shock', 1.1);
+          sc.rat.react('worried', 1.1);
+        }
+      },
+      onCrash: (phase) => {
+        if (phase === 'closing') {
+          sc.conductor.react('shock', 1.6);
+          sc.rat.react('duck', 1.6);
+        } else if (phase === 'settled') {
+          sc.conductor.react('cheer', 1.2);
+          sc.rat.react('happy', 1.2);
+        }
+      },
+      onPayout: async (amount, label) => {
+        sc.labelLayer.addChild(label);
+        if (!multiplied) {
+          await this.flyTo(label, sc.winBar.mainCenter(), 0.42, 0.12);
+          this.play('barApply');
+          this.barTotal += amount;
+          void sc.winBar.setValue(this.barTotal, 0.4);
+          return;
+        }
+        await this.flyTo(label, gather, 0.36, 0.1);
+        gathered = Math.round((gathered + amount) * 100) / 100;
+        this.play('barTick');
+        if (!gatherLbl) gatherLbl = this.popLabel(ctx.fmt(gathered), gather.x, gather.y, 'gold', 0.8);
+        else {
+          gatherLbl.text = ctx.fmt(gathered);
+          const k = gatherLbl.scale.x;
+          gsap.fromTo(gatherLbl.scale, { x: k * 1.25, y: k * 1.25 }, { x: k, y: k, duration: T(0.25), ease: 'back.out(3)' });
+        }
+      },
+    });
     this.setLoop('trainRun', false);
     if (s.haul > 0) {
-      this.play('trainExit');
       const big = s.trainWin >= 20;
-      const lbl = this.popLabel(ctx.fmt(s.haul), gather.x, gather.y, 'gold', big ? 0.95 : 0.8);
-      sc.conductor.react(big ? 'cheer' : 'laugh', 1);
-      sc.rat.react('happy', 1);
-      if (big) this.shake(0.6);
-      if (s.mult > 1) {
-        await wait(T(0.25));
+      if (big) {
+        sc.conductor.react('cheer', 1);
+        sc.rat.react('happy', 1);
+      }
+      if (multiplied && gatherLbl) {
+        const lbl: BitmapText = gatherLbl;
+        await wait(T(0.2));
         await this.multSlam(lbl, s.mult, gather, ctx.fmt(s.trainWin));
-      } else await wait(T(0.35));
-      flights.push(
-        this.flyTo(lbl, sc.winBar.mainCenter(), 0.42, 0.1).then(() => {
-          this.play('barApply');
-          this.barTotal += s.trainWin;
-          void sc.winBar.setValue(this.barTotal, 0.4);
-        }),
-      );
+        flights.push(
+          this.flyTo(lbl, sc.winBar.mainCenter(), 0.42, 0.1).then(() => {
+            this.play('barApply');
+            this.barTotal += s.trainWin;
+            void sc.winBar.setValue(this.barTotal, 0.4);
+          }),
+        );
+      }
     } else {
       this.play('trainBrake');
       sc.rat.react('worried', 0.8);
     }
     await meterQ;
-    for (const tr of locos) {
-      const v = grid.views[tr.row];
-      if (v) gsap.to(v, { alpha: 1, duration: T(0.2) });
+    for (const tr of s.trains) {
+      const v = map.views[tr.start];
+      if (v) gsap.to(v, { alpha: 1, duration: T(0.3) });
     }
   }
 
@@ -476,7 +524,7 @@ export class Presenter {
     let x = 0;
     let y = 0;
     for (const p of positions) {
-      const c = cellCenter(L, Math.floor(p / ROWS), p % ROWS);
+      const c = stationCenter(L, p);
       x += c.x;
       y += c.y;
     }
@@ -632,11 +680,11 @@ export class Presenter {
     sc.conductor.react('cheer', 1.6);
     sc.rat.react('happy', 1.6);
     const tickets = new Set(s.scatPositions);
-    sc.grid.views.forEach((v, p) => v && !tickets.has(p) && gsap.to(v, { alpha: 0.3, duration: T(0.3) }));
-    sc.grid.heartbeat();
+    sc.map.views.forEach((v, p) => v && !tickets.has(p) && gsap.to(v, { alpha: 0.3, duration: T(0.3) }));
+    sc.map.heartbeat();
     await wait(T(0.3));
     s.scatPositions.forEach((p, i) => {
-      const v = sc.grid.views[p];
+      const v = sc.map.views[p];
       if (!v) return;
       gsap.delayedCall(T(i * 0.12), () => {
         v.startWin();
@@ -675,7 +723,7 @@ export class Presenter {
     const kind = b.kind;
     const mood = MOOD[kind];
     const last = kind === 'last';
-    const gc = { x: sc.L.grid.x + sc.L.grid.w / 2, y: sc.L.grid.y + sc.L.grid.h / 2 };
+    const gc = { x: sc.L.frame.x + sc.L.frame.w / 2, y: sc.L.frame.y + sc.L.frame.h / 2 };
     this.play('iris');
     if (start > 0) {
       await this.iris.close(gc.x, gc.y, 0.5);
@@ -710,7 +758,7 @@ export class Presenter {
       await this.iris.close(gc.x, gc.y, 0.6);
       card.destroy();
     }
-    for (const v of sc.grid.views)
+    for (const v of sc.map.views)
       if (v) {
         v.stopWin();
         v.alpha = 1;
@@ -811,7 +859,7 @@ export class Presenter {
     sc.meter.set(0, false);
     sc.meter.setMult(1, false);
     // the free-spin board (held coins, the Golden Locomotive) gives way to the last paid board
-    sc.grid.setGrid(r.trigger.grid.map((c) => ({ ...c, held: false })));
+    sc.map.setGrid(r.trigger.grid.map((c) => ({ ...c, held: false })));
     this.loopsOff();
     this.music('base', 1.2);
     await this.iris.open(gc.x, gc.y, 0.7);

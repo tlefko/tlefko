@@ -1,7 +1,9 @@
 /**
  * The symbol set, keyed by ART KEY: 0..10 are the Sym ids (docs/ART.md), the variants of the
- * special symbols follow (Fare Coin metals, the Locomotive and the Golden Locomotive, the Junction).
- * `win` is the lit / thrown / flipped state; creatures blink and cheer.
+ * special symbols follow (Fare Coin metals, the Locomotive and the Golden Locomotive, the Signal,
+ * the Security Check). `win` is the lit / thrown / flipped / all-clear state; creatures blink and cheer.
+ * The Security Check's INCIDENT look is not a frame here: `securityCheck('incident')` /
+ * `securityIncidentFrames` in ./specials.
  *
  * Every frame of a symbol shares the 256 viewBox and anchor, so frames swap without jumping.
  */
@@ -9,7 +11,7 @@ import { pretzel, pretzelWinFrames, coffee, coffeeWinFrames, newspaper, newspape
 import { pigeonHead, pigeonWinFrames, catHead, catWinFrames, bulldogHead, bulldogWinFrames, type Pose } from './critters';
 import { ratSymbol, ratWinFrames } from './rat';
 import { conductorHead, conductorWinFrames } from './conductor';
-import { liveWire, liveWireFrames, goldenTicket, goldenTicketWin, goldenTicketFrames, fareCoin, fareCoinShine, locoFront, junction, type CoinTier } from './specials';
+import { liveWire, liveWireFrames, goldenTicket, goldenTicketWin, goldenTicketFrames, fareCoin, fareCoinShine, locoFront, signalHead, signalFrames, securityCheck, securityIdleFrames, securityClearFrames, type CoinTier } from './specials';
 import { Sym, type Cell } from '../math/types';
 
 export type { Pose };
@@ -17,7 +19,7 @@ export type { Pose };
 export interface SymbolArt {
   idle: () => string;
   blink?: () => string;
-  /** A single win pose (Live Wire lit, ticket flipped, Locomotive headlamp on, Junction thrown). */
+  /** A single win pose (Live Wire lit, ticket flipped, Locomotive headlamp on, Signal thrown, Security all clear). */
   win?: () => string;
   /** 3-4 frames looped during the win highlight. */
   winFrames?: (() => string)[];
@@ -33,9 +35,10 @@ export const ART = {
   COIN_PLATINUM: 14,
   LOCO: 15,
   LOCO_GOLD: 16,
-  SWITCH: 17,
+  SIGNAL: 17,
+  SECURITY: 18,
 } as const;
-export const ART_KEYS = 18;
+export const ART_KEYS = 19;
 
 export const COIN_TIERS: readonly CoinTier[] = ['bronze', 'silver', 'gold', 'platinum'];
 
@@ -51,8 +54,10 @@ export function artKey(cell: Pick<Cell, 'sym' | 'value' | 'golden'>): number {
       return ART.COIN_BRONZE + coinTier(cell.value ?? 0);
     case Sym.LOCO:
       return cell.golden ? ART.LOCO_GOLD : ART.LOCO;
-    case Sym.SWITCH:
-      return ART.SWITCH;
+    case Sym.SIGNAL:
+      return ART.SIGNAL;
+    case Sym.SECURITY:
+      return ART.SECURITY;
     default:
       return cell.sym;
   }
@@ -79,5 +84,6 @@ export const SYMBOL_ART: Record<number, SymbolArt> = {
   [ART.COIN_PLATINUM]: coinArt('platinum'),
   [ART.LOCO]: { idle: () => locoFront(false, false), win: () => locoFront(true, false) },
   [ART.LOCO_GOLD]: { idle: () => locoFront(false, true), win: () => locoFront(true, true) },
-  [ART.SWITCH]: { idle: () => junction(false), win: () => junction(true) },
+  [ART.SIGNAL]: { idle: () => signalHead(false), win: () => signalHead(true), winFrames: signalFrames },
+  [ART.SECURITY]: { idle: () => securityCheck('idle'), win: () => securityCheck('clear'), winFrames: securityClearFrames, idleFrames: securityIdleFrames },
 };

@@ -1,385 +1,467 @@
 /**
- * Conductor Casey: the hero. A stout, jolly 1930s rubber-hose subway conductor: big round nose,
- * bushy white walrus moustache, rosy cheeks, two pie eyes, a navy conductor's cap with a gold
- * winged-wheel badge, a glossy black visor and a gold chin cord. His head doubles as the TOP paying
- * symbol. 256x256 viewBox for every part.
+ * Conductor Casey: the hero, and his head doubles as the TOP paying symbol. A stocky, jolly 1930s
+ * subway conductor: a squat navy pillbox cap with a crisp patent-leather peak, a gold chin cord and
+ * a brass winged badge; big pie eyes under bold silver brows; a round ruddy nose; a BIG silver
+ * handlebar moustache in two sculpted wings that curl up at the tips; tidy mutton-chop sideburns.
+ * 256x256 viewBox for every part.
+ *
+ * Paint (cast/paint.ts): three flat cel values per material (base, a cut shadow on the lower
+ * right, a light band upper left), a thin warm rim light inside the shadow edge, bold ink weighted
+ * to the lower right, a light gouache grain. No hatching and no noise anywhere on him: every read
+ * comes from shape and value.
  *
  * `conductorHead()` is the whole head (symbol, title cards). `conductorRigPart()` cuts the same
- * drawing into the layers the rig animates (face, cheeks, cap, eyes, lids, brows, mouths,
- * moustache); each is cropped to its own box but keeps the head's 256 coordinates, so the rig
- * stacks them back into exactly this head (see render/characters/Conductor.ts).
+ * drawing into the layers the rig animates (face, cheeks, cap, eyes, lids, brows, the two moustache
+ * wings, the nose, mouths); each is cropped to its own box but keeps the head's 256 coordinates, so
+ * the rig stacks them back into exactly this head (see render/characters/Conductor.ts).
  */
-import { C, composeSymbol, pieEye, closedEye, nextId, cel, celForm, celTones, shine, mix, scallops, GOLD_TONES } from './kit';
-import { sparkle } from './geo';
+import { C, composeSymbol, nextId, mix, scallops } from './kit';
+import { form, formLine, tones, brush, ellipse, circle, glint, inked, piePupil } from './cast/paint';
+import { sparkle, type V } from './geo';
 
-export type ConductorExpr = 'idle' | 'blink' | 'laugh' | 'pray' | 'shock' | 'smug' | 'whistle';
+/** Head expressions. The first seven are the originals; cheer, worried and watch were added. */
+export type ConductorExpr = 'idle' | 'blink' | 'laugh' | 'pray' | 'shock' | 'smug' | 'whistle' | 'cheer' | 'worried' | 'watch';
+
+/* --------------------------------- palette --------------------------------- */
+const SKIN = tones(C.skin, C.skinDeep, C.skinLight, C.amber, 0.5);
+const NOSE_T = { ...tones(mix(C.skin, C.crimsonLight, 0.5), mix(C.skinDeep, C.crimson, 0.4), C.skinLight, C.amber, 0.55) };
+/** Silver hair: near-white, a clean cool shadow, pure white light, warm rim. */
+const SILVER = { base: mix(C.white, C.steelLight, 0.72), shade: mix(C.steelLight, C.steel, 0.62), light: '#ffffff', rim: mix(C.steelLight, C.amberLight, 0.55) };
+const NAVY = { ...tones(C.uniform, C.uniformDeep, C.uniformLight, C.amber, 0.62), light: mix(C.uniform, C.uniformLight, 0.55), rim: mix(mix(C.uniform, C.uniformDeep, 0.62), C.volt, 0.24) };
+const NAVY_TOP = { base: mix(C.uniform, C.uniformLight, 0.42), shade: C.uniform, light: mix(C.uniformLight, C.white, 0.15) };
+const BAND_T = { base: mix(C.uniform, C.uniformDeep, 0.6), shade: mix(C.uniformDeep, C.ink, 0.35), light: mix(C.uniform, C.uniformLight, 0.25), rim: mix(C.uniformDeep, C.volt, 0.3) };
+const PEAK_T = { base: mix(C.inkSoft, C.uniformDeep, 0.35), shade: C.ink, light: mix(C.inkSoft, C.uniformLight, 0.5), rim: mix(C.ink, C.volt, 0.32) };
+const GOLD = { base: C.gold, shade: mix(C.gold, C.goldDeep, 0.6), light: mix(C.gold, C.goldLight, 0.75), rim: mix(C.goldDeep, C.amberLight, 0.4) };
+const MOUTH_IN = mix(C.crimsonDeep, C.ink, 0.45);
+const TONGUE = mix(C.crimson, C.crimsonLight, 0.4);
 
 /* ---------------------------------- shapes ---------------------------------- */
-/** Head + face in one form: the bald dome runs up under the cap (seen when he doffs it). */
+/** Head + face in one form: wide jolly jowls, the bald dome runs up under the cap (seen when he doffs it). */
 const FACE =
-  'M128 60 C166 60 190 84 193 116 C200 138 210 166 208 194 C205 232 172 254 128 254 C84 254 51 232 48 194 C46 166 56 138 63 116 C66 84 90 60 128 60 Z';
-const circle = (cx: number, cy: number, r: number) => `M${cx - r} ${cy} A${r} ${r} 0 1 0 ${cx + r} ${cy} A${r} ${r} 0 1 0 ${cx - r} ${cy} Z`;
+  'M128 64 C170 64 196 84 200 116 C206 142 214 170 210 198 C205 230 172 248 128 248 C84 248 51 230 46 198 C42 170 50 142 56 116 C60 84 86 64 128 64 Z';
+/** Cap crown: a squat pillbox, flaring a touch to its flat top (seen from just above). */
+const CROWN = 'M62 82 C57 66 52 52 51 42 C50 30 86 23 128 23 C170 23 206 30 205 42 C204 52 199 66 194 82 Z';
+const CROWN_TOP = 'M51 42 C50 30 86 23 128 23 C170 23 206 30 205 42 C204 37 170 34 128 34 C86 34 52 37 51 42 Z';
+const BAND = 'M56 62 Q128 78 200 62 L197 84 Q128 100 59 84 Z';
+/** The patent-leather peak, curving down toward the viewer. */
+const PEAK = 'M53 83 Q128 99 203 83 C211 94 199 109 170 113 Q128 119 86 113 C57 109 45 94 53 83 Z';
+const CORD = 'M68 90 Q128 104 188 90';
+/** The peak's shadow on the forehead (clipped to the face, under the peak). */
+const PEAK_SHADOW = 'M48 92 C58 116 88 121 128 125 C168 121 198 116 208 92 L208 80 L48 80 Z';
+/** The cap's pivot: the back of the band (also the doff pivot). */
+const CAP_PIV: [number, number] = [128, 92];
+/** Jaunty tilt of the cap at rest (deg; positive tips it down to screen right). */
+const CAP_TILT = 3;
 
-/** Cap crown: a stiff cylinder, flaring a touch to the flat top (seen from just above). */
-const CROWN = 'M70 94 L55 40 C54 29 86 20 128 20 C170 20 202 29 201 40 L186 94 Z';
-const CROWN_TOP = 'M56 42 C84 54 172 54 200 42';
-/** The braided band round the base of the crown. */
-const BAND = 'M64 72 Q128 84 192 72 L187 96 Q128 108 69 96 Z';
-/** Glossy black visor, curving down toward the viewer. */
-const VISOR = 'M62 94 Q128 108 194 94 C199 106 188 118 164 122 Q128 128 92 122 C68 118 57 106 62 94 Z';
-const CORD = 'M74 98 Q128 111 182 98';
+const EYE_Y = 150;
+const EYE_L = 104;
+const EYE_R = 152;
+const ERX = 18;
+const ERY = 20.5;
+/** The pupils' rest offset inside the whites (a hair low: looking at you). */
+const PUP: [number, number] = [0, 3.5];
+const PRX = 10.5;
+const PRY = 13.5;
 
-/** Grey fringe peeking out under the cap above each ear (left side; mirrored for the right). */
-function fringe(flip: boolean): string {
-  const m = (x: number) => (flip ? 256 - x : x);
-  const pts: [number, number][] = [
-    [m(74), 96],
-    [m(62), 102],
-    [m(52), 116],
-    [m(50), 132],
-    [m(56), 146],
-  ];
-  return `M${m(74)} 96${scallops(pts, 0.32, flip ? 1 : -1)} C${m(66)} 140 ${m(66)} 118 ${m(76)} 104 Z`;
-}
+const NOSE: [number, number, number, number] = [128, 179, 21, 17];
+const BROW_L = { x: 100, y: 120 };
+const BROW_R = { x: 156, y: 120 };
+/** Where each moustache wing hinges (its round root, under the nose). */
+const TACHE_L: [number, number] = [115, 198];
+const TACHE_R: [number, number] = [141, 198];
+const MOUTH: [number, number] = [128, 220];
 
-/** The walrus moustache: two heavy drooping wings meeting under the nose, a scalloped hem. */
-function tachePath(): string {
-  // right wing (the left is mirrored): top edge from under the nose up over the cheek to the tip
-  const hem: [number, number][] = [
-    [214, 218],
-    [204, 230],
-    [186, 234],
-    [166, 232],
-    [146, 228],
-    [128, 220],
-  ];
-  const m = ([x, y]: [number, number]): [number, number] => [256 - x, y];
-  const hemL = hem.map(m).reverse();
-  let d = 'M128 194';
-  d += ' C140 184 158 178 178 182 C198 186 212 198 214 218';
-  d += scallops(hem, 0.34, -1);
-  d += scallops(hemL, 0.34, -1);
-  d += ' C44 198 58 186 78 182 C98 178 116 184 128 194 Z';
-  return d;
-}
-const TACHE = tachePath();
-/** Combed strands on the moustache. */
-const TACHE_STRANDS = `<g fill="none" stroke="${C.g3}" stroke-width="2.6" stroke-linecap="round" opacity=".7">
-  <path d="M140 200 Q158 206 166 222"/><path d="M156 194 Q180 200 190 222"/><path d="M178 190 Q198 198 204 214"/>
-  <path d="M116 200 Q98 206 90 222"/><path d="M100 194 Q76 200 66 222"/><path d="M78 190 Q58 198 52 214"/>
-</g>`;
+const mirrorPts = (pts: V[]): V[] => pts.map(([x, y]) => [256 - x, y] as V);
+const rotPts = (pts: V[], deg: number, c: V): V[] => {
+  const a = (deg * Math.PI) / 180;
+  const cs = Math.cos(a);
+  const sn = Math.sin(a);
+  return pts.map(([x, y]) => [c[0] + (x - c[0]) * cs - (y - c[1]) * sn, c[1] + (x - c[0]) * sn + (y - c[1]) * cs] as V);
+};
+
+type Lay = { fills: string; lines: string };
 
 /* ---------------------------------- badge ---------------------------------- */
-/** The cap badge: a spoked wheel with a wing either side (no text). Centre (cx, cy), wheel radius r. */
+/**
+ * The cap badge: a brass medallion (navy enamel, a gold lightning bolt for the Third Rail Line)
+ * with a swept gold wing either side. Centre (cx, cy), medallion radius r; the wings reach ~3.4r.
+ */
 export function wingedWheel(cx: number, cy: number, r: number): string {
   const k = r / 12;
+  const X = (s: number, x: number) => (cx + s * x * r).toFixed(1);
+  const Y = (y: number) => (cy + y * r).toFixed(1);
   const wing = (s: 1 | -1) => {
-    const X = (x: number) => (cx + s * x * k).toFixed(1);
-    const Y = (y: number) => (cy + y * k).toFixed(1);
-    const tips: [number, number][] = [
-      [44, -16],
-      [40, -6],
-      [34, 2],
-      [26, 8],
-      [14, 8],
-    ];
-    let hem = '';
-    for (let i = 1; i < tips.length; i++) {
-      const [x0, y0] = tips[i - 1];
-      const [x1, y1] = tips[i];
-      hem += ` Q${X((x0 + x1) / 2 + 2)} ${Y((y0 + y1) / 2 + 5)} ${X(x1)} ${Y(y1)}`;
-    }
-    return `M${X(10)} ${Y(-6)} C${X(18)} ${Y(-16)} ${X(32)} ${Y(-22)} ${X(44)} ${Y(-16)}${hem} Z`;
+    const lobes: [number, number][] = [
+      [3.35, -1.02],
+      [2.72, -0.42],
+      [2.02, 0.02],
+      [1.3, 0.38],
+      [0.78, 0.46],
+    ].map(([x, y]) => [cx + s * x * r, cy + y * r]);
+    return `M${X(s, 0.72)} ${Y(-0.58)} C${X(s, 1.4)} ${Y(-1.12)} ${X(s, 2.55)} ${Y(-1.3)} ${X(s, 3.35)} ${Y(-1.02)}${scallops(lobes, 0.3, s)} Z`;
   };
-  const spokes = Array.from({ length: 6 }, (_, i) => {
-    const a = (i / 6) * Math.PI * 2 + 0.3;
-    return `M${(cx + Math.cos(a) * 3.5 * k).toFixed(1)} ${(cy + Math.sin(a) * 3.5 * k).toFixed(1)} L${(cx + Math.cos(a) * 9 * k).toFixed(1)} ${(cy + Math.sin(a) * 9 * k).toFixed(1)}`;
-  }).join(' ');
-  const wl = wing(-1);
-  const wr = wing(1);
-  const lines = (s: 1 | -1) =>
-    [0.45, 0.7].map((t) => `M${(cx + s * (12 + 22 * t) * k).toFixed(1)} ${(cy - (12 * t + 2) * k).toFixed(1)} Q${(cx + s * (16 + 22 * t) * k).toFixed(1)} ${(cy + 0 * k).toFixed(1)} ${(cx + s * (12 + 20 * t) * k).toFixed(1)} ${(cy + 6 * k).toFixed(1)}`).join(' ');
+  const feathers = (s: 1 | -1) =>
+    `M${X(s, 2.72)} ${Y(-0.42)} Q${X(s, 2.2)} ${Y(-0.62)} ${X(s, 1.7)} ${Y(-0.66)} M${X(s, 2.02)} ${Y(0.02)} Q${X(s, 1.55)} ${Y(-0.18)} ${X(s, 1.12)} ${Y(-0.22)}`;
+  const bolt = [
+    [-0.12, -0.56],
+    [0.3, -0.56],
+    [0.08, -0.12],
+    [0.34, -0.12],
+    [-0.22, 0.62],
+    [-0.04, 0.08],
+    [-0.32, 0.08],
+  ]
+    .map(([x, y], i) => `${i ? 'L' : 'M'}${(cx + x * r).toFixed(1)} ${(cy + y * r).toFixed(1)}`)
+    .join(' ');
+  const wl = formLine(wing(-1), { ...GOLD, cut: [1.2 * k, -2.2 * k], band: [0.8 * k, 1 * k], rimCut: [-1.6 * k, -1.8 * k] });
+  const wr = formLine(wing(1), { ...GOLD, cut: [-1.6 * k, -2.2 * k], band: [0.8 * k, 1 * k], rimCut: [-1.6 * k, -1.8 * k] });
+  const med = formLine(circle(cx, cy, r), { ...GOLD, cut: [-2.4 * k, -2.8 * k], band: [1 * k, 1.2 * k], rimCut: [-2 * k, -2.2 * k] });
   return `<g>
-    ${cel(wl, { ...GOLD_TONES, cut: [-2.5, -3], band: [1.4, 1.6], seed: 61 })}${cel(wr, { ...GOLD_TONES, cut: [-2.5, -3], band: [1.4, 1.6], seed: 62 })}
-    <path d="${wl}" fill="none" stroke="${C.ink}" stroke-width="${(2.6 * k).toFixed(1)}" stroke-linejoin="round"/>
-    <path d="${wr}" fill="none" stroke="${C.ink}" stroke-width="${(2.6 * k).toFixed(1)}" stroke-linejoin="round"/>
-    <path d="${lines(-1)} ${lines(1)}" fill="none" stroke="${C.goldDeep}" stroke-width="${(1.6 * k).toFixed(1)}" stroke-linecap="round"/>
-    <circle cx="${cx}" cy="${cy}" r="${(12 * k).toFixed(1)}" fill="${C.gold}" stroke="${C.ink}" stroke-width="${(2.8 * k).toFixed(1)}"/>
-    <circle cx="${cx}" cy="${cy}" r="${(8.6 * k).toFixed(1)}" fill="${GOLD_TONES.shade}" stroke="${C.goldDeep}" stroke-width="${(1.2 * k).toFixed(1)}"/>
-    <path d="${spokes}" stroke="${C.goldLight}" stroke-width="${(2.2 * k).toFixed(1)}" stroke-linecap="round"/>
-    <circle cx="${cx}" cy="${cy}" r="${(3.4 * k).toFixed(1)}" fill="${C.goldLight}" stroke="${C.ink}" stroke-width="${(1.6 * k).toFixed(1)}"/>
-    <path d="M${(cx - 9 * k).toFixed(1)} ${(cy - 5 * k).toFixed(1)} A${(10.5 * k).toFixed(1)} ${(10.5 * k).toFixed(1)} 0 0 1 ${(cx - 2 * k).toFixed(1)} ${(cy - 10.5 * k).toFixed(1)}" fill="none" stroke="#fff" stroke-width="${(1.8 * k).toFixed(1)}" stroke-linecap="round" opacity=".85"/>
+    ${wl.fills}${wr.fills}
+    <g fill="none" stroke="${C.ink}" stroke-width="${(2.8 * k).toFixed(2)}" stroke-linejoin="round" stroke-linecap="round">${wl.line()}${wr.line()}</g>
+    <path d="${feathers(-1)} ${feathers(1)}" fill="none" stroke="${C.goldDeep}" stroke-width="${(1.5 * k).toFixed(2)}" stroke-linecap="round"/>
+    ${med.fills}
+    <circle cx="${cx}" cy="${cy}" r="${(r * 0.6).toFixed(2)}" fill="${mix(C.uniform, C.uniformLight, 0.35)}" stroke="${C.goldDeep}" stroke-width="${(1.4 * k).toFixed(2)}"/>
+    <path d="${bolt} Z" fill="${C.goldLight}" stroke="${C.goldDeep}" stroke-width="${(0.9 * k).toFixed(2)}" stroke-linejoin="round"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${C.ink}" stroke-width="${(2.8 * k).toFixed(2)}"/>
+    <path d="M${(cx - r * 0.72).toFixed(1)} ${(cy - r * 0.32).toFixed(1)} A${(r * 0.8).toFixed(1)} ${(r * 0.8).toFixed(1)} 0 0 1 ${(cx - r * 0.2).toFixed(1)} ${(cy - r * 0.78).toFixed(1)}" fill="none" stroke="#fff" stroke-width="${(1.5 * k).toFixed(2)}" stroke-linecap="round" opacity=".9"/>
   </g>`;
 }
 
-/* ---------------------------------- mouths ---------------------------------- */
-/** Mouths sit under the moustache: their top edge tucks under its hem. */
-const GRIN = 'M94 216 Q128 226 162 216 Q158 246 128 248 Q98 246 94 216 Z';
-const LAUGH = 'M88 212 Q128 222 168 212 Q164 254 128 254 Q92 254 88 212 Z';
-const GRIT = 'M94 218 Q128 224 162 218 Q160 242 128 244 Q96 242 94 218 Z';
-
-function openMouth(d: string, ty: number, tr: number, teeth: boolean, mid: string): string {
-  return `
-    <path d="${d}" fill="${C.ink}"/>
-    <clipPath id="${mid}"><path d="${d}"/></clipPath>
-    <g clip-path="url(#${mid})">
-      <ellipse cx="128" cy="${ty}" rx="${tr}" ry="${tr * 0.6}" fill="${C.crimson}"/>
-      <ellipse cx="122" cy="${ty - tr * 0.18}" rx="${tr * 0.4}" ry="${tr * 0.18}" fill="${C.crimsonLight}" opacity=".7"/>
-      ${teeth ? `<path d="M86 210 L170 210 L170 228 Q128 236 86 228 Z" fill="${C.white}"/><path d="M114 220 L114 232 M142 220 L142 232" stroke="${C.ink}" stroke-width="2.5" opacity=".7"/>` : ''}
-    </g>
-    <path d="${d}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linejoin="round"/>`;
+/* ---------------------------------- the cap ---------------------------------- */
+function capBody(): string {
+  const crown = formLine(CROWN, { ...NAVY, cut: [-11, -6], shrink: 0.97, band: [5, 4] });
+  const top = formLine(CROWN_TOP, { ...NAVY_TOP, cut: [-6, -1], band: [3, 2] });
+  const band = formLine(BAND, { ...BAND_T, cut: [-8, -5], band: [3, 2.5], rimCut: [-4, -4] });
+  const peak = formLine(PEAK, { ...PEAK_T, cut: [-9, -7], band: [4, 4], rimCut: [-4, -5] });
+  const trim = `
+      ${glint([[58, 64], [54, 50], [56, 40], [66, 33]], 2.6, C.uniformLight, 0.7)}
+      <path d="M58 63 Q128 79 198 63" fill="none" stroke="${C.goldDeep}" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M58 62 Q128 78 198 62" fill="none" stroke="${C.gold}" stroke-width="2.2" stroke-linecap="round"/>
+      ${glint([[72, 93], [98, 100], [128, 102]], 2.8, mix(C.uniformLight, C.white, 0.55), 0.8)}
+      ${glint([[150, 102], [162, 101]], 1.4, mix(C.uniformLight, C.white, 0.4), 0.6)}
+      <path d="${CORD}" fill="none" stroke="${C.ink}" stroke-width="8" stroke-linecap="round"/>
+      <path d="${CORD}" fill="none" stroke="${C.gold}" stroke-width="4" stroke-linecap="round"/>
+      <path d="M74 90.5 Q100 97 124 98.5" fill="none" stroke="${C.goldLight}" stroke-width="1.5" stroke-linecap="round"/>
+      ${[68, 188].map((x) => `<circle cx="${x}" cy="90" r="6" fill="${C.gold}" stroke="${C.ink}" stroke-width="3"/><circle cx="${x - 1.6}" cy="88.4" r="1.8" fill="#fff"/>`).join('')}
+      ${wingedWheel(128, 54, 12)}`;
+  return inked({ fills: crown.fills, lines: crown.line() }) + inked({ fills: top.fills, lines: '' }) + inked({ fills: band.fills, lines: band.line('stroke-width="6"') }) + inked({ fills: peak.fills, lines: peak.line() }) + trim;
 }
 
-/** Rig mouth shapes. The first six are the head's own expressions; grit and ooh are rig-only. */
+/* ----------------------------------- face ----------------------------------- */
+const EARS = (): Lay => {
+  const l = formLine(circle(43, 140, 14), { ...SKIN, cut: [-5, -5] });
+  const r = formLine(circle(213, 140, 14), { ...SKIN, cut: [-5, -5] });
+  return { fills: l.fills + r.fills, lines: `${l.line()}${r.line()}<path d="M38 134 q8 3 6 13 M218 134 q-8 3 -6 13" stroke-width="3.5" opacity=".7"/>` };
+};
+const FACE_LAYER = (): Lay => {
+  const f = formLine(FACE, { ...SKIN, cut: [-13, -12], twist: -3, band: [5, 6], rimCut: [-6, -6] });
+  return { fills: f.fills, lines: f.line() };
+};
+/** Tidy silver tufts above the ears, poking out from under the cap (behind the face's edge). */
+function tuftPath(flip: boolean): string {
+  const m = (x: number) => (flip ? 256 - x : x);
+  const pts: [number, number][] = [
+    [64, 84],
+    [50, 90],
+    [43, 103],
+    [44, 117],
+    [52, 128],
+  ].map(([x, y]) => [m(x), y]);
+  return `M${pts[0][0]} ${pts[0][1]}${scallops(pts, 0.3, flip ? 1 : -1)} C${m(58)} 132 ${m(64)} 124 ${m(66)} 114 Z`;
+}
+const TUFTS = (): Lay => {
+  const l = formLine(tuftPath(false), { ...SILVER, cut: [-4, -5], band: [2.5, 3], rimCut: [-4, -4] });
+  const r = formLine(tuftPath(true), { ...SILVER, cut: [-4, -5], band: [2.5, 3], rimCut: [-4, -4] });
+  return { fills: l.fills + r.fills, lines: `${l.line('stroke-width="6"')}${r.line('stroke-width="6"')}` };
+};
+const DOME_SHINE = glint([[92, 82], [108, 72], [128, 70]], 3.2, C.skinLight, 0.75);
+const BLUSH = `<ellipse cx="80" cy="177" rx="15" ry="9" fill="${C.crimsonLight}" opacity=".48"/><ellipse cx="176" cy="177" rx="15" ry="9" fill="${C.crimsonLight}" opacity=".48"/>
+  <circle cx="74" cy="173" r="2.6" fill="#fff" opacity=".75"/><circle cx="170" cy="173" r="2.6" fill="#fff" opacity=".75"/>`;
+const SHADOW_UNDER_PEAK = (clip: string) => `<clipPath id="${clip}"><path d="${FACE}"/></clipPath><path d="${PEAK_SHADOW}" fill="${SKIN.shade}" opacity=".75" clip-path="url(#${clip})"/>`;
+
+/** Puffed cheeks (blowing the whistle): two balloons over the face's sides. */
+const PUFF_L = circle(72, 190, 27);
+const PUFF_R = circle(184, 190, 27);
+const CHEEKS = (): Lay => {
+  const l = formLine(PUFF_L, { ...SKIN, cut: [-7, -7] });
+  const r = formLine(PUFF_R, { ...SKIN, cut: [-7, -7] });
+  return { fills: l.fills + r.fills, lines: l.line('stroke-width="6.5"') + r.line('stroke-width="6.5"') };
+};
+const CHEEK_TOP = `<ellipse cx="72" cy="186" rx="16" ry="10" fill="${C.crimsonLight}" opacity=".55"/><ellipse cx="184" cy="186" rx="16" ry="10" fill="${C.crimsonLight}" opacity=".55"/>
+  ${glint([[54, 184], [58, 174], [68, 169]], 2.6, C.skinLight, 0.9)}${glint([[166, 182], [170, 172], [180, 168]], 2.6, C.skinLight, 0.9)}`;
+
+/* ----------------------------------- eyes ----------------------------------- */
+type EyeMode = 'open' | 'closed' | 'happy' | 'squeeze';
+interface EyePose {
+  mode: EyeMode;
+  /** Pupil offset from the rest position (box units). */
+  look?: [number, number];
+  /** Eye size scale (shock widens). */
+  size?: number;
+  /** Pupil size scale. */
+  pupil?: number;
+  /** Upper lid: 0 open .. 1 shut, and its slant (deg; positive drops the inner corner, negative the outer). */
+  lid?: number;
+  slant?: number;
+}
+/** One eye. `x` its centre; `inner` +1 if the nose is to its right (the left eye), -1 otherwise. */
+function eyeArt(x: number, inner: 1 | -1, p: EyePose): string {
+  const y = EYE_Y;
+  switch (p.mode) {
+    case 'closed':
+      return `<path d="M${x - 16} ${y + 2} Q${x} ${y + 13} ${x + 16} ${y + 2}" fill="none" stroke="${C.ink}" stroke-width="6.5" stroke-linecap="round"/>
+        <path d="M${x - inner * 16} ${y + 2} l${-inner * 5} -3" stroke="${C.ink}" stroke-width="4.5" stroke-linecap="round"/>`;
+    case 'happy':
+      // squeezed shut in a laugh: a fat upturned arc, the cheek pushing up beneath
+      return `<path d="M${x - 16} ${y + 6} Q${x} ${y - 14} ${x + 16} ${y + 6}" fill="none" stroke="${C.ink}" stroke-width="7.5" stroke-linecap="round"/>
+        <path d="M${x - 11} ${y + 17} Q${x} ${y + 12} ${x + 11} ${y + 17}" fill="none" stroke="${C.ink}" stroke-width="3.5" stroke-linecap="round" opacity=".55"/>`;
+    case 'squeeze': {
+      const s = inner;
+      return `<path d="M${x - s * 14} ${y - 9} L${x + s * 10} ${y + 1} L${x - s * 14} ${y + 11}" fill="none" stroke="${C.ink}" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    case 'open': {
+      const k = p.size ?? 1;
+      const rx = ERX * k;
+      const ry = ERY * k;
+      const [lx, ly] = p.look ?? [0, 0];
+      const pk = p.pupil ?? 1;
+      const px = x + PUP[0] + lx;
+      const py = y + PUP[1] + ly;
+      const id = nextId('ce');
+      const lid = p.lid ?? 0;
+      let lidArt = '';
+      if (lid > 0.01) {
+        // a skin lid down to `lid` of the eye, its edge slanted; the lash line along its edge
+        const ey = y - ry + lid * 2 * ry;
+        const sl = Math.tan(((p.slant ?? 0) * Math.PI) / 180) * rx * inner;
+        const a: V = [x - rx - 6, ey - sl];
+        const b: V = [x + rx + 6, ey + sl];
+        lidArt = `<path d="M${a[0]} ${a[1]} Q${x} ${ey - 5 * (1 - lid)} ${b[0]} ${b[1]} L${b[0]} ${y - ry - 8} L${a[0]} ${y - ry - 8} Z" fill="${SKIN.base}"/>
+          <path d="M${a[0]} ${a[1]} Q${x} ${ey - 5 * (1 - lid)} ${b[0]} ${b[1]}" fill="none" stroke="${C.ink}" stroke-width="6.5" stroke-linecap="round"/>`;
+      }
+      return `<clipPath id="${id}"><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}"/></clipPath>
+        <ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${C.white}"/>
+        <g clip-path="url(#${id})">
+          <path d="M${x - rx} ${y + ry * 0.45} Q${x} ${y + ry * 1.25} ${x + rx} ${y + ry * 0.45} L${x + rx} ${y + ry} L${x - rx} ${y + ry} Z" fill="${mix(C.white, C.steelLight, 0.7)}"/>
+          ${pupilArt(px, py, pk)}
+          ${lidArt}
+        </g>
+        <ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="none" stroke="${C.ink}" stroke-width="5.5"/>`;
+    }
+  }
+}
+/** A big pie-eye pupil (cast/paint.ts piePupil). */
+function pupilArt(px: number, py: number, k = 1): string {
+  return piePupil(px, py, PRX * k, PRY * k);
+}
+
+/* ---------------------------------- brows ---------------------------------- */
+/** The left brow's spine (inner end first) round its centre; the right one is the mirror. */
+const BROW_SPINE: V[] = [
+  [121, 122],
+  [111, 116.5],
+  [99, 114.5],
+  [88, 116],
+  [79, 120.5],
+];
+/** Brow width: a soft inner end, fullest a third of the way out, tapering to a flicked tuft. */
+const BROW_W = (t: number) => (t < 0.42 ? 5.2 + 3.2 * Math.sin(((t / 0.42) * Math.PI) / 2) : 2.2 + 6.2 * Math.pow(Math.max(0, Math.cos((((t - 0.42) / 0.58) * Math.PI) / 2)), 1.2));
+/** A bold silver brow. `lift` (units, negative = up), `rot` (deg, positive drops the inner end), `arch` (scale of the arch). */
+function browArt(side: 'L' | 'R', lift = 0, rot = 0, arch = 1): string {
+  const c = BROW_L;
+  // arch: scale the spine's offsets from the chord between its ends
+  const [a, b] = [BROW_SPINE[0], BROW_SPINE[BROW_SPINE.length - 1]];
+  let pts: V[] = BROW_SPINE.map(([x, y], i) => {
+    const t = i / (BROW_SPINE.length - 1);
+    const cy = a[1] + (b[1] - a[1]) * t;
+    return [x, cy + (y - cy) * arch] as V;
+  });
+  // rotation: positive drops the inner end (clockwise for the left brow)
+  pts = rotPts(pts, rot, [c.x, c.y]).map(([x, y]) => [x, y + lift] as V);
+  if (side === 'R') pts = mirrorPts(pts);
+  const d = brush(pts, BROW_W, 30);
+  const f = formLine(d, { ...SILVER, cut: [-2.5, -3.5], band: [1.6, 2], rimCut: [-2.6, -3] });
+  return inked({ fills: f.fills, lines: f.line('stroke-width="5"') }, 5);
+}
+
+/* -------------------------------- moustache -------------------------------- */
+/** The right wing's spine (root under the nose, sweeping out and curling up at the tip). */
+const WING_SPINE: V[] = [
+  [141, 198],
+  [160, 204],
+  [182, 204],
+  [200, 197],
+  [213, 185],
+  [218, 171],
+  [214, 160],
+  [205, 156],
+  [198, 160],
+];
+const WING_W = (t: number) => 1.8 + 13.4 * Math.max(0, Math.cos((t * Math.PI) / 2));
+/** One moustache wing, `up` degrees flipped up at the tip (negative droops). */
+function wingArt(side: 'L' | 'R', up = 0): string {
+  let pts = rotPts(WING_SPINE, -up, TACHE_R);
+  if (side === 'L') pts = mirrorPts(pts);
+  const d = brush(pts, WING_W, 44);
+  const f = formLine(d, { ...SILVER, cut: [-4, -7.5], band: [2.6, 3.4], rimCut: [-4, -4.5] });
+  // the cut highlight along the wing's top
+  const sp = pts;
+  const hl = glint([
+    [sp[0][0] + (side === 'L' ? 4 : -4), sp[0][1] - 8],
+    [sp[1][0], sp[1][1] - 8],
+    [sp[2][0] + (side === 'L' ? 3 : -3), sp[2][1] - 7],
+  ], 2.4, '#ffffff', 0.95);
+  return inked({ fills: f.fills, lines: f.line('stroke-width="6"') }, 6.5) + hl;
+}
+function noseArt(): string {
+  const [x, y, rx, ry] = NOSE;
+  const f = formLine(ellipse(x, y, rx, ry), { ...NOSE_T, cut: [-6, -7], band: [2.5, 3], rimCut: [-4, -4] });
+  return inked({ fills: f.fills, lines: f.line('stroke-width="6"') }, 6) + `<ellipse cx="${x - 7}" cy="${y - 6}" rx="6" ry="4" fill="#fff" opacity=".85" transform="rotate(-22 ${x - 7} ${y - 6})"/>`;
+}
+
+/* ---------------------------------- mouths ---------------------------------- */
+/** Rig mouth shapes. Under the moustache: their top edge tucks under the wings. */
 export type ConMouth = 'grin' | 'laugh' | 'pray' | 'shock' | 'smug' | 'whistle' | 'grit' | 'ooh';
+
+const GRIN = 'M96 202 Q128 212 160 202 C160 226 148 240 128 240 C108 240 96 226 96 202 Z';
+const LAUGH = 'M92 202 Q128 212 164 202 C165 230 150 246 128 246 C106 246 91 230 92 202 Z';
+const GRIT = 'M100 206 Q128 212 156 206 L154 230 Q128 236 102 230 Z';
+
+function openMouth(d: string, tongue: [number, number, number, number], teethTo: number, mid: string): string {
+  const [tx, ty, trx, tryy] = tongue;
+  return `
+    <path d="${d}" fill="${MOUTH_IN}"/>
+    <clipPath id="${mid}"><path d="${d}"/></clipPath>
+    <g clip-path="url(#${mid})">
+      <ellipse cx="${tx}" cy="${ty}" rx="${trx}" ry="${tryy}" fill="${TONGUE}"/>
+      <path d="M${tx - trx * 0.5} ${ty - tryy * 0.45} Q${tx - 2} ${ty - tryy * 0.75} ${tx + trx * 0.2} ${ty - tryy * 0.5}" stroke="${C.crimsonLight}" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".8"/>
+      <path d="M86 196 L170 196 L170 ${teethTo} Q128 ${teethTo + 7} 86 ${teethTo} Z" fill="${C.white}"/>
+    </g>
+    <path d="${d}" fill="none" stroke="${C.ink}" stroke-width="5.5" stroke-linejoin="round"/>`;
+}
 
 function mouthArt(m: ConMouth, mid: string): string {
   switch (m) {
     case 'grin':
-      return openMouth(GRIN, 246, 18, true, mid);
+      return openMouth(GRIN, [128, 240, 19, 10], 218, mid);
     case 'laugh':
-      return openMouth(LAUGH, 252, 26, true, mid);
+      return openMouth(LAUGH, [128, 246, 24, 13], 214, mid);
     case 'pray':
-      return `<path d="M112 234 Q120 226 128 234 Q136 242 144 234" stroke="${C.ink}" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+      return `<path d="M110 228 Q119 220 128 228 Q137 236 146 228" stroke="${C.ink}" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
     case 'shock':
-      return `<ellipse cx="128" cy="234" rx="14" ry="17" fill="${C.ink}"/><ellipse cx="128" cy="243" rx="9" ry="5" fill="${C.crimson}"/>`;
+      return `<ellipse cx="128" cy="224" rx="13" ry="17" fill="${MOUTH_IN}" stroke="${C.ink}" stroke-width="5.5"/><path d="M119 236 Q128 230 137 236 Q133 240 128 240 Q123 240 119 236 Z" fill="${TONGUE}"/>`;
     case 'smug':
-      return `<path d="M104 232 Q128 244 154 228" stroke="${C.ink}" stroke-width="6.5" fill="none" stroke-linecap="round"/><path d="M150 222 Q156 228 154 234" stroke="${C.ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+      return `<path d="M106 222 Q130 234 156 216" stroke="${C.ink}" stroke-width="5.5" fill="none" stroke-linecap="round"/><path d="M153 210 Q160 215 157 222" stroke="${C.ink}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
     case 'whistle':
       // lips pursed round the whistle's mouthpiece
-      return `<ellipse cx="128" cy="234" rx="13" ry="11" fill="${mix(C.skin, C.crimson, 0.35)}" stroke="${C.ink}" stroke-width="5"/><ellipse cx="128" cy="234" rx="5.5" ry="4.5" fill="${C.ink}"/>`;
+      return `<ellipse cx="128" cy="219" rx="11" ry="9.5" fill="${mix(C.skin, C.crimson, 0.38)}" stroke="${C.ink}" stroke-width="4.5"/><ellipse cx="128" cy="219" rx="4.5" ry="3.8" fill="${MOUTH_IN}"/>`;
     case 'grit':
-      return `<path d="${GRIT}" fill="${C.ink}"/>
+      return `<path d="${GRIT}" fill="${MOUTH_IN}"/>
         <clipPath id="${mid}"><path d="${GRIT}"/></clipPath>
         <g clip-path="url(#${mid})">
-          <path d="M88 214 L168 214 L168 228 Q128 234 88 228 Z" fill="${C.white}"/>
-          <path d="M88 232 Q128 238 168 232 L168 248 L88 248 Z" fill="${C.paperWarm}"/>
-          <path d="M108 216 L108 244 M128 218 L128 246 M148 216 L148 244" stroke="${C.ink}" stroke-width="2.5"/>
+          <path d="M90 200 L166 200 L166 219 Q128 224 90 219 Z" fill="${C.white}"/>
+          <path d="M90 222 Q128 227 166 222 L166 240 L90 240 Z" fill="${mix(C.white, C.paperWarm, 0.6)}"/>
+          <path d="M115 206 L115 232 M141 206 L141 232" stroke="${C.ink}" stroke-width="2.4" opacity=".6"/>
         </g>
-        <path d="${GRIT}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linejoin="round"/>`;
+        <path d="${GRIT}" fill="none" stroke="${C.ink}" stroke-width="5.5" stroke-linejoin="round"/>`;
     case 'ooh':
-      return `<ellipse cx="128" cy="234" rx="9" ry="11" fill="${C.ink}"/><ellipse cx="128" cy="239" rx="5.5" ry="3.4" fill="${C.crimson}"/>`;
+      return `<ellipse cx="128" cy="221" rx="8" ry="10" fill="${MOUTH_IN}" stroke="${C.ink}" stroke-width="4.5"/><ellipse cx="128" cy="226" rx="4.5" ry="2.6" fill="${TONGUE}"/>`;
   }
 }
-
-/* ----------------------------------- eyes ----------------------------------- */
-const EYE_Y = 153;
-const EYE_L = 104;
-const EYE_R = 152;
-const ERX = 14;
-const ERY = 18;
-/** The pupils' rest offset inside the whites (a touch toward the board, on his left = screen right). */
-const PUP: [number, number] = [3, 3];
-
-type EyeMode = 'open' | 'closed' | 'happy' | 'shock' | 'smug' | 'up' | 'squeeze';
-function eyeArt(x: number, mode: EyeMode): string {
-  const white = (rx = ERX, ry = ERY, dy = 0) => `<ellipse cx="${x}" cy="${EYE_Y + dy}" rx="${rx}" ry="${ry}" fill="${C.white}" stroke="${C.ink}" stroke-width="5.5"/>`;
-  switch (mode) {
-    case 'open':
-      return white() + pieEye(x + PUP[0], EYE_Y + PUP[1], 7.5, 11);
-    case 'closed':
-      return closedEye(x, EYE_Y + 3, 26, false);
-    case 'happy':
-      return closedEye(x, EYE_Y, 28, true);
-    case 'squeeze':
-      return `<path d="M${x - 13} ${EYE_Y - 6} L${x + 9} ${EYE_Y + 1} L${x - 13} ${EYE_Y + 8}" transform="${x < 128 ? '' : `translate(${2 * x} 0) scale(-1 1)`}" fill="none" stroke="${C.ink}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`;
-    case 'shock':
-      return white(16, 21, -2) + `<ellipse cx="${x}" cy="${EYE_Y}" rx="5" ry="7" fill="${C.ink}"/>`;
-    case 'up':
-      return white() + pieEye(x + 1, EYE_Y - 6, 7.5, 10.5);
-    case 'smug':
-      return (
-        white() +
-        pieEye(x + 4, EYE_Y + 6, 7, 9.5) +
-        `<path d="M${x - 15} ${EYE_Y - 1} Q${x} ${EYE_Y - 8} ${x + 15} ${EYE_Y - 1} L${x + 15} ${EYE_Y - 21} L${x - 15} ${EYE_Y - 21} Z" fill="${C.skin}"/>
-         <path d="M${x - 15} ${EYE_Y - 1} Q${x} ${EYE_Y - 8} ${x + 15} ${EYE_Y - 1}" stroke="${C.ink}" stroke-width="5.5" fill="none" stroke-linecap="round"/>`
-      );
-  }
-}
-
-/* ---------------------------------- brows ---------------------------------- */
-/** A bushy white brow: a tufted cloud along a gentle arch. Centre (cx, cy), `lift` raises the arch, `tilt` in degrees. */
-const BROW_TONES = celTones(C.white, C.g2, C.white);
-function bushyBrow(cx: number, cy: number, flip: boolean, arch = 1, tilt = 0): string {
-  const s = flip ? -1 : 1;
-  const top: [number, number][] = [
-    [-24, 8],
-    [-16, -4 * arch],
-    [-4, -9 * arch],
-    [9, -8 * arch],
-    [20, -2 * arch],
-    [25, 7],
-  ];
-  const d = `M-24 8${scallops(top, 0.42, 1)} C14 ${12 - 3 * arch} -6 ${14 - 3 * arch} -24 8 Z`;
-  // the brows are drawn as the left one; the right is mirrored
-  return `<g transform="translate(${cx} ${cy}) scale(${s} 1) rotate(${tilt})">
-    ${cel(d, { ...BROW_TONES, cut: [-2, -3], band: [1.2, 1.5], seed: 41 })}
-    <path d="${d}" fill="none" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>
-  </g>`;
-}
-const BROW_L = { x: 101, y: 128 };
-const BROW_R = { x: 155, y: 128 };
-
-/* --------------------------------- painting --------------------------------- */
-const SKIN = celTones(C.skin, C.skinDeep, C.skinLight);
-const HAIR = celTones(C.g1, C.g3, C.white);
-const TACHE_TONES = { base: C.white, shade: mix(C.g1, C.g2, 0.45), light: '#ffffff', hatch: mix(C.g3, C.ink, 0.2) };
-const CAP = { ...celTones(C.uniform, C.uniformDeep, C.uniformLight), hatch: mix(C.uniformDeep, C.ink, 0.4) };
-const VISOR_T = { base: C.inkSoft, shade: C.ink, light: mix(C.inkSoft, C.uniformLight, 0.45), hatch: C.ink };
-const BAND_T = { base: C.uniformDeep, shade: mix(C.uniformDeep, C.ink, 0.5), light: mix(C.uniformDeep, C.uniform, 0.7), hatch: C.ink };
-const NOSE = celTones(mix(C.skin, C.crimsonLight, 0.42), mix(C.skinDeep, C.crimson, 0.25), C.skinLight);
-
-type Lay = { fills: string; lines: string };
-const EARS = (): Lay => {
-  const l = celForm(circle(58, 150, 15), { ...SKIN, cut: [-5, -6], seed: 30 });
-  const r = celForm(circle(198, 150, 15), { ...SKIN, cut: [-5, -6], seed: 31 });
-  return {
-    fills: l.fills + r.fills,
-    lines: `${l.line()}${r.line()}<path d="M54 144 q6 4 4 12 M202 144 q-6 4 -4 12" stroke-width="3.5" opacity=".7"/>`,
-  };
-};
-const FACE_LAYER = (): Lay => {
-  const f = celForm(FACE, { ...SKIN, cut: [-13, -14], twist: -3, seed: 32 });
-  return { fills: f.fills, lines: `${f.line()}<path d="M104 246 Q128 252 152 246" stroke-width="3.5" opacity=".5"/>` };
-};
-const FRINGE = (): Lay => {
-  const a = celForm(fringe(false), { ...HAIR, cut: [-3, -4], band: [1.5, 2], seed: 42 });
-  const b = celForm(fringe(true), { ...HAIR, cut: [-3, -4], band: [1.5, 2], seed: 43 });
-  return { fills: a.fills + b.fills, lines: `${a.line('stroke-width="5"')}${b.line('stroke-width="5"')}` };
-};
-const DOME_SHINE = `${shine([[96, 72], [112, 64], [130, 62]], 3.2, 0.7, C.skinLight)}`;
-const BLUSH = `<ellipse cx="74" cy="176" rx="16" ry="10" fill="${C.crimsonLight}" opacity=".5"/>
-      <ellipse cx="182" cy="176" rx="16" ry="10" fill="${C.crimsonLight}" opacity=".5"/>
-      <path d="M66 175 l4 -3 M75 176 l4 -3 M178 176 l4 -3 M187 175 l4 -3" stroke="${C.crimson}" stroke-width="2" stroke-linecap="round" opacity=".45"/>`;
-const CHEEK_L = circle(68, 190, 27);
-const CHEEK_R = circle(188, 190, 27);
-/** Puffed cheeks (blowing the whistle): two round balloons over the face's sides. */
-const CHEEKS = (): Lay => {
-  const l = celForm(CHEEK_L, { ...SKIN, cut: [-6, -7], seed: 44 });
-  const r = celForm(CHEEK_R, { ...SKIN, cut: [-6, -7], seed: 45 });
-  return { fills: l.fills + r.fills, lines: l.line('stroke-width="6"') + r.line('stroke-width="6"') };
-};
-const CHEEK_TOP = `<ellipse cx="70" cy="186" rx="16" ry="11" fill="${C.crimsonLight}" opacity=".62"/><ellipse cx="186" cy="186" rx="16" ry="11" fill="${C.crimsonLight}" opacity=".62"/>
-  ${shine([[52, 182], [58, 172], [68, 168]], 2.4, 0.8, C.skinLight)}${shine([[172, 180], [178, 170], [188, 167]], 2.4, 0.8, C.skinLight)}`;
-const CROWN_LAYER = (): Lay => {
-  const c = celForm(CROWN, { ...CAP, cut: [-12, -8], shrink: 0.97, hatch: CAP.hatch, hatchGap: 5.5, seed: 34 });
-  return { fills: c.fills, lines: `${c.line()}<path d="${CROWN_TOP}" stroke-width="4.5"/>` };
-};
-const BAND_LAYER = (): Lay => {
-  const b = celForm(BAND, { ...BAND_T, cut: [-6, -6], seed: 35 });
-  return { fills: b.fills, lines: b.line('stroke-width="5.5"') };
-};
-const VISOR_LAYER = (): Lay => {
-  const v = celForm(VISOR, { ...VISOR_T, cut: [-6, -8], seed: 36 });
-  return { fills: v.fills, lines: v.line() };
-};
-const CAP_TRIM = `
-      <path d="M66 76 Q128 88 190 76" fill="none" stroke="${C.goldDeep}" stroke-width="5" stroke-linecap="round"/>
-      <path d="M66 75 Q128 87 190 75" fill="none" stroke="${C.gold}" stroke-width="2.6" stroke-linecap="round"/>
-      ${shine([[70, 38], [96, 28], [128, 25]], 2.4, 0.5, C.uniformLight)}
-      ${shine([[182, 48], [186, 60], [186, 70]], 2.4, 0.45, C.uniformLight)}
-      ${shine([[80, 106], [106, 113], [134, 115]], 2.4, 0.75, mix(C.uniformLight, C.white, 0.4))}
-      <path d="${CORD}" fill="none" stroke="${C.ink}" stroke-width="9" stroke-linecap="round"/>
-      <path d="${CORD}" fill="none" stroke="${C.gold}" stroke-width="4.5" stroke-linecap="round"/>
-      <path d="${CORD}" fill="none" stroke="${C.goldLight}" stroke-width="1.6" stroke-dasharray="3 5" stroke-linecap="round"/>
-      <circle cx="74" cy="98" r="6.5" fill="${C.gold}" stroke="${C.ink}" stroke-width="3"/><circle cx="72.5" cy="96.5" r="2" fill="#fff"/>
-      <circle cx="182" cy="98" r="6.5" fill="${C.gold}" stroke="${C.ink}" stroke-width="3"/><circle cx="180.5" cy="96.5" r="2" fill="#fff"/>`;
-const CAP_BADGE = `${wingedWheel(128, 56, 13)}${sparkle(154, 40, 5, C.goldLight, 0.9)}`;
-const TACHE_ART = () => `${cel(TACHE, { ...TACHE_TONES, cut: [-6, -7], hatch: TACHE_TONES.hatch, hatchGap: 5, seed: 46 })}
-      ${TACHE_STRANDS}
-      <path d="${TACHE}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linejoin="round"/>
-      ${shine([[90, 198], [104, 192], [118, 196]], 2, 0.9)}${shine([[138, 196], [152, 192], [166, 198]], 2, 0.9)}`;
-const NOSE_ART = () => `${cel(circle(128, 178, 21), { ...NOSE, cut: [-7, -8], seed: 37 })}<circle cx="128" cy="178" r="21" fill="none" stroke="${C.ink}" stroke-width="6"/>
-      <ellipse cx="120" cy="170" rx="6.5" ry="4.5" fill="#fff" opacity=".85" transform="rotate(-25 120 170)"/>`;
 
 /** The whistle in his lips, for the head's own 'whistle' expression (the rig holds a separate one). */
-const MOUTH_WHISTLE = `<g transform="translate(128 234) rotate(-14) scale(1.25)">
-    <rect x="4" y="-5" width="22" height="10" rx="3" fill="${C.gold}" stroke="${C.ink}" stroke-width="3.5"/>
-    <path d="M22 -14 L52 -14 C60 -14 64 -8 64 0 C64 10 56 16 46 16 C34 16 26 10 24 2 Z" fill="${C.gold}" stroke="${C.ink}" stroke-width="4.5" stroke-linejoin="round"/>
-    <path d="M30 -9 L50 -9" stroke="${C.goldLight}" stroke-width="3" stroke-linecap="round"/>
-    <rect x="34" y="-14" width="10" height="6" fill="${C.ink}"/>
-    <path d="M44 2 A6 6 0 0 0 56 2" fill="none" stroke="${C.goldDeep}" stroke-width="2.4"/>
+const MOUTH_WHISTLE = `<g transform="translate(128 219) rotate(14)">
+    <path d="M2 -4.5 L22 -5 L22 5 L2 4.5 Q-2 0 2 -4.5 Z" fill="${C.gold}" stroke="${C.ink}" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M18 -11 L42 -12 C52 -12 58 -4 57 4 C56 14 47 19 38 19 C28 19 20 12 19 3 Z" fill="${C.gold}" stroke="${C.ink}" stroke-width="4.5" stroke-linejoin="round"/>
+    <path d="M24 -6 L44 -7" stroke="${C.goldLight}" stroke-width="3" stroke-linecap="round"/>
+    <path d="M28 -12 L38 -12 L38 -6 L28 -6 Z" fill="${C.ink}"/>
+    <path d="M38 6 A7 7 0 0 0 51 6" fill="none" stroke="${C.goldDeep}" stroke-width="2.4"/>
   </g>`;
 
-/** The paint shared by every head raster (kit.ts opt-ins, the house look). */
-const PAINT = { autoCel: false, texture: { seed: 11 }, contour: 0.8, inkShift: [1, 1.2] as [number, number] };
-const grain = (body: string) => composeSymbol({ autoCel: false, texture: { seed: 11 }, inkShift: [1, 1.2], noDrop: true, layers: [{ fills: '' }], top: body });
+/* --------------------------------- painting --------------------------------- */
+/** The paint shared by every head raster: a light gouache grain (no mottled blotches on the silver), an outer contour, ink weighted lower right. */
+const TEXTURE = { seed: 11, mottle: 0.28, grain: 0.32 };
+const PAINT = { autoCel: false, texture: TEXTURE, contour: 0.8, inkShift: [1, 1.2] as [number, number] };
+const grain = (body: string) => composeSymbol({ autoCel: false, texture: TEXTURE, inkShift: [1, 1.2], noDrop: true, layers: [{ fills: '' }], top: body });
 /** Symbol framing: pulled in so the cap and moustache stay clear of the reel cell's edge. */
-const SYMBOL_INSET = 'translate(128 128) scale(.93) translate(-128 -134)';
+const SYMBOL_INSET = 'translate(128 129) scale(.94) translate(-128 -136)';
 
 interface HeadPose {
-  eyes: EyeMode;
+  eyes: EyePose;
+  /** Optional different right eye (asymmetric looks). */
+  eyesR?: Partial<EyePose>;
   mouth: ConMouth;
-  /** Brow lift (units, negative = up), arch scale, tilt (deg; positive = inner ends down / cross). */
-  brow: [number, number, number];
+  /** Brows per side: [lift, rot, arch]. */
+  browL: [number, number, number];
+  browR: [number, number, number];
+  /** Moustache wing flip (deg up) per side. */
+  tache: [number, number];
   puff?: boolean;
-  /** Cap lift (units up) and tilt (deg). */
+  /** Cap lift (units up) and extra tilt (deg). */
   capUp?: number;
   capTilt?: number;
-  /** Moustache bounce (units down). */
-  tache?: number;
   /** Whole head squash (y scale about the chin). */
   squash?: number;
+  /** The cap off (doffed: the bald dome shows). */
+  doff?: boolean;
 }
 const POSES: Record<ConductorExpr, HeadPose> = {
-  idle: { eyes: 'open', mouth: 'grin', brow: [0, 1, 0] },
-  blink: { eyes: 'closed', mouth: 'grin', brow: [1, 1, 0] },
-  laugh: { eyes: 'happy', mouth: 'laugh', brow: [-6, 1.15, -4], tache: -3 },
-  pray: { eyes: 'up', mouth: 'pray', brow: [-2, -0.7, -14] },
-  shock: { eyes: 'shock', mouth: 'shock', brow: [-12, 1.3, -6], capUp: 6, tache: -2 },
-  smug: { eyes: 'smug', mouth: 'smug', brow: [2, 0.6, 8] },
-  whistle: { eyes: 'squeeze', mouth: 'whistle', brow: [-5, 1.1, -6], puff: true, tache: -4 },
+  idle: { eyes: { mode: 'open' }, mouth: 'grin', browL: [0, 0, 1], browR: [-3, -3, 1.1], tache: [0, 2] },
+  blink: { eyes: { mode: 'closed' }, mouth: 'grin', browL: [2, 0, 1], browR: [2, 0, 1], tache: [0, 0] },
+  laugh: { eyes: { mode: 'happy' }, mouth: 'laugh', browL: [-6, -4, 1.2], browR: [-6, -4, 1.2], tache: [12, 12] },
+  cheer: { eyes: { mode: 'open', size: 1.06, look: [0, -3] }, mouth: 'laugh', browL: [-10, -6, 1.3], browR: [-10, -6, 1.3], tache: [16, 16], capUp: 4 },
+  pray: { eyes: { mode: 'open', look: [0, -8], lid: 0.2, slant: -18 }, mouth: 'pray', browL: [-7, -24, 0.6], browR: [-7, -24, 0.6], tache: [-12, -12] },
+  worried: { eyes: { mode: 'open', look: [6, 1], lid: 0.16, slant: -16, pupil: 0.9 }, mouth: 'pray', browL: [-6, -20, 0.7], browR: [-6, -20, 0.7], tache: [-9, -9] },
+  shock: { eyes: { mode: 'open', size: 1.16, pupil: 0.62, look: [0, -2] }, mouth: 'shock', browL: [-15, -5, 1.3], browR: [-15, -5, 1.3], tache: [24, 24], capUp: 9, capTilt: -3 },
+  smug: { eyes: { mode: 'open', look: [6, 3], lid: 0.46, slant: 4 }, eyesR: { lid: 0.4 }, mouth: 'smug', browL: [4, 6, 0.8], browR: [-7, -4, 1.15], tache: [-2, 14] },
+  whistle: { eyes: { mode: 'squeeze' }, mouth: 'whistle', browL: [-4, -6, 1.1], browR: [-4, -6, 1.1], tache: [10, 10], puff: true },
+  watch: { eyes: { mode: 'open', look: [7, -1], pupil: 0.95 }, eyesR: { lid: 0.12 }, mouth: 'ooh', browL: [-8, -3, 1.2], browR: [2, 6, 1], tache: [4, 4] },
 };
+
+function capPlaced(p: HeadPose): string {
+  if (p.doff) return '';
+  return `<g transform="translate(0 ${-(p.capUp ?? 0)}) rotate(${CAP_TILT + (p.capTilt ?? 0)} ${CAP_PIV[0]} ${CAP_PIV[1]})">${capBody()}</g>`;
+}
 
 function headArt(p: HeadPose, symbol: boolean): string {
   const mid = nextId('cm');
-  const [by, ba, bt] = p.brow;
-  const capT = `translate(0 ${-(p.capUp ?? 0)}) rotate(${p.capTilt ?? 0} 128 100)`;
-  const tacheY = p.tache ?? 0;
   const sq = p.squash ?? 1;
   const cheeks = p.puff ? CHEEKS() : null;
-  const body = composeSymbol({
+  const eR = { ...p.eyes, ...(p.eyesR ?? {}) };
+  return composeSymbol({
     ...PAINT,
     noDrop: !symbol,
-    transform: `${symbol ? SYMBOL_INSET : ''} translate(128 250) scale(${1 / Math.sqrt(sq)} ${sq}) translate(-128 -250)`,
-    layers: [EARS(), FACE_LAYER(), FRINGE(), ...(cheeks ? [cheeks] : [])],
+    transform: `${symbol ? SYMBOL_INSET : ''} translate(128 248) scale(${1 / Math.sqrt(sq)} ${sq}) translate(-128 -248)`,
+    layers: [EARS(), TUFTS(), FACE_LAYER(), ...(cheeks ? [cheeks] : [])],
     top: `
-      ${DOME_SHINE}
+      ${p.doff ? DOME_SHINE : SHADOW_UNDER_PEAK(nextId('cs'))}
       ${p.puff ? CHEEK_TOP : BLUSH}
-      ${eyeArt(EYE_L, p.eyes)}${eyeArt(EYE_R, p.eyes)}
+      ${eyeArt(EYE_L, 1, p.eyes)}${eyeArt(EYE_R, -1, eR)}
       ${mouthArt(p.mouth, mid)}
       ${p.mouth === 'whistle' ? MOUTH_WHISTLE : ''}
-      <g transform="translate(0 ${tacheY})">${TACHE_ART()}</g>
-      ${NOSE_ART()}
-      <g transform="${capT}">${capSvgBody()}</g>
-      ${bushyBrow(BROW_L.x, BROW_L.y + by, false, ba, bt)}${bushyBrow(BROW_R.x, BROW_R.y + by, true, ba, bt)}`,
+      ${wingArt('L', p.tache[0])}${wingArt('R', p.tache[1])}
+      ${noseArt()}
+      ${capPlaced(p)}
+      ${browArt('L', ...p.browL)}${browArt('R', ...p.browR)}
+      ${symbol ? sparkle(214, 30, 9, '#fff', 0.92) : ''}`,
   });
-  return body;
-}
-
-/** The cap drawn inline (its own cel layers, inked), for placing over the head. */
-function capSvgBody(): string {
-  const c = CROWN_LAYER();
-  const b = BAND_LAYER();
-  const v = VISOR_LAYER();
-  const ink = (l: string) => `<g fill="none" stroke="${C.ink}" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(1 1.2)">${l}</g>${l}</g>`;
-  return `${c.fills}${ink(c.lines)}${b.fills}${ink(b.lines)}${v.fills}${ink(v.lines)}${CAP_TRIM}${CAP_BADGE}`;
 }
 
 /**
  * Conductor Casey's head. `symbol` adds the drop shadow and the reel framing (the TOP symbol);
- * the rig version has neither.
+ * the rig/title-card version has neither.
  */
 export function conductorHead(expr: ConductorExpr = 'idle', symbol = false): string {
   return headArt(POSES[expr], symbol);
 }
 
-/** The win highlight: he laughs and doffs the cap a little, the moustache bouncing (loop of 4). */
+/** The win highlight: he laughs, the cap hops off his head and back, the moustache bouncing (loop of 4). */
 export const conductorWinFrames: (() => string)[] = [
-  () => headArt({ ...POSES.laugh, capUp: 14, capTilt: -8, tache: -5, squash: 1.02 }, true),
-  () => headArt({ ...POSES.laugh, mouth: 'grin', capUp: 4, capTilt: -3, tache: 1, squash: 0.97 }, true),
-  () => headArt({ ...POSES.laugh, capUp: 16, capTilt: 7, tache: -6, squash: 1.03 }, true),
-  () => headArt({ eyes: 'open', mouth: 'laugh', brow: [-4, 1.1, -3], capUp: 5, capTilt: 2, tache: 0, squash: 0.98 }, true),
+  () => headArt({ ...POSES.laugh, capUp: 11, capTilt: -7, tache: [20, 20], squash: 1.03 }, true),
+  () => headArt({ ...POSES.laugh, mouth: 'grin', capUp: 3, capTilt: -2, tache: [4, 4], squash: 0.97 }, true),
+  () => headArt({ ...POSES.cheer, capUp: 12, capTilt: 6, tache: [22, 22], squash: 1.03 }, true),
+  () => headArt({ ...POSES.laugh, eyes: { mode: 'open', look: [0, -2] }, capUp: 4, capTilt: 1, tache: [8, 8], squash: 0.98 }, true),
 ];
 
 /* --------------------------------- rig parts --------------------------------- */
@@ -409,9 +491,16 @@ export type ConPart =
   | 'lidR'
   | 'lidLaughL'
   | 'lidLaughR'
+  /** Eyes squeezed shut (> <: blowing the whistle, wincing). */
+  | 'squeezeL'
+  | 'squeezeR'
   | 'browL'
   | 'browR'
+  /** The whole moustache with the nose (review sheets); the rig uses tacheL / tacheR / nose. */
   | 'moustache'
+  | 'tacheL'
+  | 'tacheR'
+  | 'nose'
   | `mouth-${ConMouth}`;
 
 /** Where the head hangs from the neck (256 box). */
@@ -420,9 +509,14 @@ export const CON_HEAD_PIVOT: [number, number] = [128, 236];
 export const CON_EYES = { L: EYE_L, R: EYE_R, y: EYE_Y, rx: ERX, ry: ERY, pupil: PUP };
 export const CON_BROWS = { L: BROW_L, R: BROW_R };
 /** Mouth centre (the whistle's mouthpiece goes here), in the head box. */
-export const CON_MOUTH: [number, number] = [128, 234];
-/** The cap's pivot (back of the band) and where its crown top sits (for a doff), head box. */
-export const CON_CAP_PIVOT: [number, number] = [128, 96];
+export const CON_MOUTH: [number, number] = MOUTH;
+/** The cap's pivot (back of the band) for a doff / pop, head box. */
+export const CON_CAP_PIVOT: [number, number] = CAP_PIV;
+/** The cap's resting tilt (radians) as drawn on the head. */
+export const CON_CAP_TILT = (CAP_TILT * Math.PI) / 180;
+/** The moustache wings' hinges (their roots under the nose) and the nose centre, head box. */
+export const CON_TACHE = { L: TACHE_L, R: TACHE_R };
+export const CON_NOSE: [number, number] = [NOSE[0], NOSE[1]];
 
 export function conductorRigPart(part: ConPart): RigPart {
   const r = rigPartFull(part);
@@ -433,26 +527,40 @@ function rigPartFull(part: ConPart): RigPart {
   const eyeSide = (p: string) => (p.endsWith('L') ? EYE_L : EYE_R);
   switch (part) {
     case 'face':
-      return { svg: composeSymbol({ ...PAINT, noDrop: true, layers: [EARS(), FACE_LAYER(), FRINGE()], top: `${DOME_SHINE}${BLUSH}` }), box: [36, 50, 184, 212], pivot: [128, 160] };
+      return {
+        svg: composeSymbol({ ...PAINT, noDrop: true, layers: [EARS(), TUFTS(), FACE_LAYER()], top: `${DOME_SHINE}${SHADOW_UNDER_PEAK(nextId('cs'))}${BLUSH}` }),
+        box: [24, 56, 208, 200],
+        pivot: [128, 160],
+      };
     case 'cheeks':
-      return { svg: composeSymbol({ ...PAINT, noDrop: true, layers: [CHEEKS()], top: CHEEK_TOP }), box: [34, 156, 188, 68], pivot: [128, 190] };
+      return { svg: composeSymbol({ ...PAINT, noDrop: true, layers: [CHEEKS()], top: CHEEK_TOP }), box: [36, 154, 184, 74], pivot: [128, 190] };
     case 'cap':
-      return { svg: grain(capSvgBody()), box: [46, 12, 164, 122], pivot: CON_CAP_PIVOT };
+      return {
+        svg: composeSymbol({ ...PAINT, noDrop: true, layers: [{ fills: '' }], top: `<g transform="rotate(${CAP_TILT} ${CAP_PIV[0]} ${CAP_PIV[1]})">${capBody()}</g>` }),
+        box: [40, 6, 176, 130],
+        pivot: CAP_PIV,
+      };
     case 'eyeWhiteL':
     case 'eyeWhiteR': {
       const x = eyeSide(part);
-      return { svg: plain(`<ellipse cx="${x}" cy="${EYE_Y}" rx="${ERX}" ry="${ERY}" fill="${C.white}"/>`), box: [x - 17, EYE_Y - 21, 34, 42], pivot: [x, EYE_Y] };
+      const id = nextId('ew');
+      return {
+        svg: plain(`<clipPath id="${id}"><ellipse cx="${x}" cy="${EYE_Y}" rx="${ERX}" ry="${ERY}"/></clipPath><ellipse cx="${x}" cy="${EYE_Y}" rx="${ERX}" ry="${ERY}" fill="${C.white}"/>
+          <path clip-path="url(#${id})" d="M${x - ERX} ${EYE_Y + ERY * 0.45} Q${x} ${EYE_Y + ERY * 1.25} ${x + ERX} ${EYE_Y + ERY * 0.45} L${x + ERX} ${EYE_Y + ERY} L${x - ERX} ${EYE_Y + ERY} Z" fill="${mix(C.white, C.steelLight, 0.7)}"/>`),
+        box: [x - ERX - 2, EYE_Y - ERY - 2, 2 * ERX + 4, 2 * ERY + 4],
+        pivot: [x, EYE_Y],
+      };
     }
     case 'eyeRingL':
     case 'eyeRingR': {
       const x = eyeSide(part);
-      return { svg: plain(`<ellipse cx="${x}" cy="${EYE_Y}" rx="${ERX}" ry="${ERY}" fill="none" stroke="${C.ink}" stroke-width="5.5"/>`), box: [x - 19, EYE_Y - 23, 38, 46], pivot: [x, EYE_Y] };
+      return { svg: plain(`<ellipse cx="${x}" cy="${EYE_Y}" rx="${ERX}" ry="${ERY}" fill="none" stroke="${C.ink}" stroke-width="5.5"/>`), box: [x - ERX - 4, EYE_Y - ERY - 4, 2 * ERX + 8, 2 * ERY + 8], pivot: [x, EYE_Y] };
     }
     case 'pupilL':
     case 'pupilR': {
       const x = eyeSide(part) + PUP[0];
       const y = EYE_Y + PUP[1];
-      return { svg: plain(pieEye(x, y, 7.5, 11)), box: [x - 10, y - 13, 20, 26], pivot: [x, y] };
+      return { svg: plain(pupilArt(x, y)), box: [x - PRX - 3, y - PRY - 3, 2 * PRX + 6, 2 * PRY + 6], pivot: [x, y] };
     }
     case 'lidL':
     case 'lidR': {
@@ -462,10 +570,10 @@ function rigPartFull(part: ConPart): RigPart {
       const top = EYE_Y - ERY - 3;
       const bot = EYE_Y + ERY + 3;
       const w = ERX + 3;
-      const lid = `M${x - w} ${EYE_Y - 2} C${x - w} ${top + 2} ${x - 8} ${top} ${x} ${top} C${x + 8} ${top} ${x + w} ${top + 2} ${x + w} ${EYE_Y - 2} C${x + w} ${EYE_Y + 12} ${x + 9} ${bot} ${x} ${bot} C${x - 9} ${bot} ${x - w} ${EYE_Y + 12} ${x - w} ${EYE_Y - 2} Z`;
-      const lash = `M${x - w + 1} ${EYE_Y + 6} C${x - 12} ${EYE_Y + 17} ${x - 6} ${bot - 1} ${x} ${bot - 1} C${x + 6} ${bot - 1} ${x + 12} ${EYE_Y + 17} ${x + w - 1} ${EYE_Y + 6}`;
+      const lid = `M${x - w} ${EYE_Y - 2} C${x - w} ${top + 2} ${x - 9} ${top} ${x} ${top} C${x + 9} ${top} ${x + w} ${top + 2} ${x + w} ${EYE_Y - 2} C${x + w} ${EYE_Y + 13} ${x + 10} ${bot} ${x} ${bot} C${x - 10} ${bot} ${x - w} ${EYE_Y + 13} ${x - w} ${EYE_Y - 2} Z`;
+      const lash = `M${x - w + 1} ${EYE_Y + 6} C${x - 13} ${EYE_Y + 18} ${x - 6} ${bot - 1} ${x} ${bot - 1} C${x + 6} ${bot - 1} ${x + 13} ${EYE_Y + 18} ${x + w - 1} ${EYE_Y + 6}`;
       return {
-        svg: grain(`${cel(lid, { ...SKIN, cut: [-4, -5], seed: 38 })}<path d="${lash}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>`),
+        svg: grain(`${form(lid, { ...SKIN, cut: [-4, -5] })}<path d="${lash}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>`),
         box: [x - w - 4, top - 4, 2 * w + 8, bot - top + 8],
         pivot: [x, top],
       };
@@ -473,27 +581,38 @@ function rigPartFull(part: ConPart): RigPart {
     case 'lidLaughL':
     case 'lidLaughR': {
       const x = eyeSide(part);
-      return { svg: plain(closedEye(x, EYE_Y, 28, true)), box: [x - 20, EYE_Y - 20, 40, 30], pivot: [x, EYE_Y - 6] };
+      return { svg: plain(eyeArt(x, part.endsWith('L') ? 1 : -1, { mode: 'happy' })), box: [x - 22, EYE_Y - 14, 44, 38], pivot: [x, EYE_Y] };
+    }
+    case 'squeezeL':
+    case 'squeezeR': {
+      const x = eyeSide(part);
+      return { svg: plain(eyeArt(x, part.endsWith('L') ? 1 : -1, { mode: 'squeeze' })), box: [x - 22, EYE_Y - 16, 44, 34], pivot: [x, EYE_Y] };
     }
     case 'browL':
-      return { svg: plain(bushyBrow(BROW_L.x, BROW_L.y, false)), box: [BROW_L.x - 30, BROW_L.y - 17, 60, 34], pivot: [BROW_L.x, BROW_L.y] };
+      return { svg: grain(browArt('L')), box: [BROW_L.x - 30, BROW_L.y - 18, 60, 34], pivot: [BROW_L.x, BROW_L.y] };
     case 'browR':
-      return { svg: plain(bushyBrow(BROW_R.x, BROW_R.y, true)), box: [BROW_R.x - 30, BROW_R.y - 17, 60, 34], pivot: [BROW_R.x, BROW_R.y] };
+      return { svg: grain(browArt('R')), box: [BROW_R.x - 30, BROW_R.y - 18, 60, 34], pivot: [BROW_R.x, BROW_R.y] };
+    case 'tacheL':
+      return { svg: grain(wingArt('L')), box: [32, 150, 102, 72], pivot: TACHE_L };
+    case 'tacheR':
+      return { svg: grain(wingArt('R')), box: [122, 150, 102, 72], pivot: TACHE_R };
+    case 'nose':
+      return { svg: grain(noseArt()), box: [102, 156, 52, 46], pivot: CON_NOSE };
     case 'moustache':
-      return { svg: grain(`${TACHE_ART()}${NOSE_ART()}`), box: [36, 150, 184, 92], pivot: [128, 206] };
+      return { svg: grain(`${wingArt('L')}${wingArt('R')}${noseArt()}`), box: [32, 150, 192, 72], pivot: [128, 201] };
     default: {
       const m = part.slice(6) as ConMouth;
       const box: Record<ConMouth, [number, number, number, number]> = {
-        grin: [88, 210, 80, 44],
-        laugh: [82, 206, 92, 54],
-        pray: [106, 220, 44, 28],
-        shock: [110, 213, 36, 40],
-        smug: [98, 216, 64, 32],
-        whistle: [110, 218, 36, 32],
-        grit: [88, 212, 80, 38],
-        ooh: [116, 220, 24, 28],
+        grin: [92, 196, 72, 48],
+        laugh: [86, 194, 84, 58],
+        pray: [104, 214, 48, 28],
+        shock: [110, 202, 36, 44],
+        smug: [98, 198, 64, 34],
+        whistle: [112, 205, 32, 28],
+        grit: [94, 198, 68, 42],
+        ooh: [114, 206, 28, 30],
       };
-      return { svg: plain(mouthArt(m, nextId('cm'))), box: box[m], pivot: CON_MOUTH };
+      return { svg: plain(mouthArt(m, nextId('cm'))), box: box[m], pivot: MOUTH };
     }
   }
 }

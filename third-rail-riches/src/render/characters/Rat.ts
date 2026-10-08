@@ -19,10 +19,14 @@ import {
   LUGGAGE_BOX,
   LUGGAGE_FOOT,
   LUGGAGE_TOP,
+  RAT_EYES,
+  RAT_MOUTH,
   type RatExpr,
   type RatPart,
 } from '../../art/rat';
-import { glove, type HandPose } from '../../art/characters';
+import { caseyGlove as glove, type CaseyHand } from '../../art/cast/casey';
+/** Rivets wears the cast's gloves (three fingers and a thumb). */
+type HandPose = Extract<CaseyHand, 'open' | 'fist' | 'flat'>;
 import { hoseSection } from '../../art/hose';
 import { C } from '../../art/kit';
 import { T } from '../timing';
@@ -63,10 +67,10 @@ const CAP_PIVOT = RAT_PARTS.cap.pivot;
 /** Cap seat, in head-local units. */
 const CAP_ON: Vec = { x: (CAP_PIVOT[0] - HEAD_PIVOT[0]) * HS, y: (CAP_PIVOT[1] - HEAD_PIVOT[1]) * HS };
 /** Mouth, in head-local units (where the crumb is nibbled and squeaks come from). */
-const MOUTH: Vec = { x: 0, y: (182 - HEAD_PIVOT[1]) * HS };
+const MOUTH: Vec = { x: 0, y: (RAT_MOUTH[1] - HEAD_PIVOT[1]) * HS };
 
-const EYE_DX = 44;
-const PUPIL_R_DX = 36;
+const EYE_DX = RAT_EYES.dx;
+const PUPIL_R_DX = RAT_EYES.pupilDx;
 
 interface Face {
   happy: number;
@@ -75,17 +79,19 @@ interface Face {
   look: [number, number];
   worry: number;
   mouth: Mouth;
+  /** Brows: lift (box units, negative = up) and turn (deg, positive drops the inner end). */
+  brow: [number, number];
 }
 type Mouth = 'mouth' | 'grin' | 'open' | 'worry';
 type FaceKey = RatExpr | 'duck' | 'watch';
 const FACES: Record<FaceKey, Face> = {
-  idle: { happy: 0, lid: 0, pupil: 1, look: [0, 0], worry: 0, mouth: 'mouth' },
-  blink: { happy: 0, lid: 0, pupil: 1, look: [0, 0], worry: 0, mouth: 'mouth' },
-  happy: { happy: 1, lid: 0, pupil: 1, look: [0, 0], worry: 0, mouth: 'grin' },
-  squeak: { happy: 0, lid: 0, pupil: 0.8, look: [0.1, -0.4], worry: 0, mouth: 'open' },
-  worried: { happy: 0, lid: 0.1, pupil: 1.05, look: [-0.3, -0.6], worry: 1, mouth: 'worry' },
-  duck: { happy: 1, lid: 0, pupil: 1, look: [0, 0], worry: 0.8, mouth: 'worry' },
-  watch: { happy: 0, lid: 0, pupil: 0.95, look: [-1, -0.2], worry: 0, mouth: 'mouth' },
+  idle: { happy: 0, lid: 0, pupil: 1, look: [0, 0], worry: 0, mouth: 'mouth', brow: [0, -7] },
+  blink: { happy: 0, lid: 0, pupil: 1, look: [0, 0], worry: 0, mouth: 'mouth', brow: [4, -5] },
+  happy: { happy: 1, lid: 0, pupil: 1, look: [0, 0], worry: 0, mouth: 'grin', brow: [-2, -8] },
+  squeak: { happy: 0, lid: 0, pupil: 0.8, look: [0.1, -0.4], worry: 0, mouth: 'open', brow: [-7, -6] },
+  worried: { happy: 0, lid: 0, pupil: 1.05, look: [-0.3, -0.6], worry: 1, mouth: 'worry', brow: [-2, -22] },
+  duck: { happy: 1, lid: 0, pupil: 1, look: [0, 0], worry: 0.8, mouth: 'worry', brow: [5, 14] },
+  watch: { happy: 0, lid: 0, pupil: 0.95, look: [-1, -0.2], worry: 0, mouth: 'mouth', brow: [3, 10] },
 };
 const STATE_FACE: Record<State, FaceKey> = { idle: 'idle', squeak: 'squeak', happy: 'happy', worried: 'worried', duck: 'duck', watch: 'watch' };
 
@@ -303,7 +309,7 @@ export class Rat extends Container {
   private built = false;
   private state: State = 'idle';
   private face: FaceKey = 'idle';
-  private F = { happy: 0, lid: 0, pupil: 1, lookX: 0, lookY: 0, worry: 0, blink: 0, open: 0, squeakFx: 0, sniff: 0, twitch: 0 };
+  private F = { happy: 0, lid: 0, pupil: 1, lookX: 0, lookY: 0, worry: 0, blink: 0, open: 0, squeakFx: 0, sniff: 0, twitch: 0, by: 0, br: -7 };
   private mouth: Mouth = 'mouth';
   private P: Pose = { hop: 0, crouch: 0, lean: 0, tilt: 0, jut: 0, lx: -31, ly: 50, lw: 0.3, rx: 30, ry: 60, rw: 0, capOff: 0, ears: 0, clutch: 0, drape: 0, wave: 0, nibble: 0, tremble: 0 };
   private glance = { x: 0, y: 0 };
@@ -468,8 +474,10 @@ export class Rat extends Container {
     this.face = f;
     const to = FACES[f];
     this.mouth = to.mouth;
-    gsap.killTweensOf(this.F, 'happy,lid,pupil,lookX,lookY,worry');
-    gsap.to(this.F, { happy: to.happy, lid: to.lid, pupil: to.pupil, lookX: to.look[0], lookY: to.look[1], worry: to.worry, duration: T(0.15), ease: 'back.out(1.6)' });
+    gsap.killTweensOf(this.F, 'happy,lid,pupil,lookX,lookY,worry,by,br');
+    // the brows lead the face change by a frame
+    gsap.to(this.F, { by: to.brow[0], br: to.brow[1], duration: T(0.13), ease: 'back.out(2.2)' });
+    gsap.to(this.F, { happy: to.happy, lid: to.lid, pupil: to.pupil, lookX: to.look[0], lookY: to.look[1], worry: to.worry, duration: T(0.15), delay: T(0.03), ease: 'back.out(1.6)' });
     // a pop of the mouth into its new shape
     gsap.fromTo(this.F, { open: 0.6 }, { open: 1, duration: T(0.18), ease: 'back.out(2.5)' });
   }
@@ -886,10 +894,13 @@ export class Rat extends Container {
     earR.rotation = -earPose + eR * 0.05;
     earL.position.set(earL.base.x, earL.base.y - Math.max(0, P.ears) * 3);
     earR.position.set(earR.base.x, earR.base.y - Math.max(0, P.ears) * 3);
-    for (const k of ['browL', 'browR']) {
+    // brows: always on, they carry the acting (a blink tugs them down a hair)
+    for (const k of ['browL', 'browR'] as const) {
       const b = g(k);
-      b.alpha = F.worry;
-      b.position.set(b.base.x, b.base.y - F.worry * 2);
+      const s = k === 'browL' ? 1 : -1;
+      b.alpha = 1;
+      b.position.set(b.base.x, b.base.y + (F.by + F.blink * 2.5) * HS);
+      b.rotation = (s * F.br * Math.PI) / 180;
     }
     const tear = g('tear');
     tear.alpha = this.state === 'worried' ? F.worry : 0;

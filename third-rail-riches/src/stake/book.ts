@@ -16,7 +16,7 @@
  * position (`v`); cell ids are not written (bookToRound rebuilds them: a held coin keeps the id it
  * had on the spin before, every other cell gets a fresh one).
  */
-import { BOOST_COST, CELLS, COST, Sym, type BonusKind, type Cell, type RoundKind, type RoundResult, type SpinResult, type Train } from '../math/types';
+import { BOOST_COST, CELLS, COST, Sym, type BonusKind, type Cell, type Crash, type RoundKind, type RoundResult, type SpinResult, type Train } from '../math/types';
 
 export type StakeMode = 'BASE' | 'BOOST' | 'WITCHING' | 'INFERNO';
 export const STAKE_MODES: readonly StakeMode[] = ['BASE', 'BOOST', 'WITCHING', 'INFERNO'];
@@ -25,18 +25,20 @@ export const KIND_OF_MODE: Record<StakeMode, RoundKind> = { BASE: 'base', BOOST:
 /** Cost of a round in bet multiples (the RGS debits bet x cost). */
 export const MODE_COST: Record<StakeMode, number> = { BASE: 1, BOOST: BOOST_COST, WITCHING: COST.buy_witching, INFERNO: COST.buy_inferno };
 
-export type BookTrain = Omit<Train, 'coins'> & { coins: { pos: number; value: number }[] };
-export type BookSpin = Omit<SpinResult, 'grid' | 'trains'> & {
+export type BookTrain = Omit<Train, 'coins'> & { coins: { at: number; value: number; beat: number }[] };
+export type BookCrash = Omit<Crash, 'wreck'> & { wreck: { at: number; value: number }[] };
+export type BookSpin = Omit<SpinResult, 'grid' | 'trains' | 'crashes'> & {
   /** Symbol id per position. */
   g: number[];
   /** Fare Coin value by position. */
   v: Record<number, number>;
   trains: BookTrain[];
+  crashes: BookCrash[];
 };
 
 export type BookEvent =
   | { index: number; type: 'spin'; spin: BookSpin; retrigger?: number }
-  | { index: number; type: 'bonusStart'; kind: BonusKind; awarded: number; goldenRow: number; powerStart: number }
+  | { index: number; type: 'bonusStart'; kind: BonusKind; awarded: number; goldenAt: number; powerStart: number }
   | { index: number; type: 'final'; totalWin: number; maxWin: boolean };
 
 export interface Book {
@@ -49,12 +51,18 @@ export interface Book {
 export const toHundredths = (multiple: number) => Math.round(multiple * 100);
 
 function stripSpin(s: SpinResult): BookSpin {
-  const { grid, trains, ...rest } = s;
+  const { grid, trains, crashes, ...rest } = s;
   const v: Record<number, number> = {};
   grid.forEach((c, p) => {
     if (c.sym === Sym.COIN) v[p] = c.value ?? 0;
   });
-  return { ...rest, g: grid.map((c) => c.sym), v, trains: trains.map((t) => ({ ...t, coins: t.coins.map(({ pos, value }) => ({ pos, value })) })) };
+  return {
+    ...rest,
+    g: grid.map((c) => c.sym),
+    v,
+    trains: trains.map((t) => ({ ...t, coins: t.coins.map(({ at, value, beat }) => ({ at, value, beat })) })),
+    crashes: crashes.map((c) => ({ ...c, wreck: c.wreck.map(({ at, value }) => ({ at, value })) })),
+  };
 }
 
 export function roundToBook(id: number, r: RoundResult): Book {
@@ -63,7 +71,7 @@ export function roundToBook(id: number, r: RoundResult): Book {
   events.push({ index: i++, type: 'spin', spin: stripSpin(r.trigger) });
   if (r.bonus) {
     const b = r.bonus;
-    events.push({ index: i++, type: 'bonusStart', kind: b.kind, awarded: b.awarded, goldenRow: b.goldenRow, powerStart: b.powerStart });
+    events.push({ index: i++, type: 'bonusStart', kind: b.kind, awarded: b.awarded, goldenAt: b.goldenAt, powerStart: b.powerStart });
     b.spins.forEach((s, k) => {
       const re = b.retriggers.find((x) => x.afterSpin === k);
       events.push({ index: i++, type: 'spin', spin: stripSpin(s), ...(re ? { retrigger: re.added } : {}) });
@@ -88,11 +96,12 @@ function fullSpin(s: BookSpin, prev: Cell[] | null, nextId: { n: number }, golde
     if (p === golden && sym === Sym.LOCO) c.golden = true;
     grid.push(c);
   }
-  const trains: Train[] = s.trains.map((t) => ({ ...t, coins: t.coins.map((c) => ({ ...c, id: grid[c.pos].id })) }));
+  const trains: Train[] = s.trains.map((t) => ({ ...t, coins: t.coins.map((c) => ({ ...c, id: grid[c.at].id })) }));
+  const crashes: Crash[] = (s.crashes ?? []).map((c) => ({ ...c, wreck: c.wreck.map((w) => ({ ...w, id: grid[w.at].id })) }));
   const { g, v, ...rest } = s;
   void g;
   void v;
-  return { ...rest, grid, trains };
+  return { ...rest, grid, trains, crashes };
 }
 
 /** Rebuild the presenter's RoundResult from RGS state. */
@@ -114,7 +123,7 @@ export function bookToRound(events: BookEvent[], mode: StakeMode, payoutMultipli
     for (const re of retriggers) total += re.added;
     let prev: Cell[] | null = null;
     const full = bonusSpins.map((e) => {
-      const s = fullSpin(e.spin, prev, nextId, start.goldenRow);
+      const s = fullSpin(e.spin, prev, nextId, start.goldenAt);
       prev = s.grid;
       total += s.levelSpins;
       return s;
@@ -126,7 +135,7 @@ export function bookToRound(events: BookEvent[], mode: StakeMode, payoutMultipli
       retriggers,
       totalSpins: r.maxWin ? full.length : total,
       bonusWin: bonusSpins.reduce((a, e) => a + e.spin.spinWin, 0),
-      goldenRow: start.goldenRow,
+      goldenAt: start.goldenAt,
       powerStart: start.powerStart,
     };
   }

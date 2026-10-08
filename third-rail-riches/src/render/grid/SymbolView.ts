@@ -153,7 +153,7 @@ function idle(fn: () => void) {
 const CREATURE = (s: number) => s >= Sym.H4 && s <= Sym.TOP;
 const SHINY = (s: number) => s <= Sym.L4 || s === Sym.FS || s === Sym.COIN || s === Sym.WILD;
 /** Symbols with a soft glow behind them, and its colour. */
-const AURA: Partial<Record<number, number>> = { [Sym.WILD]: 0x3fc8ff, [Sym.FS]: 0xf4b73a, [Sym.COIN]: 0xffe6a3, [Sym.LOCO]: 0xffb43c, [Sym.SWITCH]: 0x5fd3a1 };
+const AURA: Partial<Record<number, number>> = { [Sym.WILD]: 0x3fc8ff, [Sym.FS]: 0xf4b73a, [Sym.COIN]: 0xffe6a3, [Sym.LOCO]: 0xffb43c, [Sym.SIGNAL]: 0x5fd3a1, [Sym.SECURITY]: 0xffb43c };
 /** Coin value text tone per metal (bronze, silver, gold, platinum). */
 const COIN_TONE: NumTone[] = ['white', 'white', 'white', 'gold'];
 
@@ -190,6 +190,7 @@ export class SymbolView extends Container {
   /** 0..1: trembling (a waiting coin about to be collected, a locomotive revving). */
   heat = 0;
   private winT = -1;
+  private flareAnim?: gsap.core.Timeline;
   private frames?: Frames;
   /** Lit state: headlamp on (Locomotive), lever thrown (Junction). */
   lit = false;
@@ -341,7 +342,7 @@ export class SymbolView extends Container {
       this.applyTexture();
       return Promise.resolve();
     }
-    const tl = this.flareTl(T(0.08), T(0.26), this.sym === Sym.SWITCH ? 0xc8ffe6 : 0xfff0c8, () => {
+    const tl = this.flareTl(T(0.08), T(0.26), this.sym === Sym.SIGNAL ? 0xc8ffe6 : 0xfff0c8, () => {
       this.lit = on;
       this.applyTexture();
     });
@@ -494,9 +495,12 @@ export class SymbolView extends Container {
    * runs at the peak, so a texture change happens inside the flash instead of popping.
    */
   flareTl(up: number, down: number, tint = 0xfff0c8, swap?: () => void, peak = 0.95): gsap.core.Timeline {
+    // a flare already running gives way (killing the flash's tweens from inside this timeline
+    // would kill this timeline's own tweens and it would never finish)
+    this.flareAnim?.kill();
     const tl = gsap.timeline({ onComplete: () => void (this.flash.visible = false) });
+    this.flareAnim = tl;
     tl.call(() => {
-      gsap.killTweensOf(this.flash);
       this.flash.texture = this.body.texture;
       this.flash.scale.copyFrom(this.body.scale);
       this.flash.tint = tint;

@@ -8,46 +8,50 @@
  */
 import { PAY_H, TIERS } from './paytable';
 import { BUY_RUSH_SCATS, COIN_VALUES, LAST_TRAIN, RETRIGGER_MIN, RETRIGGER_SPINS, RUSH_SPINS, TRIGGER_MIN, TUNED, type Model, type ModelMode, type SetSpec } from './model';
+import { LINES, NEIGHBOURS, STATIONS, TERMINALS, TICKET_STATIONS, departure } from './network';
 import { createRng, type Rng } from './rng';
 import {
   CELLS,
   COST,
+  CRASH_MULT,
   LEVEL_SPINS,
+  MAX_BEATS,
   MAX_WIN,
   MAX_WIN_H,
-  MIN_REELS,
+  MIN_RUN,
   PAYING_SYMBOLS,
   POWER_STEPS,
-  REELS,
-  ROWS,
+  REPAY_MULT,
   Sym,
   levelOf,
   multOfLevel,
   type BonusKind,
   type BonusResult,
   type Cell,
+  type Crash,
   type Force,
   type Pos,
   type RoundKind,
   type RoundResult,
+  type RouteWin,
   type SpinResult,
   type Train,
-  type WayWin,
 } from './types';
 
 const COIN_H = COIN_VALUES.map((v) => Math.round(v * 100));
+/** The special each station kind can land. */
+const KIND_SPECIAL = { terminal: Sym.LOCO, interchange: Sym.SIGNAL, stop: Sym.SECURITY } as const;
 
 /** A parameter set compiled to cumulative tables. */
 export interface CompiledSet {
   minLoco: number;
-  /** Reel 1: cumulative over [paying 0..8, LOCO]. */
-  reel1: Float64Array;
-  /** Reels 2-5: cumulative over [paying 0..8, WILD, COIN, SWITCH]. */
-  mid: Float64Array;
-  /** Reel 6: as mid without SWITCH. */
-  last: Float64Array;
+  /** Per station: cumulative over [paying 0..8, WILD, COIN, the station kind's special]. */
+  table: Float64Array[];
+  /** Terminals when the Locomotive count is forced: the same table without LOCO. */
+  noLoco: Float64Array;
   fsCum: Float64Array;
   coinCum: Float64Array;
+  clear: number;
 }
 export type CompiledModel = Record<ModelMode, CompiledSet>;
 
@@ -66,13 +70,15 @@ function cumulative(w: readonly number[]): Float64Array {
 function compileSet(s: SetSpec): CompiledSet {
   const payTotal = s.pay.reduce((a, b) => a + b, 0);
   const pay = (share: number) => s.pay.map((w) => (w / payTotal) * share);
+  const row = (special: number) => cumulative([...pay(1 - s.wild - s.coin - special), s.wild, s.coin, special]);
+  const byKind = { terminal: row(s.loco), interchange: row(s.signal), stop: row(s.security) };
   return {
     minLoco: s.minLoco ?? 0,
-    reel1: cumulative([...pay(1 - s.loco), s.loco]),
-    mid: cumulative([...pay(1 - s.wild - s.coin - s.switch), s.wild, s.coin, s.switch]),
-    last: cumulative([...pay(1 - s.wild - s.coin), s.wild, s.coin]),
+    table: STATIONS.map((st) => byKind[st.kind]),
+    noLoco: row(0),
     fsCum: cumulative(s.fsDist),
     coinCum: cumulative(s.coinWeights),
+    clear: s.clear,
   };
 }
 
@@ -91,16 +97,32 @@ function pick(cum: Float64Array, u: number): number {
 /** Counters the simulator reads (optional). */
 export interface EngineCounters {
   spins: number;
-  waysH: number;
+  routesH: number;
   trainH: number;
+  crashH: number;
   locos: number;
-  trains: number;
-  branches: number;
+  crashes: number;
+  redirects: number;
+  clears: number;
+  helds: number;
   coinsLanded: number;
   coinsCollected: number;
   levelUps: number;
 }
-export const createCounters = (): EngineCounters => ({ spins: 0, waysH: 0, trainH: 0, locos: 0, trains: 0, branches: 0, coinsLanded: 0, coinsCollected: 0, levelUps: 0 });
+export const createCounters = (): EngineCounters => ({
+  spins: 0,
+  routesH: 0,
+  trainH: 0,
+  crashH: 0,
+  locos: 0,
+  crashes: 0,
+  redirects: 0,
+  clears: 0,
+  helds: 0,
+  coinsLanded: 0,
+  coinsCollected: 0,
+  levelUps: 0,
+});
 
 export interface PlayOptions {
   kind: RoundKind;
@@ -118,105 +140,230 @@ interface Ctx {
   model: CompiledModel;
 }
 
-/** Ways evaluation on a grid of symbol ids. Returns total hundredths; fills `out` when given. */
-export function evalWays(syms: Int8Array, out: WayWin[] | null): number {
+const matches = (v: number, s: number) => v === s || v === Sym.WILD;
+
+/**
+ * Route wins on a board of symbol ids: for every line and paying symbol, every maximal run of 3+
+ * consecutive stations holding the symbol or a Live Wire (with at least one of the symbol) pays.
+ * Returns total hundredths; fills `out` when given.
+ */
+export function evalRoutes(syms: Int8Array, out: RouteWin[] | null): number {
   let total = 0;
-  for (let s = 0; s < PAYING_SYMBOLS; s++) {
-    let ways = 1;
-    let reels = 0;
-    for (let r = 0; r < REELS; r++) {
-      let n = 0;
-      for (let row = 0; row < ROWS; row++) {
-        const v = syms[r * ROWS + row];
-        if (v === s || (r > 0 && v === Sym.WILD)) n++;
+  for (let li = 0; li < LINES.length; li++) {
+    const st = LINES[li].stops;
+    const n = st.length;
+    for (let s = 0; s < PAYING_SYMBOLS; s++) {
+      let i = 0;
+      while (i < n) {
+        if (!matches(syms[st[i]], s)) {
+          i++;
+          continue;
+        }
+        let j = i;
+        let has = false;
+        while (j < n && matches(syms[st[j]], s)) {
+          if (syms[st[j]] === s) has = true;
+          j++;
+        }
+        const len = j - i;
+        if (len >= MIN_RUN && has) {
+          const payH = PAY_H[s * TIERS + len - MIN_RUN];
+          total += payH;
+          if (out) out.push({ sym: s as Sym, line: li, stations: st.slice(i, j), pay: payH / 100 });
+        }
+        i = j;
       }
-      if (n === 0) break;
-      ways *= n;
-      reels++;
-    }
-    if (reels < MIN_REELS) continue;
-    const payH = PAY_H[s * TIERS + reels - MIN_REELS] * ways;
-    total += payH;
-    if (out) {
-      const positions: Pos[] = [];
-      for (let p = 0; p < reels * ROWS; p++) {
-        const v = syms[p];
-        if (v === s || (p >= ROWS && v === Sym.WILD)) positions.push(p);
-      }
-      out.push({ sym: s as Sym, reels, ways, positions, basePay: PAY_H[s * TIERS + reels - MIN_REELS] / 100, pay: payH / 100 });
     }
   }
   return total;
 }
 
+interface Run {
+  line: number;
+  idx: number;
+  dir: 1 | -1;
+  at: Pos;
+  wait: number;
+  used: number; // bitmask of signals already taken
+  alive: boolean;
+  haulH: number;
+}
+
 /**
- * Run the trains on a grid. Locomotives (reel 1) leave in row order; all trains advance one column
- * at a time and enter it together; then each Junction a train stands on sends branches into the
- * rows above and below, in its own column, if those cells are not already run. A train stops when
- * the cell ahead was already run. Returns the haul in hundredths and fills `trains`.
+ * Run the trains. Every Locomotive departs its terminal at beat 0; each beat every running train
+ * moves one station along its line (a train waiting at a security check stays). Collisions are
+ * found before anyone moves: two trains entering the same station, two trains swapping stations
+ * (head-on), or a train entering the station a waiting train stands at. Then every other train
+ * enters its station: it collects a coin there, a Signal redirects it onto the crossing line, a
+ * Security Check stops it (ALL CLEAR: wait a beat, Delay Repay x2; INCIDENT: held). Crashes take the
+ * coins at and around the crash into the pile and pay pile x CRASH_MULT.
+ * Returns the train payout in hundredths (before the POWER multiplier).
  */
-export function runTrains(syms: Int8Array, valH: Int32Array, ids: Int32Array, trains: Train[], collected: Uint8Array): number {
-  const visited = new Uint8Array(CELLS);
+export function runTrains(
+  syms: Int8Array,
+  valH: Int32Array,
+  ids: Int32Array,
+  golden: number,
+  secure: () => boolean,
+  trains: Train[],
+  crashes: Crash[],
+  collected: Uint8Array,
+  ctr?: EngineCounters,
+): number {
   collected.fill(0);
-  let haul = 0;
-  const alive: boolean[] = [];
-  /** The train moves into (c, row): it runs the cell and collects a coin there. */
-  const occupy = (t: Train, c: number) => {
-    const p = c * ROWS + t.row;
-    visited[p] = 1;
-    t.to = c;
-    if (syms[p] === Sym.COIN) {
-      haul += valH[p];
-      collected[p] = 1;
-      t.coins.push({ pos: p, value: valH[p] / 100, id: ids[p] });
-    }
-  };
-  /** A train standing on a Junction sends branches into the free cells above and below (recursively). */
-  const branch = (ti: number, c: number) => {
-    const t = trains[ti];
-    const p = c * ROWS + t.row;
-    if (syms[p] !== Sym.SWITCH) return;
-    t.switches.push(p);
-    for (const dr of [-1, 1]) {
-      const row = t.row + dr;
-      if (row < 0 || row >= ROWS) continue;
-      if (visited[c * ROWS + row]) continue;
-      const b: Train = { row, from: c, parent: ti, via: p, coins: [], switches: [], to: c };
-      trains.push(b);
-      alive.push(true);
-      occupy(b, c);
-      branch(trains.length - 1, c);
-    }
-  };
-  for (let row = 0; row < ROWS; row++) {
-    if (syms[row] !== Sym.LOCO) continue;
-    trains.push({ row, from: 0, parent: -1, via: -1, coins: [], switches: [], to: 0 });
-    alive.push(true);
-    visited[row] = 1;
+  const runs: Run[] = [];
+  for (const t of TERMINALS) {
+    if (syms[t] !== Sym.LOCO) continue;
+    const d = departure(t);
+    runs.push({ line: d.line, idx: d.idx, dir: d.dir, at: t, wait: 0, used: 0, alive: true, haulH: 0 });
+    const tr: Train = { start: t, line: d.line, steps: [], coins: [], repay: 1, end: 'arrive', endBeat: 0, crash: -1, haul: 0 };
+    if (t === golden) tr.golden = true;
+    trains.push(tr);
   }
-  for (let c = 1; c < REELS; c++) {
-    // every running train enters the column first (they arrive together), then the junctions fire
-    const n = trains.length;
-    const entered: number[] = [];
-    for (let ti = 0; ti < n; ti++) {
-      if (!alive[ti]) continue;
-      if (visited[c * ROWS + trains[ti].row]) {
-        alive[ti] = false;
+  if (!runs.length) return 0;
+  const n = runs.length;
+  const target = new Int32Array(n);
+  const parent = new Int32Array(n);
+  const find = (a: number): number => (parent[a] === a ? a : (parent[a] = find(parent[a])));
+  const crashedAt: Pos[][] = Array.from({ length: n }, () => []);
+  let payH = 0;
+  for (let beat = 1; beat <= MAX_BEATS; beat++) {
+    let active = 0;
+    for (let i = 0; i < n; i++) {
+      parent[i] = i;
+      crashedAt[i].length = 0;
+      target[i] = -1;
+      const r = runs[i];
+      if (!r.alive) continue;
+      active++;
+      if (r.wait > 0) continue;
+      const ni = r.idx + r.dir;
+      const stops = LINES[r.line].stops;
+      if (ni < 0 || ni >= stops.length) {
+        r.alive = false;
+        trains[i].end = 'arrive';
+        active--;
         continue;
       }
-      occupy(trains[ti], c);
-      entered.push(ti);
+      target[i] = stops[ni];
     }
-    for (const ti of entered) branch(ti, c);
+    if (!active) break;
+    // collisions
+    const hit = new Uint8Array(n);
+    const join = (a: number, b: number, at: Pos[]) => {
+      hit[a] = hit[b] = 1;
+      crashedAt[a].push(...at);
+      crashedAt[b].push(...at);
+      parent[find(a)] = find(b);
+    };
+    for (let a = 0; a < n; a++) {
+      if (!runs[a].alive || target[a] < 0) continue;
+      for (let b = 0; b < n; b++) {
+        if (a === b || !runs[b].alive) continue;
+        if (target[b] < 0) {
+          if (target[a] === runs[b].at) join(a, b, [runs[b].at]); // ran into a waiting train
+        } else if (b > a) {
+          if (target[a] === target[b]) join(a, b, [target[a]]);
+          else if (target[a] === runs[b].at && target[b] === runs[a].at) join(a, b, [runs[a].at, runs[b].at]);
+        }
+      }
+    }
+    // everyone not crashing moves (or waits)
+    for (let i = 0; i < n; i++) {
+      const r = runs[i];
+      if (!r.alive || hit[i]) continue;
+      if (target[i] < 0) {
+        r.wait--;
+        continue;
+      }
+      const t = trains[i];
+      const at = target[i];
+      r.idx += r.dir;
+      r.at = at;
+      t.endBeat = beat;
+      const step: Train['steps'][number] = { beat, at, line: r.line };
+      t.steps.push(step);
+      if (syms[at] === Sym.COIN && !collected[at]) {
+        collected[at] = 1;
+        r.haulH += valH[at];
+        t.coins.push({ at, value: valH[at] / 100, id: ids[at], beat });
+      }
+      const sym = syms[at];
+      if (sym === Sym.SIGNAL && !(r.used & (1 << at))) {
+        r.used |= 1 << at;
+        const other = STATIONS[at].lines.find((l) => l !== r.line)!;
+        const stops = LINES[other].stops;
+        const k = stops.indexOf(at);
+        r.line = other;
+        r.idx = k;
+        r.dir = stops.length - 1 - k >= k ? 1 : -1;
+        step.event = 'redirect';
+        if (ctr) ctr.redirects++;
+      } else if (sym === Sym.SECURITY) {
+        if (secure()) {
+          r.wait = 1;
+          t.repay *= REPAY_MULT;
+          step.event = 'clear';
+          if (ctr) ctr.clears++;
+        } else {
+          r.alive = false;
+          t.end = 'held';
+          step.event = 'held';
+          if (ctr) ctr.helds++;
+        }
+      }
+    }
+    // crashes, one per connected group
+    const groups = new Map<number, number[]>();
+    for (let i = 0; i < n; i++) {
+      if (!hit[i]) continue;
+      const g = find(i);
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g)!.push(i);
+    }
+    for (const members of groups.values()) {
+      const sites = [...new Set(members.flatMap((i) => crashedAt[i]))].sort((a, b) => a - b);
+      const area = new Set<Pos>(sites);
+      for (const s of sites) for (const nb of NEIGHBOURS[s]) area.add(nb);
+      let pileH = 0;
+      for (const i of members) {
+        const r = runs[i];
+        r.alive = false;
+        trains[i].end = 'crash';
+        trains[i].endBeat = beat;
+        trains[i].crash = crashes.length;
+        pileH += r.haulH * trains[i].repay;
+      }
+      const wreck: Crash['wreck'] = [];
+      for (const s of [...area].sort((a, b) => a - b)) {
+        if (syms[s] !== Sym.COIN || collected[s]) continue;
+        collected[s] = 1;
+        pileH += valH[s];
+        wreck.push({ at: s, value: valH[s] / 100, id: ids[s] });
+      }
+      const pay = pileH * CRASH_MULT;
+      payH += pay;
+      crashes.push({ beat, at: sites, trains: members, wreck, pile: pileH / 100, mult: CRASH_MULT, pay: pay / 100 });
+      if (ctr) {
+        ctr.crashes++;
+        ctr.crashH += pay;
+      }
+    }
   }
-  return haul;
+  for (let i = 0; i < n; i++) {
+    const t = trains[i];
+    t.haul = runs[i].haulH / 100;
+    if (runs[i].alive) t.end = 'stall';
+    if (t.crash < 0) payH += runs[i].haulH * t.repay;
+  }
+  return payH;
 }
 
 interface SpinState {
-  /** Bonus only: sticky coins by position (value hundredths, id); -1 = none. */
+  /** Bonus only: sticky coins by station (value hundredths, id); -1 = none. */
   stickyVal: Int32Array;
   stickyId: Int32Array;
-  goldenRow: number;
+  goldenAt: number;
   power: number;
 }
 
@@ -225,6 +372,18 @@ interface SpinOut {
   winH: number;
   scat: number;
   levelSpins: number;
+}
+
+function shuffleTake(rng: Rng, from: readonly number[], k: number, ok: (p: number) => boolean): number[] {
+  const pool = from.filter(ok);
+  const out: number[] = [];
+  while (k > 0 && pool.length) {
+    const j = rng.int(pool.length);
+    out.push(pool[j]);
+    pool.splice(j, 1);
+    k--;
+  }
+  return out;
 }
 
 function playSpin(ctx: Ctx, set: ModelMode, mode: SpinResult['mode'], st: SpinState | null, force: Force | null, totalBeforeH: number, ctr?: EngineCounters): SpinOut {
@@ -244,11 +403,9 @@ function playSpin(ctx: Ctx, set: ModelMode, mode: SpinResult['mode'], st: SpinSt
         heldMask[p] = 1;
       }
     }
-    if (st.goldenRow >= 0) {
-      const p = st.goldenRow;
-      syms[p] = Sym.LOCO;
-      ids[p] = -2; // fixed id below
-      heldMask[p] = 1;
+    if (st.goldenAt >= 0) {
+      syms[st.goldenAt] = Sym.LOCO;
+      heldMask[st.goldenAt] = 1;
     }
   }
   if (force?.grid) {
@@ -257,69 +414,46 @@ function playSpin(ctx: Ctx, set: ModelMode, mode: SpinResult['mode'], st: SpinSt
       if (syms[p] === Sym.COIN) valH[p] = Math.round((force.values?.[p] ?? 1) * 100);
     }
   } else {
-    // tickets: k distinct reels, a random free row on each
-    let k = force?.scatCount ?? pick(cm.fsCum, rng.next());
-    if (k > 0) {
-      const reels = [0, 1, 2, 3, 4, 5];
-      for (let i = 0; i < 6 && k > 0; i++) {
-        const j = i + rng.int(6 - i);
-        const r = reels[j];
-        reels[j] = reels[i];
-        reels[i] = r;
-        const free: number[] = [];
-        for (let row = 0; row < ROWS; row++) if (syms[r * ROWS + row] < 0) free.push(r * ROWS + row);
-        if (!free.length) continue;
-        syms[free[rng.int(free.length)]] = Sym.FS;
-        k--;
-      }
-    }
-    let locoLeft = force?.locoCount;
-    if (locoLeft !== undefined) {
-      const rows: number[] = [];
-      for (let row = 0; row < ROWS; row++) if (syms[row] < 0) rows.push(row);
-      while (locoLeft > 0 && rows.length) {
-        const j = rng.int(rows.length);
-        syms[rows[j]] = Sym.LOCO;
-        rows.splice(j, 1);
-        locoLeft--;
-      }
-    }
+    // tickets: k distinct non-terminal stations
+    const k = force?.scatCount ?? pick(cm.fsCum, rng.next());
+    if (k > 0) for (const p of shuffleTake(rng, TICKET_STATIONS, k, (p) => syms[p] < 0)) syms[p] = Sym.FS;
+    const forcedLocos = force?.locoCount;
+    if (forcedLocos !== undefined) for (const p of shuffleTake(rng, TERMINALS, forcedLocos, (p) => syms[p] < 0)) syms[p] = Sym.LOCO;
     for (let p = 0; p < CELLS; p++) {
       if (syms[p] >= 0) continue;
-      const r = (p / ROWS) | 0;
-      const u = rng.next();
-      if (r === 0) {
-        const i = pick(cm.reel1, u);
-        syms[p] = i === PAYING_SYMBOLS ? (force?.locoCount !== undefined ? pickPaying(cm.reel1, rng) : Sym.LOCO) : i;
-      } else {
-        const i = pick(r === REELS - 1 ? cm.last : cm.mid, u);
-        if (i < PAYING_SYMBOLS) syms[p] = i;
-        else if (i === PAYING_SYMBOLS) syms[p] = Sym.WILD;
-        else if (i === PAYING_SYMBOLS + 1) {
-          syms[p] = Sym.COIN;
-          valH[p] = COIN_H[pick(cm.coinCum, rng.next())];
-        } else syms[p] = Sym.SWITCH;
+      const kind = STATIONS[p].kind;
+      const table = forcedLocos !== undefined && kind === 'terminal' ? cm.noLoco : cm.table[p];
+      const i = pick(table, rng.next());
+      if (i < PAYING_SYMBOLS) syms[p] = i;
+      else if (i === PAYING_SYMBOLS) syms[p] = Sym.WILD;
+      else if (i === PAYING_SYMBOLS + 1) {
+        syms[p] = Sym.COIN;
+        valH[p] = COIN_H[pick(cm.coinCum, rng.next())];
+      } else syms[p] = KIND_SPECIAL[kind];
+    }
+    if (cm.minLoco > 0) {
+      // Express Pass: a Locomotive on a random terminal that holds a paying symbol, if none landed
+      let have = 0;
+      const free: number[] = [];
+      for (const t of TERMINALS) {
+        if (syms[t] === Sym.LOCO) have++;
+        else if (syms[t] < PAYING_SYMBOLS && !heldMask[t]) free.push(t);
       }
+      for (const p of shuffleTake(rng, free, cm.minLoco - have, () => true)) syms[p] = Sym.LOCO;
     }
-  }
-  if (!force?.grid && cm.minLoco > 0) {
-    // Express Pass: a Locomotive on a random reel-1 row that holds a paying symbol, if none landed
-    let n = 0;
-    const rows: number[] = [];
-    for (let row = 0; row < ROWS; row++) {
-      if (syms[row] === Sym.LOCO) n++;
-      else if (syms[row] < PAYING_SYMBOLS && !heldMask[row]) rows.push(row);
-    }
-    if (n < cm.minLoco && rows.length) syms[rows[ctx.rng.int(rows.length)]] = Sym.LOCO;
   }
   for (let p = 0; p < CELLS; p++) if (!heldMask[p] || force?.grid) ids[p] = ctx.nextId++;
-  if (st && st.goldenRow >= 0 && !force?.grid) ids[st.goldenRow] = 0; // the Golden Locomotive keeps id 0 all bonus
+  const golden = st && st.goldenAt >= 0 && !force?.grid ? st.goldenAt : -1;
+  if (golden >= 0) ids[golden] = 0; // the Golden Locomotive keeps id 0 all bonus
 
-  const ways: WayWin[] | null = record ? [] : null;
-  const waysH = evalWays(syms, ways);
+  const routes: RouteWin[] | null = record ? [] : null;
+  const routesH = evalRoutes(syms, routes);
   const trains: Train[] = [];
+  const crashes: Crash[] = [];
   const collected = new Uint8Array(CELLS);
-  const haulH = runTrains(syms, valH, ids, trains, collected);
+  const queue = force?.security ? [...force.security] : [];
+  const secure = () => (queue.length ? queue.shift()! : rng.next() < cm.clear);
+  const haulH = runTrains(syms, valH, ids, golden, secure, trains, crashes, collected, ctr);
   const levelBefore = st ? levelOf(st.power) : 0;
   const mult = st ? multOfLevel(levelBefore) : 1;
   const trainH = haulH * mult;
@@ -354,7 +488,7 @@ function playSpin(ctx: Ctx, set: ModelMode, mode: SpinResult['mode'], st: SpinSt
       }
     }
   }
-  let winH = waysH + trainH;
+  let winH = routesH + trainH;
   let maxWin = false;
   if (totalBeforeH + winH >= MAX_WIN_H) {
     winH = MAX_WIN_H - totalBeforeH;
@@ -362,11 +496,9 @@ function playSpin(ctx: Ctx, set: ModelMode, mode: SpinResult['mode'], st: SpinSt
   }
   if (ctr) {
     ctr.spins++;
-    ctr.waysH += waysH;
+    ctr.routesH += routesH;
     ctr.trainH += trainH;
-    for (let row = 0; row < ROWS; row++) if (syms[row] === Sym.LOCO) ctr.locos++;
-    ctr.trains += trains.length;
-    for (const t of trains) if (t.parent >= 0) ctr.branches++;
+    ctr.locos += trains.length;
     for (let p = 0; p < CELLS; p++) if (syms[p] === Sym.COIN && !heldMask[p]) ctr.coinsLanded++;
     ctr.coinsCollected += coinsCollected;
     ctr.levelUps += levelAfter - levelBefore;
@@ -382,16 +514,17 @@ function playSpin(ctx: Ctx, set: ModelMode, mode: SpinResult['mode'], st: SpinSt
         c.held = true;
         held.push(p);
       }
-      if (st && p === st.goldenRow && !force?.grid) c.golden = true;
+      if (p === golden) c.golden = true;
       grid.push(c);
     }
     result = {
       mode,
       grid,
       held,
-      ways: ways!,
-      waysWin: waysH / 100,
+      routes: routes!,
+      routesWin: routesH / 100,
       trains,
+      crashes,
       haul: haulH / 100,
       mult,
       trainWin: trainH / 100,
@@ -409,19 +542,11 @@ function playSpin(ctx: Ctx, set: ModelMode, mode: SpinResult['mode'], st: SpinSt
   return { result, winH, scat, levelSpins };
 }
 
-/** A paying symbol from reel 1's table, redrawn until it is not a Locomotive (forced loco counts). */
-function pickPaying(cum: Float64Array, rng: Rng): number {
-  for (;;) {
-    const i = pick(cum, rng.next());
-    if (i < PAYING_SYMBOLS) return i;
-  }
-}
-
 function playBonus(ctx: Ctx, kind: BonusKind, awarded: number, totalBeforeH: number, ctr?: EngineCounters): { bonus: BonusResult | null; winH: number; maxWin: boolean; spins: number; retriggers: number } {
-  const st: SpinState = { stickyVal: new Int32Array(CELLS).fill(-1), stickyId: new Int32Array(CELLS).fill(-1), goldenRow: -1, power: 0 };
+  const st: SpinState = { stickyVal: new Int32Array(CELLS).fill(-1), stickyId: new Int32Array(CELLS).fill(-1), goldenAt: -1, power: 0 };
   const set: ModelMode = kind === 'last' ? 'last' : 'rush';
   if (kind === 'last') {
-    st.goldenRow = ctx.rng.int(ROWS);
+    st.goldenAt = TERMINALS[ctx.rng.int(TERMINALS.length)];
     st.power = POWER_STEPS[LAST_TRAIN.level - 1];
   }
   const powerStart = st.power;
@@ -437,7 +562,7 @@ function playBonus(ctx: Ctx, kind: BonusKind, awarded: number, totalBeforeH: num
     played++;
     winH += out.winH;
     if (out.result) spins.push(out.result);
-    if (out.result?.maxWin || totalBeforeH + winH >= MAX_WIN_H) {
+    if (totalBeforeH + winH >= MAX_WIN_H) {
       maxWin = true;
       break;
     }
@@ -449,7 +574,7 @@ function playBonus(ctx: Ctx, kind: BonusKind, awarded: number, totalBeforeH: num
     }
   }
   const bonus: BonusResult | null = ctx.record
-    ? { kind, awarded, spins, retriggers, totalSpins: maxWin ? played : total, bonusWin: winH / 100, goldenRow: st.goldenRow, powerStart }
+    ? { kind, awarded, spins, retriggers, totalSpins: maxWin ? played : total, bonusWin: winH / 100, goldenAt: st.goldenAt, powerStart }
     : null;
   return { bonus, winH, maxWin, spins: played, retriggers: nRe };
 }

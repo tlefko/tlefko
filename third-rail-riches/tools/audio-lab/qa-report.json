@@ -1,6 +1,6 @@
 {
- "generated": "2026-10-08T11:41:43.394Z",
- "totalBytes": 6182805,
+ "generated": "2026-10-08T13:07:10.693Z",
+ "totalBytes": 6366707,
  "rows": [
   {
    "file": "sfx-core.mp3#uiClick",
@@ -961,6 +961,196 @@
    "ok": true
   },
   {
+   "file": "sfx-core.mp3#flapRattle_0",
+   "kind": "sfx",
+   "seconds": 0.32852607709750564,
+   "I": -29.8,
+   "mMax": -26.5,
+   "samplePeak": -8.37,
+   "truePeak": -8.3,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#flapRattle_1",
+   "kind": "sfx",
+   "seconds": 0.321859410430839,
+   "I": -28.4,
+   "mMax": -26.6,
+   "samplePeak": -8.91,
+   "truePeak": -8.9,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#flapRattle_2",
+   "kind": "sfx",
+   "seconds": 0.3702721088435374,
+   "I": -29.3,
+   "mMax": -26.5,
+   "samplePeak": -10.6,
+   "truePeak": -10.6,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#flapRattle_3",
+   "kind": "sfx",
+   "seconds": 0.31501133786848073,
+   "I": -28.4,
+   "mMax": -26.6,
+   "samplePeak": -8.76,
+   "truePeak": -8.7,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#flapSettle_0",
+   "kind": "sfx",
+   "seconds": 0.17,
+   "I": -23.4,
+   "mMax": -23.4,
+   "samplePeak": -2.39,
+   "truePeak": -2.4,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#flapSettle_1",
+   "kind": "sfx",
+   "seconds": 0.17,
+   "I": -23.4,
+   "mMax": -23.4,
+   "samplePeak": -2.03,
+   "truePeak": -2,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#flapSettle_2",
+   "kind": "sfx",
+   "seconds": 0.17,
+   "I": -23.4,
+   "mMax": -23.4,
+   "samplePeak": -2.28,
+   "truePeak": -2.3,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#trainStep_0",
+   "kind": "sfx",
+   "seconds": 0.1983219954648526,
+   "I": -28.8,
+   "mMax": -27.5,
+   "samplePeak": -8.94,
+   "truePeak": -8.9,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#trainStep_1",
+   "kind": "sfx",
+   "seconds": 0.1991156462585034,
+   "I": -28.8,
+   "mMax": -27.4,
+   "samplePeak": -8.49,
+   "truePeak": -8.5,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#trainStep_2",
+   "kind": "sfx",
+   "seconds": 0.19904761904761906,
+   "I": -28.7,
+   "mMax": -27.4,
+   "samplePeak": -8.63,
+   "truePeak": -8.6,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#signalSwitch",
+   "kind": "sfx",
+   "seconds": 0.8,
+   "I": -21.4,
+   "mMax": -19.5,
+   "samplePeak": -3.4,
+   "truePeak": -3.4,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#securityAlarm",
+   "kind": "sfx",
+   "seconds": 0.9953968253968254,
+   "I": -18.6,
+   "mMax": -17.4,
+   "samplePeak": -8.67,
+   "truePeak": -8.7,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#allClear",
+   "kind": "sfx",
+   "seconds": 0.8369387755102041,
+   "I": -20.4,
+   "mMax": -17.4,
+   "samplePeak": -3.46,
+   "truePeak": -3.4,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#incident",
+   "kind": "sfx",
+   "seconds": 0.9662358276643991,
+   "I": -20,
+   "mMax": -17.6,
+   "samplePeak": -7.14,
+   "truePeak": -7.1,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#crashRumble",
+   "kind": "sfx",
+   "seconds": 0.6993650793650794,
+   "I": -20.1,
+   "mMax": -18.4,
+   "samplePeak": -7.82,
+   "truePeak": -7.8,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#crashImpact",
+   "kind": "sfx",
+   "seconds": 1.5016326530612245,
+   "I": -17.6,
+   "mMax": -12.5,
+   "samplePeak": -2.96,
+   "truePeak": -2.8,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#wreckScatter",
+   "kind": "sfx",
+   "seconds": 0.9472562358276644,
+   "I": -20.6,
+   "mMax": -18.5,
+   "samplePeak": -9.53,
+   "truePeak": -9.5,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#crashMult",
+   "kind": "sfx",
+   "seconds": 0.5683446712018141,
+   "I": -16.7,
+   "mMax": -14.5,
+   "samplePeak": -4.04,
+   "truePeak": -4,
+   "ok": true
+  },
+  {
+   "file": "sfx-core.mp3#routeTrace",
+   "kind": "sfx",
+   "seconds": 0.599954648526077,
+   "I": -24.3,
+   "mMax": -22.4,
+   "samplePeak": -13.97,
+   "truePeak": -14,
+   "ok": true
+  },
+  {
    "file": "sfx-extra.mp3#bonusIntro",
    "kind": "sfx",
    "seconds": 2.943469387755102,
@@ -1210,10 +1400,10 @@
  "decode": [
   {
    "file": "sfx-core.mp3",
-   "expected44": 3931870,
-   "expected48": 4279586,
-   "chromium44": 3931870,
-   "chromium48": 4279586,
+   "expected44": 4438900,
+   "expected48": 4831456,
+   "chromium44": 4438900,
+   "chromium48": 4831455,
    "chromiumOffset": 0,
    "ok": true
   },

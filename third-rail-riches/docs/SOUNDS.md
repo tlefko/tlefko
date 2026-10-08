@@ -1,7 +1,7 @@
 # Sounds: ids the game calls
 
 Every id below is in `public/audio` and `src/audio/manifest.ts`. Sources live in `tools/audio-lab/src/sfx/`
-(`ui.ts`, `reels.ts`, `wins.ts`, `symbols.ts`, `trains.ts`, `events.ts`, `splash.ts`); descriptions are also in
+(`ui.ts`, `reels.ts`, `wins.ts`, `symbols.ts`, `trains.ts`, `events.ts`, `splash.ts`, `map.ts`); descriptions are also in
 `tools/audio-lab/sounds.json` and can be auditioned on `/tools/audio-lab/` (with game-like demo sequences).
 
 Call them through the game adapter: `sound.play(id, { index, volume, rate, pan, delay })`,
@@ -101,6 +101,30 @@ together with `win`.
 | `haulMult` | | punchy brass "BWAP!" with timpani, kick, snare and crash for the multiplier |
 | `barTick` | 3 takes | tiny counting tick for the Total Win Bar |
 | `barApply` | | register "ka-ching" into a brass hit with snare and crash |
+
+## Subway map (live board)
+
+All in the core bank (`tools/audio-lab/src/sfx/map.ts`). Variant sounds wrap their `index` (modulo the
+variant count), so you can pass a station or train number straight through; omit `index` for a random
+take. `PARAMS` already sets voices/minGap/jitter/ducks for these.
+
+| id | index | sound |
+|---|---|---|
+| `flapRattle` | **0..3** (4 takes) | a station's split-flap board flipping: light, crisp burst of cards clattering (~0.3 s, -26 LUFS-M). One per station during the flip wave: `sound.play('flapRattle', { index: station, delay, pan })`; stagger by >= 12 ms (`minGap`), up to 8 overlap |
+| `flapSettle` | **0..2** (3 takes) | the last flap landing: wood-and-tin clack with a tiny rebound (~0.15 s). Play when that station's board stops |
+| `trainStep` | **0..2** (3 takes) | a train moves one station: quick, quiet clickety-clack (~0.18 s, -27). Pass the step count as `index` to rotate takes |
+| `signalSwitch` | | a Signal changes aspect: relay click, lamp humming up, then the points sliding over and locking with a clunk (~0.6 s; the clunk lands at 0.42 s) |
+| `securityAlarm` | | Security Check: two-tone station klaxon (hi-lo, hi-lo) with a bell trill and a scanner sweep (~0.9 s); ducks music a little |
+| `allClear` | | ALL CLEAR / Delay Repay x2: bright F-A-C chime climbing, a rubber stamp thump with a brass blip on the last note (stamp at 0.17 s) |
+| `incident` | | INCIDENT / train held: low "denied" buzzer (two blasts), dull stamp at 0.21 s, heavy air-brake hiss |
+| `crashRumble` | | two trains closing in: rising rush from both sides, motors screaming up, wheels hammering faster (0.6 s). Start it 0.6 s before the trains meet, then `crashImpact` |
+| `crashImpact` | | the collision: heavy iron impact, crunching metal, glass shattering, deep boom with sub thump, bolts and debris bouncing down (~1.5 s, -12 LUFS-M); ducks music [0.55, 1.6 s] |
+| `wreckScatter` | | coins and bolts flying out of the wreck, jingling and tumbling into a pile (~0.9 s; pile settles at ~0.6 s) |
+| `crashMult` | | the x2 crash multiplier slamming onto the pile: iron-and-brass stamp, kick, snare, coins jumping (~0.5 s) |
+| `routeTrace` | | a route win: light electric zip along the glowing line, a glint at the end (~0.45 s). Once per route |
+
+Suggested order for a crash: `crashRumble` (t-0.6 s) -> `crashImpact` (t) -> `wreckScatter` (t+0.3..0.5 s)
+-> `crashMult` when the x2 lands on the pile.
 
 ## Bonus
 

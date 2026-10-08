@@ -3,8 +3,7 @@ import { Stage, pickResolution } from '../render/app';
 import { quality } from '../render/quality';
 import { computeLayout, sceneLayout, type Layout } from '../render/layout';
 import { Background } from '../render/scene/Background';
-import { Reels } from '../render/grid/Reels';
-import { GridView } from '../render/grid/GridView';
+import { MapView } from '../render/map/MapView';
 import { SymbolTextures } from '../render/grid/SymbolView';
 import { WinBar } from '../render/winbar/WinBar';
 import { PowerMeter } from '../render/winbar/PowerMeter';
@@ -12,7 +11,7 @@ import { Particles } from '../render/fx/Particles';
 import { FilmOverlay } from '../render/fx/FilmOverlay';
 import { Conductor } from '../render/characters/Conductor';
 import { Rat } from '../render/characters/Rat';
-import { TrainLayer } from '../render/grid/Trains';
+import { TrainRunner } from '../render/map/TrainRunner';
 import { Logo } from '../render/Logo';
 import { RenderTexture, Sprite, Container as PContainer } from 'pixi.js';
 import { speed } from '../render/timing';
@@ -27,15 +26,14 @@ export class Scene {
   root = new Container();
   shake = new Container();
   bg = new Background();
-  reels = new Reels();
   symTex = new SymbolTextures();
   fx = new Particles();
-  grid!: GridView;
+  map!: MapView;
   winBar = new WinBar();
   meter = new PowerMeter();
   conductor = new Conductor();
   rat = new Rat();
-  trains!: TrainLayer;
+  trains!: TrainRunner;
   logo = new Logo();
   chars = new Container();
   labelLayer = new Container();
@@ -56,11 +54,13 @@ export class Scene {
 
   async init(host: HTMLElement) {
     await this.stage.init(host);
-    this.grid = new GridView(this.symTex, this.fx);
-    this.trains = new TrainLayer(this.grid, this.fx);
-    // Casey and Rivets stand in front of the train-car frame: a lean that reaches across the frame's
-    // edge reads as depth. The trains run over the symbols, under the frame's front trim.
-    this.shake.addChild(this.bg, this.reels.back, this.grid, this.trains, this.chars, this.reels.front, this.winBar, this.meter, this.logo, this.dimmer, this.fx, this.labelLayer);
+    this.map = new MapView(this.symTex, this.fx);
+    this.trains = new TrainRunner(this.map, this.fx);
+    // The map panel, its stations and the trains running over them; Casey and Rivets stand in front
+    // of the panel (a lean that crosses its edge reads as depth); the win display and the POWER meter
+    // sit inside the map's open bands.
+    this.shake.addChild(this.bg, this.map, this.trains, this.chars, this.winBar, this.meter, this.logo, this.dimmer, this.fx, this.labelLayer);
+    this.labelLayer.addChild(this.trains.labels);
     this.chars.addChild(this.conductor, this.rat);
     this.conductor.fx = this.fx;
     this.rat.fx = this.fx;
@@ -72,7 +72,7 @@ export class Scene {
     // Separate render groups: a structural change (a particle born, a symbol dropped in, a label
     // popped, a small graphic redrawn) rebuilds only its own group's draw list instead of the whole
     // scene's, and a screen shake moves a handful of group transforms instead of every object.
-    for (const c of [this.bg, this.chars, this.grid, this.trains, this.winBar, this.meter, this.fx, this.labelLayer, this.overlay, this.film]) c.isRenderGroup = true;
+    for (const c of [this.bg, this.chars, this.map, this.trains, this.winBar, this.meter, this.fx, this.labelLayer, this.overlay, this.film]) c.isRenderGroup = true;
     this.dimmer.alpha = 0;
     this.dimmer.visible = false;
     this.film.reduced = speed.reduced;
@@ -132,7 +132,7 @@ export class Scene {
     const needSymbols = Math.abs(this.symTex.size - S * res) > 2;
     await Promise.all([
       this.bg.layout(L, res),
-      this.reels.layout(L, res),
+      this.map.layout(L, res),
       needSymbols ? this.symTex.build(S * res) : Promise.resolve(),
       this.winBar.layout(L.winBar, res),
       this.meter.layout(L.meter, res),
@@ -148,12 +148,11 @@ export class Scene {
     sceneLayout.L = L;
     this.root.scale.set(1);
     this.root.position.set(0, 0);
-    this.grid.layout(L);
     this.conductor.position.set(L.captain.x, L.captain.y);
     this.conductor.scale.x = L.captain.flip ? -1 : 1;
     this.rat.position.set(L.parrot.x, L.parrot.y);
     this.rat.scale.x = L.parrot.flip ? -1 : 1;
-    this.grid.refreshValues();
+    this.map.refreshValues();
     this.dimmer.clear().rect(0, 0, W, H).fill({ color: 0x000000 });
     this.film.resize(W, H);
     this.onLayout?.(L);
@@ -220,6 +219,6 @@ export class Scene {
     this.film.update(dt);
     this.conductor.update(dt);
     this.rat.update(dt);
-    this.grid?.update(dt, this.busy);
+    this.map?.update(dt, this.busy);
   }
 }

@@ -1,16 +1,19 @@
 /**
  * Rivets the subway rat (docs/ART.md): the H1 paying symbol and every part of the sidekick rig
- * (render/characters/Rat.ts). A scrappy, lovable 1930s rubber-hose rat: grey fur, big round pink
- * ears, buck teeth, pie eyes, whiskers, a red newsboy cap, a patched mustard vest, a long pink tail
- * and white gloves, standing on a stack of two old suitcases.
+ * (render/characters/Rat.ts). A scrappy, lovable 1930s rubber-hose rat: a round grey head on a
+ * tapering snout with a big pink nose, two buck teeth, huge round pink ears, big pie eyes under
+ * bold little brows, a few clean whiskers, a red newsboy cap cocked on the back of his head, a
+ * patched mustard vest, a long pink tail and white gloves, standing on a stack of two suitcases.
  *
- * Everything is painted in the house hand-cel style (cut shadows on the lower right, hatching,
- * cut highlights, paper grain). The head is drawn once in a 256 box; the rig cuts it into parts
- * (`RAT_PARTS`) so ears, eyes, mouth, nose, whiskers and cap can move on their own.
+ * Painted like Conductor Casey (cast/paint.ts): three flat cel values per material, a thin warm
+ * rim, bold ink weighted lower right, a light grain; no hatching on him. The head is drawn once in
+ * a 256 box; the rig cuts it into parts (`RAT_PARTS`) so ears, eyes, brows, mouth, nose, whiskers
+ * and cap move on their own.
  */
-import { C, composeSymbol, pieEye, closedEye, nextId, brow, cel, celForm, celTones, shine, mix, GOLD_TONES } from './kit';
+import { C, composeSymbol, nextId, cel, celForm, celTones, shine, mix, GOLD_TONES } from './kit';
 import { type V, lens, mirrorX } from './geo';
-import { glove } from './characters';
+import { form, formLine, tones, brush, glint, inked, piePupil } from './cast/paint';
+import { caseyGlove } from './cast/casey';
 
 export type RatExpr = 'idle' | 'blink' | 'happy' | 'squeak' | 'worried';
 export type RatPose = 'idle' | 'blink' | 'win';
@@ -21,11 +24,15 @@ export type RatPose = 'idle' | 'blink' | 'win';
 const FUR = celTones(C.rat, C.ratDeep, C.ratLight);
 const MUZ = { base: mix(C.ratLight, C.white, 0.35), shade: mix(C.ratLight, C.rat, 0.45), light: C.white, hatch: mix(C.rat, C.ink, 0.3) };
 const PINK = { base: C.ratPink, shade: mix(C.ratPink, C.pinkDeep, 0.5), light: mix(C.ratPink, C.pinkLight, 0.8), hatch: mix(C.pinkDeep, C.ink, 0.3) };
-const NOSE = { base: mix(C.ratPink, C.pinkDeep, 0.38), shade: mix(C.ratPink, C.pinkDeep, 0.78), light: mix(C.ratPink, C.pinkLight, 0.5), hatch: C.pinkDeep };
-const RED = celTones(C.crimson, C.crimsonDeep, C.crimsonLight);
 const VEST = celTones(mix(C.amber, C.wood, 0.42), C.woodDark, C.amberLight);
 type Tones = { base: string; shade: string; light: string; hatch: string };
 const PAPER: Tones = { base: C.paper, shade: C.paperWarm, light: C.white, hatch: C.g3 };
+/** Clean cel tones for the new head (no hatching): fur, muzzle, pink, nose, cap red. */
+const FURc = { ...tones(C.rat, C.ratDeep, C.ratLight, C.amber, 0.55), light: mix(C.rat, C.ratLight, 0.6), rim: mix(mix(C.rat, C.ratDeep, 0.55), C.amberLight, 0.32) };
+const MUZc = { base: mix(C.ratLight, C.white, 0.45), shade: mix(C.ratLight, C.rat, 0.5), light: mix(C.white, '#ffffff', 0.5), rim: mix(C.ratLight, C.amberLight, 0.5) };
+const PINKc = { ...tones(C.ratPink, C.pinkDeep, C.pinkLight, C.amber, 0.45), rim: mix(mix(C.ratPink, C.pinkDeep, 0.45), C.amberLight, 0.4) };
+const NOSEc = { ...tones(mix(C.ratPink, C.pinkDeep, 0.35), C.pinkDeep, C.pinkLight, C.amber, 0.6) };
+const REDc = { ...tones(C.crimson, C.crimsonDeep, C.crimsonLight, C.amber, 0.55) };
 
 const circ = (cx: number, cy: number, r: number) => `M${cx - r} ${cy} A${r} ${r} 0 1 0 ${cx + r} ${cy} A${r} ${r} 0 1 0 ${cx - r} ${cy} Z`;
 const ell = (cx: number, cy: number, rx: number, ry: number) => `M${cx - rx} ${cy} A${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`;
@@ -37,162 +44,166 @@ export const cropBox = (svg: string, [x, y, w, h]: readonly number[]) =>
 /* ------------------------------------------------------------------ */
 /* Head geometry (256 box, neck pivot at (128, 226))                   */
 /* ------------------------------------------------------------------ */
-const HEAD = 'M128 48 C177 48 209 80 210 122 C211 148 203 164 191 176 C180 204 157 225 128 225 C99 225 76 204 65 176 C53 164 45 148 46 122 C47 80 79 48 128 48 Z';
-const MUZZLE = 'M128 136 C164 136 187 158 185 184 C183 208 158 225 128 225 C98 225 73 208 71 184 C69 158 92 136 128 136 Z';
-const MUZZLE_TOP = 'M72 190 C69 159 93 136 128 136 C163 136 187 159 184 190';
-const TUFT_TOP = 'M108 56 C106 40 114 30 120 40 C122 24 134 22 136 40 C142 30 152 36 150 56 Z';
-const cheekTuft = (s: 1 | -1) => {
-  const d = 'M58 142 L36 146 L52 156 L34 166 L54 170 L42 182 L70 178 Z';
-  return s > 0 ? d : mirrorX(d);
-};
-const EYE_Y = 120;
-const EYE_L = 106;
-const EYE_R = 150;
-const EYE_RX = 19;
-const EYE_RY = 25;
+/** A round cranium tapering to the snout (a rat, not a mouse): the chin is the snout's tip. */
+const HEAD = 'M128 46 C178 46 210 78 210 120 C210 148 198 166 184 180 C168 200 152 226 128 230 C104 226 88 200 72 180 C58 166 46 148 46 120 C46 78 78 46 128 46 Z';
+const MUZZLE = 'M128 134 C156 134 178 152 178 174 C178 198 154 224 128 228 C102 224 78 198 78 174 C78 152 100 134 128 134 Z';
+const EYE_Y = 114;
+const EYE_L = 104;
+const EYE_R = 152;
+const EYE_RX = 20;
+const EYE_RY = 24;
 /** Where each pie eye sits in its white (a touch toward the nose: a cute, slightly crossed look). */
-const PUP_L = 110;
-const PUP_R = 146;
-const EAR_C: Record<'L' | 'R', V> = { L: [48, 72], R: [208, 72] };
-const EAR_R = 40;
-const NOSE_C: V = [128, 154];
+const PUP_L = 108;
+const PUP_R = 148;
+const PRX = 10.5;
+const PRY = 14;
+const EAR_C: Record<'L' | 'R', V> = { L: [50, 70], R: [206, 70] };
+const EAR_R = 41;
+const NOSE_C: V = [128, 172];
+/** The eyes' layout for the rig: left eye centre, the right eye's offset, the pupils' offsets. */
+export const RAT_EYES = { x: EYE_L, y: EYE_Y, dx: EYE_R - EYE_L, pupil: PUP_L, pupilDx: PUP_R - PUP_L };
+/** The mouth (squeaks, nibbles) in the head box. */
+export const RAT_MOUTH: V = [128, 196];
 
 /** Big round ear: grey rim, pink inner. */
 function earForms(side: 'L' | 'R') {
   const [cx, cy] = EAR_C[side];
   const s = side === 'L' ? 1 : -1;
   const outer = circ(cx, cy, EAR_R);
-  const inner = ell(cx + s * 6, cy + 5, 27, 28);
-  const o = celForm(outer, { ...FUR, cut: [-8, -10], hatch: FUR.hatch, hatchGap: 5, seed: side === 'L' ? 11 : 12 });
-  const i = celForm(inner, { ...PINK, cut: [-6, -7], seed: side === 'L' ? 13 : 14, inner: `<path d="M${cx + s * -6} ${cy + 22} Q${cx + s * 8} ${cy + 8} ${cx + s * 14} ${cy - 14}" stroke="${mix(C.ratPink, C.pinkDeep, 0.45)}" stroke-width="4" fill="none" stroke-linecap="round"/>` });
+  const inner = ell(cx + s * 6, cy + 6, 27, 28);
+  const o = formLine(outer, { ...FURc, cut: [-8, -9], band: [3, 3.5] });
+  const i = formLine(inner, { ...PINKc, cut: [-6, -7], band: [3, 3], inner: `<path d="M${cx + s * -4} ${cy + 24} Q${cx + s * 10} ${cy + 10} ${cx + s * 14} ${cy - 12}" stroke="${PINKc.shade}" stroke-width="4" fill="none" stroke-linecap="round"/>` });
   return [
     { fills: o.fills, lines: o.line() },
     { fills: i.fills, lines: i.line('stroke-width="4.5"') },
   ];
 }
 
-/** The newsboy cap: puffy eight-panel crown, a short visor, a top button. Seat at (128, 92). */
+/** The newsboy cap: a puffy crown in panels, a short visor, a top button. Cocked on the back of his head (CAP_T). */
 function capLayers() {
-  const crown = 'M58 74 C46 44 80 12 132 12 C184 12 216 42 204 74 C200 86 184 92 164 92 L96 92 C76 92 62 86 58 74 Z';
-  const visor = 'M80 84 C102 96 158 96 180 84 C182 94 162 104 130 104 C98 104 78 94 80 84 Z';
-  const seams = 'M132 18 Q100 36 84 88 M132 18 Q118 46 114 92 M132 18 Q146 46 148 92 M132 18 Q166 38 180 88';
-  const cf = celForm(crown, {
-    ...RED,
-    cut: [-10, -12],
-    twist: -2,
-    hatch: RED.hatch,
-    hatchGap: 5.5,
-    seed: 21,
-    inner: `<path d="${seams}" stroke="${C.crimsonDeep}" stroke-width="3.2" fill="none" stroke-linecap="round" opacity=".75"/>`,
-  });
-  const VIS = celTones(mix(C.crimson, C.crimsonDeep, 0.35), C.crimsonDeep, C.crimson);
-  const vf = celForm(visor, { ...VIS, cut: [-4, -7], hatch: VIS.hatch, hatchGap: 4.5, seed: 22 });
-  const button = circ(132, 15, 8);
-  const bf = celForm(button, { ...RED, cut: [-3, -3], seed: 23 });
+  const crown = 'M66 72 C56 42 90 16 134 16 C178 16 208 42 198 72 C194 84 178 88 160 88 L98 88 C80 88 70 84 66 72 Z';
+  const visor = 'M84 82 C104 94 158 94 180 82 C182 92 162 102 132 102 C102 102 82 92 84 82 Z';
+  const seams = 'M134 20 Q106 40 98 86 M134 20 Q132 50 130 88 M134 20 Q160 40 166 86';
+  const cf = formLine(crown, { ...REDc, cut: [-11, -10], twist: -2, band: [4, 4], inner: `<path d="${seams}" stroke="${REDc.shade}" stroke-width="3.4" fill="none" stroke-linecap="round"/>` });
+  const VIS = tones(mix(C.crimson, C.crimsonDeep, 0.4), C.crimsonDeep, C.crimson, C.amber, 0.6);
+  const vf = formLine(visor, { ...VIS, cut: [-4, -6], band: [2, 2] });
+  const bf = formLine(circ(134, 18, 8), { ...REDc, cut: [-3, -3] });
   return {
     layers: [
-      { fills: cf.fills, lines: `${cf.line()}<path d="${seams}" stroke-width="3" opacity=".5"/>` },
-      { fills: vf.fills, lines: `${vf.line()}<path d="M88 91 Q130 100 172 91" stroke-width="3" opacity=".45"/>` },
+      { fills: cf.fills, lines: `${cf.line()}<path d="${seams}" stroke-width="3" opacity=".45"/>` },
+      { fills: vf.fills, lines: vf.line() },
       { fills: bf.fills, lines: bf.line('stroke-width="5"') },
     ],
-    top: `${shine([[70, 58], [84, 34], [108, 22], [124, 20]], 3.4, 0.55)}${shine([[96, 100], [118, 104], [140, 104]], 1.8, 0.35)}`,
+    top: `${glint([[74, 62], [80, 40], [100, 26], [122, 21]], 3.4, C.crimsonLight, 0.75)}${glint([[100, 96], [120, 99], [140, 99]], 1.8, C.crimsonLight, 0.6)}`,
   };
 }
-const CAP_T = 'translate(0 -11) rotate(-7 130 64)';
+/** The cap's seat on his head: lifted and cocked back so his brows and eyes stay clear. */
+const CAP_T = 'translate(2 -23) rotate(7 130 70) translate(130 60) scale(.86) translate(-130 -60)';
 
-/** The whiskers on one side (ink only): three long curved strokes and the whisker dots. */
+/** The whiskers on one side: two long clean strokes and three whisker dots. */
 function whiskers(side: 'L' | 'R', fan = 0): string {
-  const w = [
-    `M86 166 Q58 ${154 - fan} 24 ${150 - fan * 2}`,
-    'M85 177 Q54 177 18 181',
-    `M87 188 Q60 ${197 + fan} 28 ${210 + fan * 2}`,
-  ];
-  const dots = `<circle cx="96" cy="170" r="2.6" fill="${C.ink}"/><circle cx="92" cy="180" r="2.6" fill="${C.ink}"/><circle cx="100" cy="182" r="2.4" fill="${C.ink}"/>`;
-  const art = `<g fill="none" stroke-linecap="round">${w.map((d) => `<path d="${d}" stroke="${C.ink}" stroke-width="6"/>`).join('')}${w.map((d) => `<path d="${d}" stroke="${C.ratLight}" stroke-width="2.2"/>`).join('')}</g>${dots}`;
+  const w = [`M92 180 Q62 ${168 - fan} 30 ${164 - fan * 2}`, `M92 190 Q64 ${196 + fan} 36 ${208 + fan * 2}`];
+  const dots = `<circle cx="102" cy="182" r="2.4" fill="${C.ink}"/><circle cx="98" cy="190" r="2.4" fill="${C.ink}"/><circle cx="106" cy="190" r="2.2" fill="${C.ink}"/>`;
+  const art = `<g fill="none" stroke-linecap="round">${w.map((d) => `<path d="${d}" stroke="${C.ink}" stroke-width="3.6"/>`).join('')}</g>${dots}`;
   return side === 'L' ? art : `<g transform="translate(256 0) scale(-1 1)">${art}</g>`;
 }
 
-/** Eye white with a cel crescent. */
-function eyeWhiteArt(cx: number, sw = 6.5): string {
+/** Eye white with a cool lower crescent. */
+function eyeWhiteArt(cx: number, sw = 6): string {
   const d = ell(cx, EYE_Y, EYE_RX, EYE_RY);
-  return `${cel(d, { base: C.white, shade: C.paperWarm, cut: [-5, -7] })}<path d="${d}" fill="none" stroke="${C.ink}" stroke-width="${sw}"/>`;
+  const id = nextId('rw');
+  return `<path d="${d}" fill="${C.white}"/><clipPath id="${id}"><path d="${d}"/></clipPath>
+    <path clip-path="url(#${id})" d="M${cx - EYE_RX} ${EYE_Y + EYE_RY * 0.45} Q${cx} ${EYE_Y + EYE_RY * 1.25} ${cx + EYE_RX} ${EYE_Y + EYE_RY * 0.45} L${cx + EYE_RX} ${EYE_Y + EYE_RY} L${cx - EYE_RX} ${EYE_Y + EYE_RY} Z" fill="${mix(C.white, C.steelLight, 0.7)}"/>
+    <path d="${d}" fill="none" stroke="${C.ink}" stroke-width="${sw}"/>`;
+}
+/** A big pie pupil with a second glint (Casey's style, cast/paint.ts). */
+function pupilArt(px: number, py: number, k = 1): string {
+  return piePupil(px, py, PRX * k, PRY * k);
 }
 
 /** Buck teeth hanging from the upper lip at y `y`, `h` long. */
-function teeth(y: number, h = 19, w = 9): string {
+function teeth(y: number, h = 18, w = 10): string {
   const d = `M${128 - w} ${y} L${128 + w} ${y} L${128 + w} ${y + h - 4} Q${128 + w} ${y + h} ${128 + w - 4} ${y + h} L${128 - w + 4} ${y + h} Q${128 - w} ${y + h} ${128 - w} ${y + h - 4} Z`;
-  return `<path d="${d}" fill="${C.white}" stroke="${C.ink}" stroke-width="4.2" stroke-linejoin="round"/>
-    <path d="M128 ${y + 1} L128 ${y + h - 1}" stroke="${C.ink}" stroke-width="3"/>
-    <path d="M${128 - w + 3} ${y + h - 5} L${128 - 3} ${y + h - 5}" stroke="${C.paperWarm}" stroke-width="2.4" stroke-linecap="round"/>`;
+  return `<path d="${d}" fill="${C.white}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M128 ${y + 1} L128 ${y + h - 1}" stroke="${C.ink}" stroke-width="2.8"/>
+    <path d="M${128 - w + 3} ${y + h - 5} L${128 + w - 3} ${y + h - 5}" stroke="${mix(C.white, C.steelLight, 0.8)}" stroke-width="2.4" stroke-linecap="round"/>`;
 }
 
 type MouthKind = 'closed' | 'grin' | 'open' | 'worry';
+const MOUTH_IN = mix(C.crimsonDeep, C.ink, 0.4);
 /** The mouth (and buck teeth) in each shape. */
 function mouthArt(kind: MouthKind): string {
   if (kind === 'closed') {
-    return `<path d="M128 165 L128 172" stroke="${C.ink}" stroke-width="4.5" stroke-linecap="round"/>
-      <path d="M106 166 Q117 180 128 171 Q139 180 150 166" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M103 162 q-3 5 1 9 M153 162 q3 5 -1 9" fill="none" stroke="${C.ink}" stroke-width="3.4" stroke-linecap="round"/>
-      ${teeth(173)}`;
+    return `<path d="M128 182 L128 190" stroke="${C.ink}" stroke-width="4.2" stroke-linecap="round"/>
+      <path d="M104 186 Q116 200 128 190 Q140 200 152 186" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M101 182 q-4 5 0 9 M155 182 q4 5 0 9" fill="none" stroke="${C.ink}" stroke-width="3.2" stroke-linecap="round"/>
+      ${teeth(192)}`;
   }
   if (kind === 'worry') {
-    return `<path d="M106 178 Q111 170 117 177 Q123 184 128 176 Q133 184 139 177 Q145 170 150 178" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M128 165 L128 172" stroke="${C.ink}" stroke-width="4.5" stroke-linecap="round"/>
-      ${teeth(171, 16)}`;
+    return `<path d="M106 198 Q111 190 117 197 Q123 204 128 196 Q133 204 139 197 Q145 190 150 198" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M128 182 L128 192" stroke="${C.ink}" stroke-width="4.2" stroke-linecap="round"/>
+      ${teeth(192, 15)}`;
   }
   const id = nextId('rm');
-  const path =
-    kind === 'grin'
-      ? 'M100 164 Q128 178 156 164 C157 194 144 213 128 213 C112 213 99 194 100 164 Z'
-      : 'M128 166 C141 166 147 180 147 192 C147 206 139 214 128 214 C117 214 109 206 109 192 C109 180 115 166 128 166 Z';
-  const tongue = kind === 'grin' ? ell(128, 210, 20, 12) : ell(128, 212, 13, 9);
+  const path = kind === 'grin' ? 'M100 182 Q128 196 156 182 C157 208 145 224 128 224 C111 224 99 208 100 182 Z' : 'M128 184 C140 184 146 196 146 206 C146 218 138 226 128 226 C118 226 110 218 110 206 C110 196 116 184 128 184 Z';
+  const tongue = kind === 'grin' ? ell(128, 222, 20, 11) : ell(128, 224, 13, 8);
   return `<clipPath id="${id}"><path d="${path}"/></clipPath>
-    <path d="${path}" fill="${C.crimsonDeep}"/>
+    <path d="${path}" fill="${MOUTH_IN}"/>
     <g clip-path="url(#${id})">
       <path d="${tongue}" fill="${C.ratPink}"/>
       <path d="${tongue}" fill="none" stroke="${mix(C.ratPink, C.pinkDeep, 0.6)}" stroke-width="3"/>
     </g>
     <path d="${path}" fill="none" stroke="${C.ink}" stroke-width="5.5" stroke-linejoin="round"/>
-    ${teeth(kind === 'grin' ? 170 : 167, kind === 'grin' ? 17 : 15)}`;
+    ${teeth(kind === 'grin' ? 187 : 186, kind === 'grin' ? 17 : 15)}`;
 }
 
 function noseArt(): string {
-  const d = ell(NOSE_C[0], NOSE_C[1], 17, 12.5);
-  return `${cel(d, { ...NOSE, cut: [-4, -5], seed: 31 })}<path d="${d}" fill="none" stroke="${C.ink}" stroke-width="5"/>
-    <ellipse cx="${NOSE_C[0] - 6}" cy="${NOSE_C[1] - 4}" rx="5" ry="3.2" fill="${C.white}" opacity=".85" transform="rotate(-18 ${NOSE_C[0] - 6} ${NOSE_C[1] - 4})"/>`;
+  const [x, y] = NOSE_C;
+  const d = 'M128 160 C142 160 148 166 147 172 C146 180 136 185 128 185 C120 185 110 180 109 172 C108 166 114 160 128 160 Z';
+  const f = formLine(d, { ...NOSEc, cut: [-4, -5], band: [2, 2.5], rimCut: [-3.5, -3.5] });
+  return inked({ fills: f.fills, lines: f.line('stroke-width="5"') }, 5) + `<ellipse cx="${x - 7}" cy="${y - 5}" rx="5.5" ry="3.4" fill="#fff" opacity=".85" transform="rotate(-14 ${x - 7} ${y - 5})"/>`;
 }
 
-const lidShape = (cx: number) => ell(cx, EYE_Y, EYE_RX, EYE_RY);
+const lidShape = (cx: number) => ell(cx, EYE_Y, EYE_RX + 2, EYE_RY + 2);
 function lidArt(cx: number): string {
-  return `${cel(lidShape(cx), { ...FUR, cut: [-4, -5], seed: 33 })}
-    <path d="${lidShape(cx)}" fill="none" stroke="${C.ink}" stroke-width="6.5"/>
-    <path d="M${cx - 18} ${EYE_Y + 6} C${cx - 12} ${EYE_Y + 20} ${cx + 12} ${EYE_Y + 20} ${cx + 18} ${EYE_Y + 6}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>
-    <path d="M${cx - 15} ${EYE_Y + 15} l-6 5 M${cx + 15} ${EYE_Y + 15} l6 5" stroke="${C.ink}" stroke-width="3.5" stroke-linecap="round"/>`;
+  return `${form(lidShape(cx), { ...FURc, cut: [-4, -5] })}
+    <path d="${lidShape(cx)}" fill="none" stroke="${C.ink}" stroke-width="5"/>
+    <path d="M${cx - 19} ${EYE_Y + 6} C${cx - 12} ${EYE_Y + 20} ${cx + 12} ${EYE_Y + 20} ${cx + 19} ${EYE_Y + 6}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>`;
 }
-const browL = () => brow(86, 90, 122, 84, 3, 3.8);
-const browR = () => brow(170, 90, 134, 84, -3, 3.8);
-const tearArt = () => `<path d="M200 132 q-9 13 0 20 q9 -7 0 -20 Z" fill="${C.voltLight}" stroke="${C.ink}" stroke-width="3"/><ellipse cx="198" cy="145" rx="2" ry="3" fill="#fff"/>`;
-const blush = `<ellipse cx="80" cy="186" rx="12" ry="7" fill="${C.ratPink}" opacity=".7"/><ellipse cx="176" cy="186" rx="12" ry="7" fill="${C.ratPink}" opacity=".7"/>`;
-
-/** Head base forms (no ears, no cap): fur tufts, the head with its muzzle. */
-function headLayers() {
-  const tufts = [cheekTuft(1), cheekTuft(-1), TUFT_TOP].map((d, i) => celForm(d, { ...FUR, cut: [-5, -6], seed: 40 + i }));
-  const muzzle = cel(MUZZLE, { ...MUZ, cut: [-10, -12], twist: -2, hatch: MUZ.hatch, hatchGap: 5, seed: 44 });
-  const headF = celForm(HEAD, {
-    ...FUR,
-    cut: [-13, -15],
-    twist: -3,
-    hatch: FUR.hatch,
-    hatchGap: 5.5,
-    seed: 45,
-    inner: `${muzzle}<path d="M58 132 q8 6 16 4 M60 148 q8 6 16 4 M198 132 q-8 6 -16 4 M196 148 q-8 6 -16 4" stroke="${FUR.light}" stroke-width="3.2" fill="none" stroke-linecap="round" opacity=".8"/>`,
+/** Bold little brows (ink-dark grey), always on: they carry the acting. Left brow spine, inner end last. */
+const BROW_SPINE: V[] = [
+  [84, 88],
+  [96, 83],
+  [110, 83],
+  [121, 88],
+];
+function browArt(side: 'L' | 'R', lift = 0, rot = 0): string {
+  const c: V = [103, 85];
+  const a = (rot * Math.PI) / 180;
+  let pts: V[] = BROW_SPINE.map(([x, y]) => {
+    const dx = x - c[0];
+    const dy = y - c[1];
+    return [c[0] + dx * Math.cos(a) - dy * Math.sin(a), c[1] + dx * Math.sin(a) + dy * Math.cos(a) + lift] as V;
   });
+  if (side === 'R') pts = pts.map(([x, y]) => [256 - x, y] as V);
+  const d = brush(pts, (t) => 2.6 + 3.2 * Math.sin(Math.PI * Math.min(1, t * 1.05)), 20);
+  return `<path d="${d}" fill="${mix(C.ratDeep, C.ink, 0.45)}" stroke="${C.ink}" stroke-width="2.6" stroke-linejoin="round"/>`;
+}
+const browL = (lift = 0, rot = 0) => browArt('L', lift, rot);
+const browR = (lift = 0, rot = 0) => browArt('R', lift, rot);
+const tearArt = () => `<path d="M202 116 q-9 13 0 20 q9 -7 0 -20 Z" fill="${C.voltLight}" stroke="${C.ink}" stroke-width="3"/><ellipse cx="200" cy="129" rx="2" ry="3" fill="#fff"/>`;
+const blush = `<ellipse cx="78" cy="150" rx="13" ry="7.5" fill="${C.ratPink}" opacity=".75"/><ellipse cx="178" cy="150" rx="13" ry="7.5" fill="${C.ratPink}" opacity=".75"/>
+  <circle cx="73" cy="147" r="2.2" fill="#fff" opacity=".7"/><circle cx="173" cy="147" r="2.2" fill="#fff" opacity=".7"/>`;
+
+/** Head base forms (no ears, no cap): the head with its muzzle. */
+function headLayers() {
+  const muzzle = form(MUZZLE, { ...MUZc, cut: [-9, -10], twist: -2, band: [3, 3] });
+  const headF = formLine(HEAD, { ...FURc, cut: [-13, -14], twist: -3, band: [5, 5], rimCut: [-6, -6], inner: muzzle });
   return [
-    { fills: tufts.map((t) => t.fills).join(''), lines: tufts.map((t) => t.line('stroke-width="6"')).join('') },
-    { fills: headF.fills, lines: `${headF.line()}<path d="${MUZZLE_TOP}" stroke-width="4.5"/>` },
+    { fills: headF.fills, lines: `${headF.line()}<path d="M80 184 C76 156 100 134 128 134 C156 134 180 156 176 184" stroke-width="3.8" opacity=".55"/>` },
   ];
 }
-const headShine = shine([[62, 112], [74, 84], [94, 66], [112, 58]], 3.2, 0.45);
+const headShine = glint([[62, 118], [70, 92], [88, 70], [108, 60]], 3.2, C.ratLight, 0.8);
 
 export interface CapPlace {
   dx?: number;
@@ -200,48 +211,57 @@ export interface CapPlace {
   rot?: number;
 }
 
+/** Per-expression brows: [lift, rot] (rot positive drops the inner end). */
+const BROWS: Record<RatExpr, [number, number]> = { idle: [0, -7], blink: [4, -5], happy: [-2, -6], squeak: [-6, -4], worried: [-1, -20] };
+
 /** Everything drawn over the head base for one expression: eyes, nose, mouth, whiskers, brows. */
 function face(expr: RatExpr): string {
-  const up = expr === 'worried' ? -5 : 0;
-  const er: [number, number] = expr === 'squeak' ? [7.5, 11] : [9, 13.5];
+  const up = expr === 'worried' ? -7 : 0;
+  const k = expr === 'squeak' ? 0.78 : 1;
   const eyes =
     expr === 'idle' || expr === 'squeak' || expr === 'worried'
-      ? `${eyeWhiteArt(EYE_L)}${eyeWhiteArt(EYE_R)}${pieEye(PUP_L, EYE_Y + 5 + up, er[0], er[1])}${pieEye(PUP_R, EYE_Y + 5 + up, er[0], er[1])}`
+      ? `${eyeWhiteArt(EYE_L)}${eyeWhiteArt(EYE_R)}${pupilArt(PUP_L, EYE_Y + 4 + up, k)}${pupilArt(PUP_R, EYE_Y + 4 + up, k)}`
       : expr === 'blink'
         ? `${lidArt(EYE_L)}${lidArt(EYE_R)}`
-        : `${closedEye(EYE_L, EYE_Y + 4, 30, true)}${closedEye(EYE_R, EYE_Y + 4, 30, true)}`;
+        : `${happyEye(EYE_L)}${happyEye(EYE_R)}`;
   const mouth: MouthKind = expr === 'happy' ? 'grin' : expr === 'squeak' ? 'open' : expr === 'worried' ? 'worry' : 'closed';
-  return `${blush}${mouthArt(mouth)}${noseArt()}${eyes}${whiskers('L', expr === 'squeak' ? 6 : 0)}${whiskers('R', expr === 'squeak' ? 6 : 0)}`;
+  const [bl, br] = BROWS[expr];
+  return `${blush}${mouthArt(mouth)}${noseArt()}${eyes}${browL(bl, br)}${browR(bl, br)}${whiskers('L', expr === 'squeak' ? 6 : 0)}${whiskers('R', expr === 'squeak' ? 6 : 0)}`;
 }
+/** Squeezed shut in a laugh: a fat upturned arc with the cheek pushing up. */
+const happyEye = (x: number) =>
+  `<path d="M${x - 17} ${EYE_Y + 6} Q${x} ${EYE_Y - 14} ${x + 17} ${EYE_Y + 6}" fill="none" stroke="${C.ink}" stroke-width="7.5" stroke-linecap="round"/>
+   <path d="M${x - 11} ${EYE_Y + 17} Q${x} ${EYE_Y + 12} ${x + 11} ${EYE_Y + 17}" fill="none" stroke="${C.ink}" stroke-width="3.4" stroke-linecap="round" opacity=".5"/>`;
 
 /** Rig parts: their crop box and pivot in the head's 256 box. */
 export const RAT_PARTS = {
-  base: { box: [26, 18, 204, 216], pivot: [128, 226] },
-  earL: { box: [2, 26, 92, 92], pivot: [76, 100] },
-  earR: { box: [162, 26, 92, 92], pivot: [180, 100] },
-  cap: { box: [40, -12, 180, 122], pivot: [128, 80] },
-  eyeWhite: { box: [83, 91, 46, 58], pivot: [106, 120] },
-  pupil: { box: [97, 104, 26, 34], pivot: [110, 125] },
-  lid: { box: [83, 91, 46, 58], pivot: [106, 94] },
-  lidHappy: { box: [87, 108, 38, 24], pivot: [106, 120] },
-  nose: { box: [106, 137, 44, 34], pivot: [128, 160] },
-  mouth: { box: [96, 158, 64, 40], pivot: [128, 172] },
-  grin: { box: [94, 158, 68, 60], pivot: [128, 170] },
-  open: { box: [104, 160, 48, 58], pivot: [128, 168] },
-  worry: { box: [100, 160, 56, 32], pivot: [128, 174] },
-  whiskerL: { box: [12, 144, 94, 74], pivot: [88, 177] },
-  whiskerR: { box: [150, 144, 94, 74], pivot: [168, 177] },
-  browL: { box: [80, 74, 48, 24], pivot: [104, 87] },
-  browR: { box: [128, 74, 48, 24], pivot: [152, 87] },
-  tear: { box: [188, 128, 24, 30], pivot: [200, 142] },
+  base: { box: [26, 20, 204, 216], pivot: [128, 226] },
+  earL: { box: [2, 22, 96, 96], pivot: [78, 98] },
+  earR: { box: [158, 22, 96, 96], pivot: [178, 98] },
+  cap: { box: [44, -14, 176, 122], pivot: [128, 80] },
+  eyeWhite: { box: [80, 86, 48, 56], pivot: [104, 114] },
+  pupil: { box: [94, 100, 28, 36], pivot: [108, 118] },
+  lid: { box: [78, 84, 52, 60], pivot: [104, 88] },
+  lidHappy: { box: [82, 98, 44, 40], pivot: [104, 114] },
+  nose: { box: [102, 154, 52, 38], pivot: [128, 178] },
+  mouth: { box: [96, 176, 64, 40], pivot: [128, 190] },
+  grin: { box: [94, 176, 68, 54], pivot: [128, 190] },
+  open: { box: [104, 178, 48, 52], pivot: [128, 190] },
+  worry: { box: [100, 178, 56, 34], pivot: [128, 192] },
+  whiskerL: { box: [22, 154, 90, 64], pivot: [94, 184] },
+  whiskerR: { box: [144, 154, 90, 64], pivot: [162, 184] },
+  browL: { box: [74, 66, 58, 38], pivot: [103, 85] },
+  browR: { box: [124, 66, 58, 38], pivot: [153, 85] },
+  tear: { box: [190, 112, 24, 30], pivot: [202, 126] },
 } as const;
 export type RatPart = keyof typeof RAT_PARTS;
 
+const TEX = { seed: 14, mottle: 0.28, grain: 0.32 };
 const paintDoc = (o: { layers?: { fills: string; lines?: string }[]; top?: string; seed?: number; contour?: boolean }) =>
-  composeSymbol({ autoCel: false, texture: { seed: o.seed ?? 14 }, ...(o.contour ? { contour: 0.8 } : {}), inkShift: [1, 1.2], noDrop: true, layers: o.layers ?? [{ fills: '' }], top: o.top ?? '' });
+  composeSymbol({ autoCel: false, texture: { ...TEX, seed: o.seed ?? 14 }, ...(o.contour ? { contour: 0.8 } : {}), inkShift: [1, 1.2], noDrop: true, layers: o.layers ?? [{ fills: '' }], top: o.top ?? '' });
 
 /**
- * Rivets' head. `symbol` = standalone symbol art (drop shadow + paint). `part` cuts one rig layer,
+ * Rivets' head. `symbol` = standalone symbol art (paint + contour). `part` cuts one rig layer,
  * cropped to its box in `RAT_PARTS` (the base has no ears, cap or face: they are separate parts).
  * `cap` moves the cap (symbol win frames) or, null, leaves it off.
  */
@@ -253,12 +273,14 @@ export function ratHead(expr: RatExpr = 'idle', symbol = true, part: 'all' | Rat
   const capArt = cap
     ? `<g transform="${capT}">${composeSymbol({ autoCel: false, inkShift: [1, 1.2], noDrop: true, layers: cp.layers, top: cp.top }).replace(/^<svg /, '<svg x="0" y="0" overflow="visible" ')}</g>`
     : '';
-  const worry = expr === 'worried' ? `${browL()}${browR()}${tearArt()}` : '';
+  const worry = expr === 'worried' ? tearArt() : '';
   return composeSymbol({
     autoCel: false,
     inkShift: [1, 1.2],
-    ...(symbol ? { texture: { seed: 14 }, contour: 0.8 } : {}),
+    ...(symbol ? { texture: TEX, contour: 0.8 } : {}),
     noDrop: !symbol,
+    // seated a little low in its box so the cap clears the top edge (title cards raster the whole box)
+    transform: 'translate(0 8)',
     layers: [...ears, ...headLayers()],
     top: `${headShine}${face(expr)}${capArt}${worry}`,
   });
@@ -274,16 +296,16 @@ function ratHeadPart(part: RatPart): string {
       return paintDoc({ layers: earForms('R'), contour: true });
     case 'cap': {
       const cp = capLayers();
-      return composeSymbol({ autoCel: false, texture: { seed: 15 }, contour: 0.8, inkShift: [1, 1.2], noDrop: true, layers: cp.layers, top: cp.top, transform: CAP_T });
+      return composeSymbol({ autoCel: false, texture: { ...TEX, seed: 15 }, contour: 0.8, inkShift: [1, 1.2], noDrop: true, layers: cp.layers, top: cp.top, transform: CAP_T });
     }
     case 'eyeWhite':
       return svgDoc(eyeWhiteArt(EYE_L));
     case 'pupil':
-      return svgDoc(pieEye(PUP_L, EYE_Y + 5, 9, 13.5));
+      return svgDoc(pupilArt(PUP_L, EYE_Y + 4));
     case 'lid':
       return paintDoc({ top: lidArt(EYE_L) });
     case 'lidHappy':
-      return svgDoc(closedEye(EYE_L, EYE_Y + 4, 30, true));
+      return svgDoc(happyEye(EYE_L));
     case 'nose':
       return paintDoc({ top: noseArt() });
     case 'mouth':
@@ -324,17 +346,17 @@ function ratArt(p: SymPose): string {
     const h = p.hands?.[side];
     if (!h) return '';
     const s = side ? 1 : -1;
-    const x = 128 + s * (h.x ?? 100);
-    const y = h.y ?? 200;
-    const g = glove(h.pose).replace(/^<svg /, '<svg x="0" y="0" ');
-    return `<g transform="translate(${x} ${y}) rotate(${s * h.rot}) scale(${side ? 0.34 : -0.34} .34) translate(-128 -220)">${g}</g>`;
+    const x = 128 + s * (h.x ?? 98);
+    const y = h.y ?? 204;
+    const g = caseyGlove(h.pose).replace(/^<svg /, '<svg x="0" y="0" ');
+    return `<g transform="translate(${x} ${y}) rotate(${s * h.rot}) scale(${side ? 0.36 : -0.36} .36) translate(-128 -220)">${g}</g>`;
   };
   const lines = p.squeak
     ? ([
-        [[34, 74], [14, 58]],
-        [[30, 98], [6, 96]],
-        [[222, 74], [242, 58]],
-        [[226, 98], [250, 96]],
+        [[36, 64], [16, 48]],
+        [[30, 88], [6, 86]],
+        [[220, 64], [240, 48]],
+        [[226, 88], [250, 86]],
       ] as V[][])
         .map((pp) => `<path d="${lens(pp, 3.6)}" fill="${C.white}" stroke="${C.ink}" stroke-width="2.6" stroke-linejoin="round"/>`)
         .join('')
@@ -342,18 +364,23 @@ function ratArt(p: SymPose): string {
   // the head fills the box: scaled to leave a margin for the drop shadow and the hands
   return composeSymbol({
     autoCel: false,
-    texture: { seed: 9 },
+    texture: { ...TEX, seed: 9 },
     contour: 0.8,
     inkShift: [1, 1.2],
     layers: [{ fills: '' }],
-    top: `<g transform="translate(128 136) scale(.9) translate(-128 -128)">${head}</g>${hand(0)}${hand(1)}${lines}`,
+    top: `<g transform="translate(128 134) scale(.9) translate(-128 -128)">${head}</g>${hand(0)}${hand(1)}${lines}${sparkleStar(222, 34)}`,
   });
 }
+/** The symbol set's twinkle (top right), as on every other symbol. */
+const sparkleStar = (cx: number, cy: number, r = 10) => {
+  const k = r * 0.16;
+  return `<path d="M${cx} ${cy - r} Q${cx + k} ${cy - k} ${cx + r} ${cy} Q${cx + k} ${cy + k} ${cx} ${cy + r} Q${cx - k} ${cy + k} ${cx - r} ${cy} Q${cx - k} ${cy - k} ${cx} ${cy - r} Z" fill="#fff" opacity=".92"/>`;
+};
 
 const RAT_POSES: Record<RatPose, SymPose> = {
   idle: { expr: 'idle' },
   blink: { expr: 'blink' },
-  win: { expr: 'happy', cap: { dx: -3, dy: -2, rot: -6 }, hands: [{ pose: 'open', rot: 18 }, { pose: 'open', rot: 18 }] },
+  win: { expr: 'happy', cap: { dx: -3, dy: -4, rot: -6 }, hands: [{ pose: 'open', rot: 18 }, { pose: 'open', rot: 18 }] },
 };
 
 /** H1 symbol frames: idle / blink / win (cap popped, hands up). */
@@ -361,10 +388,10 @@ export const ratSymbol = (pose: RatPose) => ratArt(RAT_POSES[pose]);
 
 /** Win loop: Rivets cheers, his cap popping off his head while he squeaks and waves. */
 export const ratWinFrames: (() => string)[] = [
-  () => ratArt({ expr: 'happy', cap: { dy: -3, rot: -6 }, hands: [{ pose: 'open', rot: 12 }, { pose: 'open', rot: 22 }] }),
-  () => ratArt({ expr: 'squeak', cap: { dy: -9, rot: 12 }, hands: [{ pose: 'fist', rot: 30, y: 186 }, { pose: 'fist', rot: 30, y: 186 }], squeak: true }),
-  () => ratArt({ expr: 'happy', cap: { dy: -4, rot: -8 }, hands: [{ pose: 'open', rot: 22 }, { pose: 'open', rot: 10 }] }),
-  () => ratArt({ expr: 'squeak', cap: { dy: -3, rot: 4 }, hands: [{ pose: 'fist', rot: 24, y: 194 }, { pose: 'fist', rot: 24, y: 194 }], squeak: true }),
+  () => ratArt({ expr: 'happy', cap: { dy: -4, rot: -6 }, hands: [{ pose: 'open', rot: 12 }, { pose: 'open', rot: 22 }] }),
+  () => ratArt({ expr: 'squeak', cap: { dy: -11, rot: 10 }, hands: [{ pose: 'fist', rot: 30, y: 192 }, { pose: 'fist', rot: 30, y: 192 }], squeak: true }),
+  () => ratArt({ expr: 'happy', cap: { dy: -5, rot: -8 }, hands: [{ pose: 'open', rot: 22 }, { pose: 'open', rot: 10 }] }),
+  () => ratArt({ expr: 'squeak', cap: { dy: -4, rot: 4 }, hands: [{ pose: 'fist', rot: 24, y: 198 }, { pose: 'fist', rot: 24, y: 198 }], squeak: true }),
 ];
 
 /* ------------------------------------------------------------------ */
@@ -385,9 +412,9 @@ export function ratTorso(): string {
   const patch = 'M78 132 L104 128 L106 156 L80 160 Z';
   const pocket = 'M144 120 L172 117 L174 140 Q160 144 146 142 Z';
   const ticket = 'M150 120 L148 98 L164 96 L166 119 Z';
-  const bodyF = celForm(body, { ...FUR, cut: [-12, -14], twist: -3, hatch: FUR.hatch, hatchGap: 5.5, seed: 51, inner: cel(belly, { ...MUZ, cut: [-9, -11], seed: 52 }) });
-  const vl = celForm(vestL, { ...VEST, cut: [-9, -10], hatch: VEST.hatch, hatchGap: 5, seed: 53 });
-  const vr = celForm(vestR, { ...VEST, cut: [-9, -10], hatch: VEST.hatch, hatchGap: 5, seed: 54 });
+  const bodyF = celForm(body, { ...FUR, cut: [-12, -14], twist: -3, seed: 51, inner: cel(belly, { ...MUZ, cut: [-9, -11], seed: 52 }) });
+  const vl = celForm(vestL, { ...VEST, cut: [-9, -10], seed: 53 });
+  const vr = celForm(vestR, { ...VEST, cut: [-9, -10], seed: 54 });
   const pf = celForm(patch, { base: mix(C.emerald, C.paper, 0.35), shade: C.emerald, light: mix(C.emeraldLight, C.paper, 0.5), hatch: C.emeraldDeep, cut: [-3, -4], seed: 55 });
   const tf = celForm(ticket, { ...GOLD_TONES, cut: [-3, -3], seed: 56 });
   const pk = celForm(pocket, { ...VEST, cut: [-4, -5], seed: 57 });
@@ -428,7 +455,7 @@ export function ratFoot(side: 'L' | 'R'): string {
   const toes = 'M90 176 Q92 160 100 154 M120 178 Q122 162 128 156 M150 178 Q154 162 160 156';
   const d = side === 'L' ? mirrorX(foot) : foot;
   const t = side === 'L' ? mirrorX(toes) : toes;
-  const ff = celForm(d, { ...PINK, cut: [-8, -9], hatch: PINK.hatch, hatchGap: 4.5, seed: side === 'L' ? 61 : 62 });
+  const ff = celForm(d, { ...PINK, cut: [-8, -9], seed: side === 'L' ? 61 : 62 });
   return cropBox(
     composeSymbol({
       autoCel: false,

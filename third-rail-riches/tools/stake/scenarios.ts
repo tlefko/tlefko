@@ -5,9 +5,9 @@
  *
  * Per mode, one representative book (plus a few alternates) for each scenario: zero win, small win,
  * big win (>= 20x for BASE / BOOST, >= 2x cost for buys), max win, bonus trigger (BASE / BOOST),
- * retrigger, a train haul, a Junction branch, two or more locomotives, a double branch (a branch
- * that branches again), a power level-up, the x10 power level, a full row of coins collected and a
- * Fare Coin of 100x or more.
+ * retrigger, a train haul, a route win, a crash, a Signal redirect, a Security Check that clears
+ * (Delay Repay) and one that holds the train (incident), two or more locomotives, a power level-up,
+ * the x10 power level and a Fare Coin of 100x or more.
  * Among the candidates the smallest books are preferred (they keep the demo pack light); every pick
  * has non-zero weight.
  */
@@ -17,7 +17,7 @@ import { parseArgs } from 'node:util';
 import type { Book, BookEvent } from '../../src/stake/book';
 import { CAP_HUNDREDTHS, MODES, fileNames, isSpinMode, parseCsv, readBooks, type ModeSpec } from './common';
 
-export const SCENARIOS = ['zero', 'small', 'big', 'max', 'bonus', 'retrigger', 'train', 'branch', 'multi_loco', 'double_branch', 'levelup', 'x10', 'full_row', 'big_coin'] as const;
+export const SCENARIOS = ['zero', 'small', 'big', 'max', 'bonus', 'retrigger', 'train', 'route', 'crash', 'redirect', 'clear', 'incident', 'multi_loco', 'levelup', 'x10', 'big_coin'] as const;
 export type Scenario = (typeof SCENARIOS)[number];
 
 export interface Pick {
@@ -44,12 +44,14 @@ export function classify(book: Book, m: { kind: ModeSpec['kind']; cost: number }
     const sp = e.spin;
     if (e.retrigger) out.add('retrigger');
     if (sp.trains.some((t) => t.coins.length > 0)) out.add('train');
-    if (sp.trains.some((t) => t.parent >= 0)) out.add('branch');
-    if (sp.trains.some((t) => t.parent >= 0 && sp.trains[t.parent].parent >= 0)) out.add('double_branch');
-    if (sp.trains.filter((t) => t.parent < 0).length >= 2) out.add('multi_loco');
+    if (sp.routes.length) out.add('route');
+    if (sp.crashes.length) out.add('crash');
+    if (sp.trains.some((t) => t.steps.some((x) => x.event === 'redirect'))) out.add('redirect');
+    if (sp.trains.some((t) => t.steps.some((x) => x.event === 'clear'))) out.add('clear');
+    if (sp.trains.some((t) => t.steps.some((x) => x.event === 'held'))) out.add('incident');
+    if (sp.trains.length >= 2) out.add('multi_loco');
     if (sp.levelAfter > sp.levelBefore) out.add('levelup');
     if (sp.levelAfter >= 4 && sp.levelBefore < 4) out.add('x10');
-    if (sp.trains.some((t) => t.coins.length >= 5)) out.add('full_row');
     if (Object.values(sp.v).some((v) => v >= 100)) out.add('big_coin');
   }
   return out;

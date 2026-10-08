@@ -1,32 +1,67 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_MODEL, evalWays, playRound, runTrains } from '../../src/math/engine';
+import { DEFAULT_MODEL, evalRoutes, playRound, runTrains } from '../../src/math/engine';
 import { RUSH_SPINS, TUNED, COIN_VALUES } from '../../src/math/model';
+import { INTERCHANGES, LINES, NEIGHBOURS, STATIONS, STOPS, TERMINALS, departure } from '../../src/math/network';
 import { PAYTABLE } from '../../src/math/paytable';
 import { createRng } from '../../src/math/rng';
-import { CELLS, MAX_WIN, POWER_STEPS, REELS, ROWS, Sym, levelOf, multOfLevel, posOf, type RoundKind, type Train, type WayWin } from '../../src/math/types';
+import { CELLS, CRASH_MULT, MAX_WIN, POWER_STEPS, REPAY_MULT, Sym, levelOf, multOfLevel, type Crash, type RoundKind, type RouteWin, type Train } from '../../src/math/types';
 
-const { L1, L2, L3, L4, H1, TOP, WILD, FS, COIN, LOCO, SWITCH } = { L1: Sym.L1, L2: Sym.L2, L3: Sym.L3, L4: Sym.L4, H1: Sym.H1, TOP: Sym.TOP, WILD: Sym.WILD, FS: Sym.FS, COIN: Sym.COIN, LOCO: Sym.LOCO, SWITCH: Sym.SWITCH };
-
-/** Grid from reels (each reel lists its ROWS symbols top to bottom). */
-const grid = (reels: number[][]): Int8Array => {
-  const g = new Int8Array(CELLS);
-  reels.forEach((r, c) => r.forEach((s, row) => (g[posOf(c, row)] = s)));
-  return g;
+const { L1, H1, TOP, WILD, FS, COIN, LOCO, SIGNAL, SECURITY } = {
+  L1: Sym.L1,
+  H1: Sym.H1,
+  TOP: Sym.TOP,
+  WILD: Sym.WILD,
+  FS: Sym.FS,
+  COIN: Sym.COIN,
+  LOCO: Sym.LOCO,
+  SIGNAL: Sym.SIGNAL,
+  SECURITY: Sym.SECURITY,
 };
 
-/** A filler grid where no symbol reaches 3 reels: reel c is all of one low symbol, cycling. */
-const blank = (): number[][] => Array.from({ length: REELS }, (_, c) => Array(ROWS).fill([L1, L2, L3, L4][c % 4]));
+/** Filler that never pays: station id mod 6 never runs 3 along any line. */
+const filler = (): number[] => Array.from({ length: CELLS }, (_, p) => p % 6);
+const board = (set: Record<number, number>): Int8Array => {
+  const g = filler();
+  for (const [p, s] of Object.entries(set)) g[Number(p)] = s;
+  return Int8Array.from(g);
+};
 
-describe('rules constants', () => {
-  it('grid is 6x4 and model sets are well formed', () => {
-    expect(REELS).toBe(6);
-    expect(ROWS).toBe(4);
+/** Run the trains on a board: coins worth `vals` (default 1x). */
+function trainsOn(set: Record<number, number>, vals: Record<number, number> = {}, security: boolean[] = []) {
+  const syms = board(set);
+  const valH = new Int32Array(CELLS);
+  const ids = Int32Array.from({ length: CELLS }, (_, p) => p + 100);
+  for (let p = 0; p < CELLS; p++) if (syms[p] === COIN) valH[p] = Math.round((vals[p] ?? 1) * 100);
+  const trains: Train[] = [];
+  const crashes: Crash[] = [];
+  const collected = new Uint8Array(CELLS);
+  const q = [...security];
+  const payH = runTrains(syms, valH, ids, -1, () => q.shift() ?? true, trains, crashes, collected);
+  return { pay: payH / 100, trains, crashes, collected };
+}
+
+describe('network', () => {
+  it('4 lines, 19 stations: 8 terminals, 5 interchanges, 6 stops', () => {
+    expect(STATIONS.length).toBe(19);
+    expect(TERMINALS.length).toBe(8);
+    expect(INTERCHANGES).toEqual([2, 4, 9, 11, 15]);
+    expect(STOPS.length).toBe(6);
+    for (const l of LINES) for (let i = 1; i < l.stops.length; i++) {
+      const a = STATIONS[l.stops[i - 1]];
+      const b = STATIONS[l.stops[i]];
+      // consecutive stations are one map step apart (straight or diagonal)
+      expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBe(1);
+    }
+    for (const t of TERMINALS) expect(departure(t).dir).toBe(LINES[departure(t).line].stops[0] === t ? 1 : -1);
+    expect(NEIGHBOURS[15]).toEqual([2, 4, 9, 11]);
+  });
+  it('model sets are well formed', () => {
     for (const set of Object.values(TUNED)) {
       expect(set.pay.length).toBe(9);
       expect(set.fsDist.length).toBe(7);
       expect(set.coinWeights.length).toBe(COIN_VALUES.length);
       expect(set.fsDist.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9);
-      expect(set.wild + set.coin + set.switch).toBeLessThan(0.5);
+      expect(set.wild + set.coin + Math.max(set.loco, set.signal, set.security)).toBeLessThan(0.6);
     }
   });
   it('power levels', () => {
@@ -37,135 +72,137 @@ describe('rules constants', () => {
     expect(levelOf(999)).toBe(4);
     expect([0, 1, 2, 3, 4].map(multOfLevel)).toEqual([1, 2, 3, 5, 10]);
   });
-  it('paytable is monotone in reels and every value is on the 0.01 grid', () => {
+  it('paytable is monotone in run length and every value is on the 0.01 grid', () => {
     for (const row of PAYTABLE) for (let i = 1; i < row.length; i++) expect(row[i]).toBeGreaterThan(row[i - 1]);
-    for (let s = 1; s < PAYTABLE.length; s++) expect(PAYTABLE[s][3]).toBeGreaterThanOrEqual(PAYTABLE[s - 1][3]);
+    for (let s = 1; s < PAYTABLE.length; s++) expect(PAYTABLE[s][2]).toBeGreaterThanOrEqual(PAYTABLE[s - 1][2]);
   });
 });
 
-describe('ways', () => {
-  it('pays 3+ adjacent reels from the left, ways = product of matches', () => {
-    const r = blank();
-    r[0][0] = TOP;
-    r[1][1] = TOP;
-    r[1][2] = WILD;
-    r[2][3] = TOP;
-    const out: WayWin[] = [];
-    const h = evalWays(grid(r), out);
-    const top = out.find((w) => w.sym === TOP)!;
-    expect(top.reels).toBe(3);
-    expect(top.ways).toBe(2);
-    expect(top.pay).toBeCloseTo(PAYTABLE[TOP][0] * 2, 9);
-    expect(top.positions).toEqual([posOf(0, 0), posOf(1, 1), posOf(1, 2), posOf(2, 3)]);
-    expect(h).toBe(Math.round(PAYTABLE[TOP][0] * 2 * 100));
+describe('route wins', () => {
+  it('pays 3+ consecutive stations along a line, anywhere on it', () => {
+    const out: RouteWin[] = [];
+    const h = evalRoutes(board({ 2: TOP, 3: WILD, 4: TOP }), out);
+    expect(out).toEqual([{ sym: TOP, line: 0, stations: [2, 3, 4], pay: PAYTABLE[TOP][0] }]);
+    expect(h).toBe(Math.round(PAYTABLE[TOP][0] * 100));
   });
-  it('a wild never starts a way (no wild on reel 1) and a gap ends it', () => {
-    const r = blank();
-    r[0] = [WILD, WILD, WILD, WILD];
-    r[1][0] = TOP;
-    r[2][0] = TOP;
-    expect(evalWays(grid(r), [])).toBe(0);
-    const s = blank();
-    s[0][0] = H1;
-    s[1][0] = H1;
-    s[3][0] = H1; // reel 3 missing
-    expect(evalWays(grid(s), [])).toBe(0);
+  it('an interchange counts for both lines', () => {
+    const out: RouteWin[] = [];
+    // Red 1-2-3 and Green 14-2-15 share station 2
+    evalRoutes(board({ 1: H1, 2: H1, 3: H1, 14: H1, 15: H1 }), out);
+    expect(out.map((w) => w.line).sort()).toEqual([0, 2]);
   });
-  it('six reels pay the 6 column', () => {
-    const r = blank();
-    for (let c = 0; c < 6; c++) r[c][0] = H1;
-    const out: WayWin[] = [];
-    evalWays(grid(r), out);
-    expect(out.find((w) => w.sym === H1)!.reels).toBe(6);
+  it('a wild can serve two symbols; a gap ends a run', () => {
+    const out: RouteWin[] = [];
+    evalRoutes(board({ 0: TOP, 1: TOP, 2: WILD, 3: H1, 4: H1 }), out);
+    expect(out.map((w) => [w.sym, w.stations])).toEqual([
+      [H1, [2, 3, 4]],
+      [TOP, [0, 1, 2]],
+    ]);
+  });
+  it('a full 7-station line pays the 7 column', () => {
+    const out: RouteWin[] = [];
+    evalRoutes(board({ 0: L1, 1: L1, 2: L1, 3: WILD, 4: L1, 5: L1, 6: L1 }), out);
+    expect(out[0].pay).toBe(PAYTABLE[L1][4]);
   });
 });
-
-function trains(reels: number[][], values: Record<number, number> = {}) {
-  const g = grid(reels);
-  const val = new Int32Array(CELLS);
-  const ids = new Int32Array(CELLS);
-  for (let p = 0; p < CELLS; p++) {
-    ids[p] = p + 100;
-    if (g[p] === COIN) val[p] = Math.round((values[p] ?? 1) * 100);
-  }
-  const out: Train[] = [];
-  const col = new Uint8Array(CELLS);
-  const h = runTrains(g, val, ids, out, col);
-  return { h, out, col };
-}
 
 describe('trains', () => {
-  it('a locomotive collects every coin in its row only', () => {
-    const r = blank();
-    r[0][1] = LOCO;
-    r[2][1] = COIN;
-    r[5][1] = COIN;
-    r[3][2] = COIN; // other row: left behind
-    const { h, out } = trains(r, { [posOf(2, 1)]: 2, [posOf(5, 1)]: 5, [posOf(3, 2)]: 50 });
-    expect(h).toBe(700);
-    expect(out.length).toBe(1);
-    expect(out[0].coins.map((c) => c.value)).toEqual([2, 5]);
-    expect(out[0].to).toBe(5);
+  it('a locomotive runs its line to the far terminal collecting every coin', () => {
+    const r = trainsOn({ 0: LOCO, 1: COIN, 3: COIN, 6: COIN, 10: COIN }, { 1: 2, 3: 5, 6: 1, 10: 50 });
+    expect(r.pay).toBe(8);
+    expect(r.trains[0].end).toBe('arrive');
+    expect(r.trains[0].steps.map((s) => s.at)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(r.trains[0].steps.map((s) => s.beat)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(r.collected[10]).toBe(0);
   });
   it('no locomotive, no haul', () => {
-    const r = blank();
-    r[2][1] = COIN;
-    expect(trains(r).h).toBe(0);
+    expect(trainsOn({ 3: COIN }).pay).toBe(0);
   });
-  it('a junction branches up and down from its own column', () => {
-    const r = blank();
-    r[0][1] = LOCO;
-    r[2][1] = SWITCH;
-    r[2][0] = COIN; // collected by the up-branch in the junction column
-    r[4][2] = COIN; // collected by the down-branch later
-    r[1][0] = COIN; // left of the junction: never reached
-    const { h, out } = trains(r, { [posOf(2, 0)]: 3, [posOf(4, 2)]: 4, [posOf(1, 0)]: 9 });
-    expect(h).toBe(700);
-    expect(out.length).toBe(3);
-    expect(out[1]).toMatchObject({ row: 0, from: 2, parent: 0, via: posOf(2, 1) });
-    expect(out[2]).toMatchObject({ row: 2, from: 2, parent: 0, via: posOf(2, 1) });
+  it('a Signal redirects onto the crossing line towards its longer side', () => {
+    const r = trainsOn({ 0: LOCO, 2: SIGNAL, 15: COIN, 16: COIN, 3: COIN }, { 15: 3, 16: 4, 3: 100 });
+    const t = r.trains[0];
+    expect(t.steps.map((s) => s.at)).toEqual([1, 2, 15, 11, 16]);
+    expect(t.steps[1].event).toBe('redirect');
+    expect(r.pay).toBe(7);
   });
-  it('a branch reaching another junction branches again; a cell is run once', () => {
-    const r = blank();
-    r[0][0] = LOCO;
-    r[1][0] = SWITCH; // -> row 1 from col 1
-    r[1][1] = SWITCH; // the branch lands on a junction: -> row 2 from col 1
-    r[3][2] = COIN;
-    const { h, out } = trains(r, { [posOf(3, 2)]: 10 });
-    expect(out.map((t) => t.row)).toEqual([0, 1, 2]);
-    expect(h).toBe(1000);
+  it('a train takes each Signal once', () => {
+    // Blue from the east: 12, 11 (signal -> Green, longer side north: 15, 2 (signal -> Red ...)
+    const r = trainsOn({ 13: LOCO, 11: SIGNAL, 2: SIGNAL });
+    const path = r.trains[0].steps.map((s) => s.at);
+    expect(path.slice(0, 4)).toEqual([12, 11, 15, 2]);
+    expect(r.trains[0].steps.filter((s) => s.event === 'redirect').length).toBe(2);
+    expect(r.trains[0].end).toBe('arrive');
   });
-  it('two locomotives in neighbouring rows: trains enter a column together, so no branch into a running row', () => {
-    const r = blank();
-    r[0][0] = LOCO;
-    r[0][1] = LOCO;
-    r[2][0] = SWITCH; // would branch into row 1 at col 2, but loco 2 is running it
-    r[4][1] = COIN;
-    const { out, h } = trains(r, { [posOf(4, 1)]: 1 });
-    expect(out.length).toBe(2);
-    expect(h).toBe(100);
+  it('Security ALL CLEAR: the train waits one beat and its haul pays x2', () => {
+    const r = trainsOn({ 7: LOCO, 8: SECURITY, 10: COIN, 13: COIN }, { 10: 5, 13: 1 }, [true]);
+    const t = r.trains[0];
+    expect(t.steps[0]).toMatchObject({ at: 8, beat: 1, event: 'clear' });
+    expect(t.steps[1]).toMatchObject({ at: 9, beat: 3 });
+    expect(t.repay).toBe(REPAY_MULT);
+    expect(r.pay).toBe(6 * REPAY_MULT);
+  });
+  it('Security INCIDENT: the train is held and misses the rest of its route', () => {
+    const r = trainsOn({ 7: LOCO, 8: COIN, 10: SECURITY, 12: COIN }, { 8: 2, 12: 25 }, [false]);
+    expect(r.trains[0].end).toBe('held');
+    expect(r.trains[0].steps.at(-1)).toMatchObject({ at: 10, event: 'held' });
+    expect(r.pay).toBe(2);
+    expect(r.collected[12]).toBe(0);
+  });
+  it('head-on: two trains entering the same station crash; the wreck takes nearby coins, all x2', () => {
+    const r = trainsOn({ 0: LOCO, 6: LOCO, 1: COIN, 5: COIN, 3: COIN }, { 1: 2, 5: 3, 3: 10 });
+    expect(r.crashes.length).toBe(1);
+    const c = r.crashes[0];
+    expect(c).toMatchObject({ beat: 3, at: [3], trains: [0, 1], pile: 15, mult: CRASH_MULT, pay: 30 });
+    expect(c.wreck.map((w) => w.at)).toEqual([3]);
+    expect(r.trains.every((t) => t.end === 'crash' && t.crash === 0 && t.endBeat === 3)).toBe(true);
+    expect(r.pay).toBe(30);
+  });
+  it('head-on between stations (they swap) crashes at both', () => {
+    // Red 0 and Red 6 with the east train delayed one beat by a cleared security stop at 5:
+    // west train at 3 (beat 3) and 4 (beat 4); east at 5 (beat 1, waits beat 2), 4 (beat 3)?
+    const r = trainsOn({ 0: LOCO, 6: LOCO, 5: SECURITY }, {}, [true]);
+    expect(r.crashes.length).toBe(1);
+    expect(r.crashes[0].at.length).toBeGreaterThanOrEqual(1);
+  });
+  it('Grand Junction: Green and Gold trains arriving together crash there', () => {
+    const r = trainsOn({ 14: LOCO, 17: LOCO, 15: COIN, 9: COIN, 11: COIN }, { 15: 25, 9: 5, 11: 3 });
+    expect(r.crashes[0]).toMatchObject({ beat: 2, at: [15] });
+    expect(r.crashes[0].wreck.map((w) => w.at)).toEqual([9, 11, 15]);
+    expect(r.pay).toBe(66);
+  });
+  it('running into a train waiting at a security check is a crash', () => {
+    // the Green south train clears security at 10 and waits; the Red train, redirected twice, runs into it
+    const r = trainsOn({ 0: LOCO, 16: LOCO, 10: SECURITY, 2: SIGNAL, 9: SIGNAL, 15: SIGNAL }, {}, [true, true]);
+    expect(r.crashes.length).toBe(1);
+    const c = r.crashes[0];
+    expect(c.at).toEqual([10]);
+    const waiting = r.trains.find((t) => t.steps.some((s) => s.at === 10 && s.event === 'clear'))!;
+    expect(waiting.steps.at(-1)!.beat).toBeLessThan(c.beat);
   });
   it('a coin is never collected twice', () => {
-    const r = blank();
-    r[0][0] = LOCO;
-    r[0][2] = LOCO;
-    r[1][0] = SWITCH;
-    r[1][2] = SWITCH;
-    r[1][1] = COIN; // both junctions branch into row 1 at col 1
-    const { h, col } = trains(r);
-    expect(h).toBe(100);
-    expect(col[posOf(1, 1)]).toBe(1);
+    for (let seed = 1; seed < 400; seed++) {
+      const res = playRound({ kind: 'buy_inferno', rng: createRng(seed) });
+      for (const s of [res.trigger, ...(res.bonus?.spins ?? [])]) {
+        const seen = new Set<number>();
+        for (const t of s.trains) for (const c of t.coins) {
+          expect(seen.has(c.at)).toBe(false);
+          seen.add(c.at);
+        }
+        for (const c of s.crashes) for (const w of c.wreck) {
+          expect(seen.has(w.at)).toBe(false);
+          seen.add(w.at);
+        }
+      }
+    }
   });
 });
 
 describe('rounds', () => {
-  it('forced grid pays ways + trains', () => {
-    const r = blank();
-    r[0][0] = LOCO;
-    r[3][0] = COIN;
-    const g: Sym[] = [];
-    r.forEach((reel) => reel.forEach((s) => g.push(s)));
-    const res = playRound({ kind: 'base', rng: createRng(1), force: { grid: g, values: { [posOf(3, 0)]: 25 } } });
+  it('forced board pays routes + trains', () => {
+    const g = filler();
+    g[0] = LOCO;
+    g[3] = COIN;
+    const res = playRound({ kind: 'base', rng: createRng(1), force: { grid: g as Sym[], values: { 3: 25 } } });
     expect(res.trigger.trainWin).toBe(25);
     expect(res.totalWin).toBe(25);
     expect(res.trigger.trains[0].coins[0].value).toBe(25);
@@ -190,7 +227,7 @@ describe('rounds', () => {
         expect(s.powerBefore).toBe(power);
         expect(s.mult).toBe(multOfLevel(levelOf(power)));
         if (i > 0) {
-          const collected = new Set(prev.trains.flatMap((t) => t.coins.map((c) => c.pos)));
+          const collected = new Set([...prev.trains.flatMap((t) => t.coins.map((c) => c.at)), ...prev.crashes.flatMap((c) => c.wreck.map((w) => w.at))]);
           for (let p = 0; p < CELLS; p++) {
             const was = prev.grid[p];
             if (was.sym === COIN && !collected.has(p)) {
@@ -199,12 +236,27 @@ describe('rounds', () => {
             }
           }
         }
-        const n = s.trains.reduce((a, t) => a + t.coins.length, 0);
+        const n = s.trains.reduce((a, t) => a + t.coins.length, 0) + s.crashes.reduce((a, c) => a + c.wreck.length, 0);
         power += n;
         expect(s.powerAfter).toBe(power);
         expect(s.levelSpins).toBe((levelOf(power) - levelOf(s.powerBefore)) * 3);
         expect(s.trainWin).toBeCloseTo(s.haul * s.mult, 6);
         prev = s;
+      }
+    }
+  });
+  it('the haul is the trains outside crashes (x repay) plus the crash pays', () => {
+    for (let seed = 1; seed < 300; seed++) {
+      const res = playRound({ kind: 'buy_inferno', rng: createRng(seed) });
+      for (const s of [res.trigger, ...(res.bonus?.spins ?? [])]) {
+        const free = s.trains.filter((t) => t.crash < 0).reduce((a, t) => a + t.haul * t.repay, 0);
+        const crash = s.crashes.reduce((a, c) => a + c.pay, 0);
+        expect(s.haul).toBeCloseTo(free + crash, 6);
+        for (const c of s.crashes) {
+          const pile = c.trains.reduce((a, i) => a + s.trains[i].haul * s.trains[i].repay, 0) + c.wreck.reduce((a, w) => a + w.value, 0);
+          expect(c.pile).toBeCloseTo(pile, 6);
+          expect(c.pay).toBeCloseTo(pile * CRASH_MULT, 6);
+        }
       }
     }
   });
@@ -218,27 +270,27 @@ describe('rounds', () => {
       expect(b.totalSpins).toBe(b.spins.length);
     }
   });
-  it('Last Train holds a Golden Locomotive on one row for every spin and starts at x2', () => {
+  it('Last Train holds a Golden Locomotive on one terminal for every spin and starts at x2', () => {
     for (let seed = 1; seed < 30; seed++) {
       const res = playRound({ kind: 'buy_inferno', rng: createRng(seed) });
       const b = res.bonus!;
       expect(b.kind).toBe('last');
       expect(b.awarded).toBe(10);
+      expect(TERMINALS).toContain(b.goldenAt);
       expect(b.spins[0].mult).toBe(2);
       for (const s of b.spins) {
-        expect(s.grid[b.goldenRow]).toMatchObject({ sym: LOCO, golden: true, held: true, id: 0 });
-        expect(s.trains.some((t) => t.row === b.goldenRow && t.parent === -1)).toBe(true);
+        expect(s.grid[b.goldenAt]).toMatchObject({ sym: LOCO, golden: true, held: true, id: 0 });
+        expect(s.trains.some((t) => t.start === b.goldenAt && t.golden)).toBe(true);
       }
     }
   });
-  it('Express Pass always has a locomotive (unless reel 1 is all tickets)', () => {
+  it('Express Pass always has a locomotive', () => {
     for (let seed = 1; seed < 2000; seed++) {
       const res = playRound({ kind: 'boost', rng: createRng(seed) });
-      const reel1 = res.trigger.grid.slice(0, ROWS).map((c) => c.sym);
-      expect(reel1.includes(LOCO)).toBe(true);
+      expect(res.trigger.trains.length).toBeGreaterThan(0);
     }
   });
-  it('totals add up and never exceed the cap', () => {
+  it('specials land only where they belong; totals add up and never exceed the cap', () => {
     const kinds: RoundKind[] = ['base', 'boost', 'buy_witching', 'buy_inferno'];
     for (const kind of kinds) {
       for (let seed = 1; seed < 300; seed++) {
@@ -248,29 +300,30 @@ describe('rounds', () => {
         expect(res.totalWin).toBeCloseTo(Math.min(MAX_WIN, sum), 6);
         expect(res.totalWin).toBeLessThanOrEqual(MAX_WIN);
         for (const s of spins) {
-          if (!s.maxWin) expect(s.spinWin).toBeCloseTo(s.waysWin + s.trainWin, 6);
+          if (!s.maxWin) expect(s.spinWin).toBeCloseTo(s.routesWin + s.trainWin, 6);
           expect(s.grid.length).toBe(CELLS);
-          for (let row = 0; row < ROWS; row++) expect([WILD, COIN, SWITCH]).not.toContain(s.grid[row].sym);
-          for (let row = 0; row < ROWS; row++) expect(s.grid[posOf(5, row)].sym).not.toBe(SWITCH);
-          for (let p = ROWS; p < CELLS; p++) expect(s.grid[p].sym).not.toBe(LOCO);
-          for (const c of s.grid) if (c.sym === COIN) expect(COIN_VALUES).toContain(c.value);
-          const tickets = s.grid.filter((c) => c.sym === FS).length;
-          expect(tickets).toBe(s.scatCount);
+          s.grid.forEach((c, p) => {
+            const k = STATIONS[p].kind;
+            if (c.sym === LOCO) expect(k).toBe('terminal');
+            if (c.sym === SIGNAL) expect(k).toBe('interchange');
+            if (c.sym === SECURITY) expect(k).toBe('stop');
+            if (c.sym === FS) expect(k).not.toBe('terminal');
+            if (c.sym === COIN) expect(COIN_VALUES).toContain(c.value);
+          });
+          expect(s.grid.filter((c) => c.sym === FS).length).toBe(s.scatCount);
+          for (const t of s.trains) expect(t.end).not.toBe('stall');
         }
-        const ids = res.trigger.grid.map((c) => c.id);
-        expect(new Set(ids).size).toBe(CELLS);
+        expect(new Set(res.trigger.grid.map((c) => c.id)).size).toBe(CELLS);
       }
     }
   });
   it('the cap ends the round at exactly MAX_WIN', () => {
-    const r = blank();
-    for (let row = 0; row < ROWS; row++) r[0][row] = LOCO;
-    for (let c = 1; c < 6; c++) r[c] = [COIN, COIN, COIN, COIN];
-    const g: Sym[] = [];
-    r.forEach((reel) => reel.forEach((s) => g.push(s)));
+    const g = filler();
+    g[0] = LOCO;
+    for (const p of [1, 2, 3, 4, 5, 6]) g[p] = COIN;
     const values: Record<number, number> = {};
-    for (let p = ROWS; p < CELLS; p++) values[p] = 2000;
-    const res = playRound({ kind: 'base', rng: createRng(3), force: { grid: g, values } });
+    for (const p of [1, 2, 3, 4, 5, 6]) values[p] = 2000;
+    const res = playRound({ kind: 'base', rng: createRng(3), force: { grid: g as Sym[], values } });
     expect(res.totalWin).toBe(MAX_WIN);
     expect(res.maxWin).toBe(true);
     expect(res.trigger.maxWin).toBe(true);
@@ -286,8 +339,7 @@ describe('rounds', () => {
     }
   });
   it('the default model compiles', () => {
-    expect(DEFAULT_MODEL.base.reel1.length).toBe(10);
-    expect(DEFAULT_MODEL.base.mid.length).toBe(12);
-    expect(DEFAULT_MODEL.base.last.length).toBe(11);
+    expect(DEFAULT_MODEL.base.table.length).toBe(CELLS);
+    expect(DEFAULT_MODEL.base.table[0].length).toBe(12);
   });
 });

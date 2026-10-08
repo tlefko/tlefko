@@ -6,17 +6,16 @@
  */
 import { playRound } from '../math/engine';
 import { Xoshiro128 } from '../math/rng';
-import { CELLS, Sym, posOf, reelOf, rowOf, type Force, type RoundKind, type RoundResult } from '../math/types';
+import { CELLS, Sym, type Force, type RoundKind, type RoundResult } from '../math/types';
 import { MODE_OF_KIND, roundToBook, type Book, type StakeMode } from './book';
 
-/** Filler that never pays: each reel a different symbol pattern that never lines up 3 reels. */
+/** Filler that never pays: station id mod 6 never runs 3 along any line. */
 function grid(set: Record<number, number> = {}): Sym[] {
   const g: number[] = [];
-  for (let p = 0; p < CELLS; p++) g.push([0, 1, 2, 3, 4, 5][(reelOf(p) + (rowOf(p) % 2) * 3) % 6]);
+  for (let p = 0; p < CELLS; p++) g.push(p % 6);
   for (const [p, s] of Object.entries(set)) g[Number(p)] = s;
   return g as Sym[];
 }
-const P = posOf;
 
 type Pred = (r: RoundResult) => boolean;
 
@@ -30,43 +29,63 @@ interface Spec {
 
 const spins = (r: RoundResult) => [r.trigger, ...(r.bonus?.spins ?? [])];
 
+/*
+ * Station ids (src/math/network.ts): Red 0-6 (west to east), Blue 7-13, Green 14 / 2 / 15 / 11 / 16,
+ * Gold 17 / 4 / 15 / 9 / 18; 15 is Grand Junction.
+ */
 export const DEV_SCENARIOS: Readonly<Record<string, Spec>> = {
   train: {
-    note: 'One locomotive collects three Fare Coins in its row.',
+    note: 'One Red Line train collects three Fare Coins.',
     kind: 'base',
-    force: { grid: grid({ [P(0, 1)]: Sym.LOCO, [P(2, 1)]: Sym.COIN, [P(4, 1)]: Sym.COIN, [P(5, 1)]: Sym.COIN, [P(3, 2)]: Sym.COIN }), values: { [P(2, 1)]: 2, [P(4, 1)]: 5, [P(5, 1)]: 1, [P(3, 2)]: 10 } },
+    force: { grid: grid({ 0: Sym.LOCO, 1: Sym.COIN, 3: Sym.COIN, 5: Sym.COIN, 10: Sym.COIN }), values: { 1: 2, 3: 5, 5: 1, 10: 10 } },
+  },
+  redirect: {
+    note: 'A Signal at an interchange redirects the Red train down the Green Line.',
+    kind: 'base',
+    force: { grid: grid({ 0: Sym.LOCO, 1: Sym.COIN, 2: Sym.SIGNAL, 15: Sym.COIN, 11: Sym.COIN, 16: Sym.COIN, 5: Sym.COIN }), values: { 1: 1, 15: 3, 11: 2, 16: 15, 5: 50 } },
+  },
+  security: {
+    note: 'A Security Check: ALL CLEAR, the train waits a beat and earns Delay Repay x2.',
+    kind: 'base',
+    force: { grid: grid({ 7: Sym.LOCO, 8: Sym.SECURITY, 10: Sym.COIN, 12: Sym.COIN, 13: Sym.COIN }), values: { 10: 5, 12: 3, 13: 10 }, security: [true] },
+  },
+  missed: {
+    note: 'A Security Check: INCIDENT, the train is held and misses its coins.',
+    kind: 'base',
+    force: { grid: grid({ 7: Sym.LOCO, 8: Sym.COIN, 10: Sym.SECURITY, 12: Sym.COIN, 13: Sym.COIN }), values: { 8: 2, 12: 25, 13: 10 }, security: [false] },
+  },
+  crash: {
+    note: 'Two Red trains meet head-on: CRASH, the wreck scatters the coins around it and pays x2.',
+    kind: 'base',
+    force: { grid: grid({ 0: Sym.LOCO, 6: Sym.LOCO, 1: Sym.COIN, 5: Sym.COIN, 3: Sym.COIN, 4: Sym.COIN, 10: Sym.COIN }), values: { 1: 2, 5: 3, 3: 10, 4: 5, 10: 1 } },
   },
   junction: {
-    note: 'A Junction sends branch trains up and down; the down branch hits a second Junction.',
+    note: 'Green and Gold trains reach Grand Junction on the same beat: a crash at the crossing.',
     kind: 'base',
-    force: {
-      grid: grid({ [P(0, 1)]: Sym.LOCO, [P(1, 1)]: Sym.COIN, [P(2, 1)]: Sym.SWITCH, [P(3, 0)]: Sym.COIN, [P(2, 2)]: Sym.COIN, [P(4, 2)]: Sym.SWITCH, [P(5, 3)]: Sym.COIN, [P(5, 1)]: Sym.COIN }),
-      values: { [P(1, 1)]: 1, [P(3, 0)]: 3, [P(2, 2)]: 2, [P(5, 3)]: 15, [P(5, 1)]: 0.5 },
-    },
+    force: { grid: grid({ 14: Sym.LOCO, 17: Sym.LOCO, 2: Sym.COIN, 15: Sym.COIN, 9: Sym.COIN, 11: Sym.COIN, 4: Sym.COIN }), values: { 2: 2, 15: 25, 9: 5, 11: 3, 4: 1 } },
   },
   multi: {
-    note: 'Three locomotives at once, coins in every row, one big coin.',
+    note: 'Three trains, a redirect, a security check and a crash in one spin.',
     kind: 'base',
-    force: {
-      grid: grid({ [P(0, 0)]: Sym.LOCO, [P(0, 2)]: Sym.LOCO, [P(0, 3)]: Sym.LOCO, [P(1, 0)]: Sym.COIN, [P(3, 0)]: Sym.COIN, [P(2, 2)]: Sym.COIN, [P(5, 2)]: Sym.COIN, [P(4, 3)]: Sym.COIN, [P(4, 1)]: Sym.COIN }),
-      values: { [P(1, 0)]: 2, [P(3, 0)]: 1, [P(2, 2)]: 5, [P(5, 2)]: 100, [P(4, 3)]: 3, [P(4, 1)]: 25 },
-    },
+    want: (r) => r.trigger.trains.length >= 3 && r.trigger.crashes.some((c) => c.pay > 0) && r.trigger.trains.some((t) => t.steps.some((s) => s.event)) && r.trigger.haul >= 5,
+    force: { locoCount: 3 },
+    seed: 1,
   },
   ways: {
-    note: 'A 6-reel Conductor way win with Live Wires.',
+    note: 'A 7-station Conductor route win along the Red Line with Live Wires.',
     kind: 'base',
-    force: { grid: grid({ [P(0, 0)]: Sym.TOP, [P(1, 1)]: Sym.WILD, [P(2, 0)]: Sym.TOP, [P(2, 3)]: Sym.TOP, [P(3, 2)]: Sym.TOP, [P(4, 0)]: Sym.WILD, [P(5, 3)]: Sym.TOP }) },
+    force: { grid: grid({ 0: Sym.TOP, 1: Sym.TOP, 2: Sym.WILD, 3: Sym.TOP, 4: Sym.TOP, 5: Sym.WILD, 6: Sym.TOP, 8: Sym.H1, 9: Sym.H1, 10: Sym.H1 }) },
   },
   tease: {
     note: 'Coins land but no locomotive: nothing collects them.',
     kind: 'base',
-    force: { grid: grid({ [P(2, 1)]: Sym.COIN, [P(4, 2)]: Sym.COIN, [P(5, 0)]: Sym.COIN }), values: { [P(2, 1)]: 50, [P(4, 2)]: 5, [P(5, 0)]: 2 } },
+    force: { grid: grid({ 3: Sym.COIN, 10: Sym.COIN, 15: Sym.COIN }), values: { 3: 50, 10: 5, 15: 2 } },
   },
   bonus: {
     note: 'Four Golden Tickets trigger Rush Hour (natural bonus with a level-up).',
     kind: 'base',
     force: { scatCount: 4 },
-    want: (r) => (r.bonus?.spins ?? []).some((s) => s.levelAfter > s.levelBefore),
+    want: (r) => (r.bonus?.spins ?? []).some((s) => s.levelAfter > s.levelBefore) && (r.bonus?.spins ?? []).some((s) => s.crashes.length > 0),
     seed: 1,
   },
   rushBig: {
@@ -76,9 +95,9 @@ export const DEV_SCENARIOS: Readonly<Record<string, Spec>> = {
     seed: 1,
   },
   lastTrain: {
-    note: 'Last Train: the Golden Locomotive collects every spin, with a branch along the way.',
+    note: 'Last Train: the Golden Locomotive runs every spin, with a crash along the way.',
     kind: 'buy_inferno',
-    want: (r) => (r.bonus?.spins ?? []).some((s) => s.trains.some((t) => t.parent >= 0)) && r.totalWin > 300,
+    want: (r) => (r.bonus?.spins ?? []).some((s) => s.crashes.length > 0) && r.totalWin > 300,
     seed: 1,
   },
   express: {

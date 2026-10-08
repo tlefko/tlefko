@@ -195,7 +195,7 @@ async function start() {
 
   // demo QA hook
   if (env.debug && rgs.kind === 'demo') {
-    (window as unknown as Record<string, unknown>).__ll = { scene, ctrl, rgs, forceBook: (id: number) => ((rgs as DemoRgs).forceBookId = id) };
+    (window as unknown as Record<string, unknown>).__ll = { scene, ctrl, rgs, gsap, forceBook: (id: number) => ((rgs as DemoRgs).forceBookId = id) };
   }
 
   await ctrl.presenter.prepare();
@@ -327,7 +327,7 @@ async function start() {
   const attract = playRound({ kind: 'base', rng: createRng((Math.random() * 2 ** 31) | 0), record: true });
   // the board drops in as the shade lifts (with its sounds, once audio is up)
   await Promise.race([audioReady, new Promise((r) => setTimeout(r, 150))]);
-  if (!env.replay) await scene.grid.spinIn(attract.trigger.grid, new Set(), { onColumnLanded: (c, last) => sound.play(last ? 'reelStop' : 'reelDrop', { index: c }) }, false);
+  if (!env.replay) await scene.map.spinIn(attract.trigger.grid, new Set(), { onRattle: (p) => sound.play('flapRattle', { index: p, volume: 0.5 }), onSettle: (p) => sound.play('flapSettle', { index: p, volume: 0.6 }) }, false);
   await fade;
   // the crew and the logo are the game's again
   if (s0) {

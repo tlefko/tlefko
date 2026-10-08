@@ -1,35 +1,35 @@
 /**
- * Ways paytable for Third Rail Riches.
+ * Route paytable for Third Rail Riches.
  *
- * A way win is 3 or more adjacent reels from the leftmost reel, each holding the symbol or a Live
- * Wire (wild; reels 2-6). It pays PAYTABLE[sym][reels - 3] per way, in bet multiples, times the
- * number of ways (product of matching cells per reel). Every value is a whole number of hundredths,
- * so the engine adds in integer hundredths and results match the Stake payoutMultiplier exactly.
+ * A route win is a run of 3 or more consecutive stations along one line showing the same symbol
+ * (Live Wires substitute). It pays PAYTABLE[sym][run - 3] in bet multiples. Every value is a whole
+ * number of hundredths, so the engine adds in integer hundredths and results match the Stake
+ * payoutMultiplier exactly.
  */
-import { PAYING_SYMBOLS } from './types';
+import { MAX_RUN, MIN_RUN, PAYING_SYMBOLS } from './types';
 
-export const REEL_LABELS = ['3', '4', '5', '6'] as const;
-export const TIERS = REEL_LABELS.length;
+export const RUN_LABELS = ['3', '4', '5', '6', '7'] as const;
+export const TIERS = RUN_LABELS.length;
 
-/** PAYTABLE[sym][reels - 3] in bet multiples per way. */
+/** PAYTABLE[sym][run - 3] in bet multiples. */
 export const PAYTABLE: readonly (readonly number[])[] = [
-  [0.05, 0.1, 0.2, 0.4], // L1 pretzel
-  [0.05, 0.1, 0.25, 0.5], // L2 coffee cup
-  [0.05, 0.15, 0.3, 0.6], // L3 newspaper
-  [0.1, 0.15, 0.4, 0.8], // L4 umbrella
-  [0.1, 0.25, 0.6, 1.5], // H4 pigeon
-  [0.15, 0.3, 0.8, 2], // H3 alley cat
-  [0.2, 0.4, 1, 3], // H2 bulldog cop
-  [0.25, 0.6, 1.5, 5], // H1 Rivets the rat
-  [0.4, 1, 3, 10], // TOP Conductor Casey
+  [0.4, 1, 3, 8, 20], // L1 pretzel
+  [0.4, 1, 3, 8, 20], // L2 coffee cup
+  [0.6, 1.5, 4, 10, 30], // L3 newspaper
+  [0.6, 1.5, 4, 10, 30], // L4 umbrella
+  [1, 2.5, 6, 15, 50], // H4 pigeon
+  [1.2, 3, 8, 20, 60], // H3 alley cat
+  [1.5, 4, 10, 30, 100], // H2 Officer Bulldog
+  [2, 5, 15, 50, 150], // H1 Rivets
+  [3, 8, 25, 80, 300], // TOP Conductor Casey
 ].map((row) => Object.freeze(row));
 
-/** Pay per way in bet multiples (0 below 3 reels). */
-export function payFor(sym: number, reels: number): number {
-  return reels < 3 ? 0 : PAYTABLE[sym][Math.min(reels, 6) - 3];
+/** Pay in bet multiples for a run (0 below 3). */
+export function payFor(sym: number, run: number): number {
+  return run < MIN_RUN ? 0 : PAYTABLE[sym][Math.min(run, MAX_RUN) - MIN_RUN];
 }
 
-/** Integer hundredths: PAY_H[sym * TIERS + reels - 3]. */
+/** Integer hundredths: PAY_H[sym * TIERS + run - 3]. */
 export const PAY_H: Int32Array = (() => {
   const out = new Int32Array(PAYING_SYMBOLS * TIERS);
   for (let s = 0; s < PAYING_SYMBOLS; s++) {

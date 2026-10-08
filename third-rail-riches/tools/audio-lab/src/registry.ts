@@ -6,6 +6,7 @@ import { SYMBOL_SFX } from './sfx/symbols';
 import { TRAIN_SFX } from './sfx/trains';
 import { EVENT_SFX } from './sfx/events';
 import { SPLASH_SFX } from './sfx/splash';
+import { MAP_SFX } from './sfx/map';
 import { BASE } from './music/base';
 import { RUSH } from './music/rush';
 import { LAST } from './music/last';
@@ -16,7 +17,7 @@ import { SURGE } from './music/surge';
 const EXTRA = new Set(['bonusIntro', 'bonusEnd', 'retrigger', 'goldenArrive', 'bigWinStart', 'bigWinTier', 'bigWinEnd', 'maxWin', 'tierSlam']);
 
 export const SFX: SfxDef[] = [
-  ...UI_SFX, ...REEL_SFX, ...WIN_SFX, ...SYMBOL_SFX, ...TRAIN_SFX, ...EVENT_SFX, ...SPLASH_SFX,
+  ...UI_SFX, ...REEL_SFX, ...WIN_SFX, ...SYMBOL_SFX, ...TRAIN_SFX, ...EVENT_SFX, ...SPLASH_SFX, ...MAP_SFX,
 ].map((d) =>
   EXTRA.has(d.name) ? { ...d, bank: 'extra' as const } : d,
 );
