@@ -138,10 +138,26 @@ for (const [i, sc] of scenarios.entries()) {
   let done = false;
   while (Date.now() - started < 240000) {
     await page.waitForTimeout(400);
-    done = await page.evaluate((n) => window.__ll.ctrl.rounds > n && !window.__ll.ctrl.busy, before.rounds);
+    // tap through title cards (bonus intro / end) like a player would
+    done = await page.evaluate((n) => (window.__ll.ctrl.presenter.skipCard(), window.__ll.ctrl.rounds > n && !window.__ll.ctrl.busy), before.rounds);
     if (done) break;
   }
-  await page.waitForTimeout(900); // let the HUD count-up finish
+  // let the HUD count-up finish (headless software rendering draws only a few frames a second)
+  await page
+    .waitForFunction(
+      () => {
+        const el = document.querySelector('[data-k="balance"]');
+        const v = el.getAttribute('aria-label') || el.textContent;
+        window.__soakLast ??= { v, n: 0 };
+        if (window.__soakLast.v === v) window.__soakLast.n++;
+        else window.__soakLast = { v, n: 0 };
+        return window.__soakLast.n >= 4;
+      },
+      null,
+      { timeout: 8000, polling: 300 },
+    )
+    .catch(() => undefined);
+  await page.evaluate(() => (window.__soakLast = undefined));
   const res = await page.evaluate(async () => {
     const { ctrl, rgs } = window.__ll;
     return {
