@@ -3,28 +3,28 @@
     "rtp": 0.963,
     "maxWin": 10000,
     "cost": 1,
-    "hitRate": 0.48384,
+    "hitRate": 0.39771,
     "maxWinOdds": 19999998,
-    "sd": 11.67,
-    "books": 400865
+    "sd": 10.15,
+    "books": 400795
   },
   "BOOST": {
     "rtp": 0.963,
     "maxWin": 10000,
     "cost": 1.5,
-    "hitRate": 0.64366,
+    "hitRate": 0.60321,
     "maxWinOdds": 19999998,
-    "sd": 12.49,
-    "books": 400872
+    "sd": 11.33,
+    "books": 400780
   },
   "WITCHING": {
     "rtp": 0.963,
     "maxWin": 10000,
     "cost": 100,
-    "hitRate": 0.99945,
+    "hitRate": 0.99685,
     "maxWinOdds": 300000,
-    "sd": 143.51,
-    "books": 60276
+    "sd": 134.13,
+    "books": 60330
   },
   "INFERNO": {
     "rtp": 0.963,
@@ -32,7 +32,7 @@
     "cost": 400,
     "hitRate": 1,
     "maxWinOdds": 20000,
-    "sd": 386.6,
-    "books": 60309
+    "sd": 387.16,
+    "books": 60435
   }
 }
