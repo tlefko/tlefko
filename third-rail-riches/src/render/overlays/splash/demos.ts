@@ -1023,7 +1023,7 @@ class CrashDemo extends MapDemo {
       [],
       impact,
     );
-    tl.fromTo(this.word.scale, { x: this.kWord * 2.6, y: this.kWord * 2.6 }, { x: this.kWord, y: this.kWord, duration: 0.16, ease: 'power4.in', immediateRender: false }, impact);
+    tl.fromTo(this.word.scale, { x: this.kWord * 2.1, y: this.kWord * 2.1 }, { x: this.kWord, y: this.kWord, duration: 0.15, ease: 'power4.in', immediateRender: false }, impact);
     tl.fromTo(this.word, { rotation: -0.1 }, { rotation: 0.04, duration: 0.6, ease: 'elastic.out(1, 0.35)', immediateRender: false }, impact + 0.16);
     tl.fromTo(this.word, { y: X.y - S * 0.15, alpha: 1 }, { y: X.y - S * 1.4, alpha: 0, duration: 0.4, ease: 'power2.in', immediateRender: false }, impact + 1.05);
     // the pile: both hauls pour in, then every coin at and around the crash

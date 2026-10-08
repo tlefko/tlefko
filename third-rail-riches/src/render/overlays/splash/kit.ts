@@ -676,6 +676,8 @@ export const CAR_NOSE = 0.55;
 export class MiniTrain {
   cars: Sprite[] = [];
   lamp = new Sprite(softDotTexture());
+  /** The lamp's holder: fades it with the map window's edge (its own alpha is the lamp's level). */
+  private lampWrap = new Container();
   tally?: Tally;
   s = 0;
   grey = 0;
@@ -713,7 +715,8 @@ export class MiniTrain {
     this.lamp.width = S * 1.15;
     this.lamp.height = S * 0.72;
     this.lamp.alpha = 0;
-    map.trainLayer.addChild(this.lamp, this.cars[1], this.cars[0]);
+    this.lampWrap.addChild(this.lamp);
+    map.trainLayer.addChild(this.lampWrap, this.cars[1], this.cars[0]);
   }
   get head(): Pt {
     return { x: this.cars[0].x, y: this.cars[0].y };
@@ -762,9 +765,13 @@ export class MiniTrain {
     const ang = Math.atan2(nose.y - back.y, nose.x - back.x);
     this.lamp.position.set(nose.x + Math.cos(ang) * S * 0.3, nose.y + Math.sin(ang) * S * 0.3);
     this.lamp.rotation = ang;
+    const D = this.map.D;
+    this.lampWrap.alpha = clamp((D * 0.46 - Math.max(Math.abs(this.lamp.x), Math.abs(this.lamp.y))) / (D * 0.12), 0, 1);
     if (this.tally && this.tally.visible) {
       const t = this.tallyAt;
-      this.tally.position.set(t.x, t.y);
+      // (kept inside the demo square: on a tiny card it never runs into the card's title)
+      const half = Math.max(0, this.map.D / 2 - this.tally.width / 2);
+      this.tally.position.set(clamp(t.x, -half, half), t.y);
       // (it shows as the train comes into view, and stays while the train dives into a tunnel)
       this.tally.alpha = Math.min(1, lead * 1.5);
     }
