@@ -16,10 +16,14 @@ const hex = (ch: string) => (ch.codePointAt(0) ?? 0).toString(16);
 
 export type NumFace = 'paper' | 'gold' | 'fire' | 'sea';
 const FACES: Record<NumFace, [string, string, string]> = {
-  paper: [C.white, C.paper, mix(C.paperWarm, C.woodLight, 0.35)],
+  // cream enamel lettering
+  paper: [C.white, C.cream, mix(C.tile, C.tileDeep, 0.55)],
+  // brass
   gold: [C.goldLight, C.gold, mix(C.gold, C.goldDeep, 0.45)],
-  fire: [C.fireCore, C.fireHot, C.fire],
-  sea: [C.seaFoam, C.seaLight, C.sea],
+  // amber lamplight
+  fire: [C.amberLight, C.amber, C.amberDeep],
+  // electric blue (the autoplay counter on the spin button's hub)
+  sea: [C.voltCore, C.voltLight, C.volt],
 };
 
 function ensureSheet(): SVGDefsElement {

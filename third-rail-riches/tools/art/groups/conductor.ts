@@ -11,7 +11,7 @@ try {
   /* uniform.ts not written yet */
 }
 
-export default () => [
+const all = () => [
   { label: 'symbol idle', svg: conductorHead('idle', true), w: 300 },
   ...exprs.slice(1).map((e) => ({ label: `symbol ${e}`, svg: conductorHead(e, true), w: 220 })),
   ...conductorWinFrames.map((f, i) => ({ label: `win ${i + 1}`, svg: f(), w: 180 })),
@@ -21,3 +21,9 @@ export default () => [
   ...parts.map((p) => ({ label: p, svg: conductorRigPart(p).svg, w: 140 })),
   ...bodyItems(),
 ];
+
+/** ONLY=label,label narrows the sheet (close-up review). */
+export default () => {
+  const only = process.env.ONLY?.split(',');
+  return only ? all().filter((it) => only.some((o) => it.label.includes(o))) : all();
+};

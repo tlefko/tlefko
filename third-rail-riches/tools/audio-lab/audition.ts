@@ -9,15 +9,19 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 interface SoundMeta { id: string; name: string; variant: number; desc: string; kind: string; bank: string }
 interface QaRow { file: string; kind: string; seconds: number; I: number; mMax: number; samplePeak: number; truePeak: number; ok: boolean; notes?: string }
 
-const SFX_ORDER: SfxName[] = [
-  'uiClick', 'uiToggle', 'uiOpen', 'uiClose', 'betUp', 'betDown', 'spinPress', 'buy', 'error', 'iris',
-  'reelDrop', 'reelStop', 'symbolFall', 'sixLand', 'sixIgnite', 'fsLand', 'anticipationStart', 'anticipationEnd',
-  'win', 'pop', 'cascade', 'wheelAppear', 'wheelTick', 'wheelLand', 'howl',
-  'cashBronze', 'cashSilver', 'cashGold', 'multAdd', 'multMul', 'maxWin',
-  'barTick', 'barApply', 'bonusTrigger', 'bonusIntro', 'bonusEnd', 'retrigger',
-  'bigWinStart', 'bigWinTier', 'bigWinEnd', 'coin',
-  'explode', 'blastDebris', 'wildLand', 'meterFlame', 'meterFull', 'hounds', 'inferno', 'boost',
+/** Every runtime SFX id in a sensible order (the manifest's VARIANTS is the source of truth). */
+const SFX_ORDER: string[] = [
+  'uiClick', 'uiToggle', 'uiOpen', 'uiClose', 'betUp', 'betDown', 'spinPress', 'buy', 'error', 'iris', 'boostOn', 'boostOff', 'lowPowerClick',
+  'reelDrop', 'reelStop', 'ticketLand', 'coinLand', 'locoLand', 'switchLand', 'wildLand',
+  'win', 'clusterTrace', 'symPretzel', 'symCoffee', 'symNewspaper', 'symUmbrella', 'symPigeon', 'symCat', 'symBulldog', 'symRat', 'symConductor',
+  'whistle', 'trainDepart', 'trainExit', 'trainBrake', 'coinCollect', 'switchThrow', 'branch', 'haulCount', 'haulMult', 'barTick', 'barApply',
+  'anticipationStart', 'anticipationEnd', 'bonusTrigger', 'bonusIntro', 'bonusEnd', 'retrigger', 'powerStep', 'levelUp', 'goldenArrive',
+  'bigWinStart', 'bigWinTier', 'bigWinEnd', 'maxWin', 'tierSlam',
+  'introSting', 'playSting', 'carouselWhoosh', 'coachPop',
 ];
+const LOOPS = ['anticipation', 'trainRun'] as const;
+/** SfxName in src/audio/index.ts is typed separately; the lab plays any manifest id. */
+const play = (name: string, o: Parameters<typeof audio.play>[1] = {}) => audio.play(name as SfxName, o);
 
 let started = false;
 let fade = 0.9;
@@ -63,7 +67,7 @@ $('duck').onclick = () => audio.duck(0.6, 2);
 
 // ---------------------------------------------------------------- music
 const trackBtns = new Map<Track, HTMLButtonElement>();
-for (const t of ['base', 'tantrum', 'witching', 'limbo', 'bigwin', 'none'] as Track[]) {
+for (const t of ['base', 'rush', 'last', 'bigwin', 'surge', 'none'] as Track[]) {
   const b = document.createElement('button');
   const info = t === 'none' ? null : TRACKS[t];
   b.textContent = info ? `${t} (${info.bpm} bpm)` : t;
@@ -77,7 +81,7 @@ for (const t of ['base', 'tantrum', 'witching', 'limbo', 'bigwin', 'none'] as Tr
 }
 
 // ---------------------------------------------------------------- loops
-for (const name of ['anticipation', 'wheelSpin'] as const) {
+for (const name of LOOPS) {
   const b = document.createElement('button');
   let on = false;
   b.textContent = `loop ${name}`;
@@ -94,80 +98,85 @@ for (const name of ['anticipation', 'wheelSpin'] as const) {
 const wait = (s: number) => new Promise((r) => setTimeout(r, s * 1000));
 const demos: Record<string, () => Promise<void>> = {
   'spin + drop': async () => {
-    audio.play('spinPress');
+    play('spinPress');
     await wait(0.35);
-    for (let c = 0; c < 6; c++) audio.play(c === 5 ? 'reelStop' : 'reelDrop', { index: c, delay: c * 0.11, pan: (c - 2.5) / 4 });
+    for (let c = 0; c < 6; c++) play(c === 5 ? 'reelStop' : 'reelDrop', { index: c, delay: c * 0.11, pan: (c - 2.5) / 4 });
   },
-  'cascade chain': async () => {
-    for (let k = 0; k < 5; k++) {
-      audio.play('win', { index: k });
-      for (let i = 0; i < 8; i++) audio.play('pop', { delay: 0.25 + i * 0.01, pan: Math.random() * 1.6 - 0.8 });
-      audio.play('cascade', { delay: 0.45 });
-      for (let i = 0; i < 6; i++) audio.play('symbolFall', { delay: 0.5 + i * 0.05 });
-      await wait(1.0);
+  'landings': async () => {
+    for (let k = 1; k <= 6; k++) {
+      play('ticketLand', { index: k });
+      await wait(0.7);
     }
-  },
-  'keg + wheel': async () => {
-    audio.play('sixLand');
-    await wait(0.8);
-    audio.play('sixIgnite');
-    await wait(0.6);
-    audio.play('wheelAppear');
-    audio.play('howl', { delay: 0.3 });
+    for (let m = 0; m < 4; m++) {
+      play('coinLand', { index: m });
+      await wait(0.45);
+    }
+    play('locoLand');
+    await wait(0.7);
+    play('switchLand');
     await wait(0.5);
-    audio.loop('wheelSpin', true);
-    await wait(1.6);
-    audio.loop('wheelSpin', false);
-    let gap = 0.06;
-    for (let i = 0; i < 14; i++) {
-      audio.play('wheelTick', { index: i });
-      await wait(gap);
-      gap *= 1.18;
+    play('wildLand');
+  },
+  'way win': async () => {
+    play('win');
+    play('clusterTrace', { delay: 0.05 });
+    for (const [k, n] of ['symPretzel', 'symCoffee', 'symNewspaper', 'symUmbrella', 'symPigeon', 'symCat', 'symBulldog', 'symRat', 'symConductor'].entries()) play(n, { delay: 0.8 + k * 0.75 });
+  },
+  'train run': async () => {
+    play('whistle');
+    await wait(0.9);
+    play('trainDepart');
+    await wait(0.9);
+    audio.loop('trainRun', true);
+    for (let k = 1; k <= 6; k++) {
+      await wait(0.42);
+      play('coinCollect', { index: k });
+      if (k === 3) {
+        play('switchThrow');
+        play('branch', { delay: 0.2 });
+      }
     }
-    audio.play('wheelLand');
     await wait(0.4);
-    audio.play('cashGold');
-    for (let i = 0; i < 12; i++) audio.play('coin', { delay: 0.2 + i * 0.06, pan: Math.random() * 1.4 - 0.7 });
+    audio.loop('trainRun', false);
+    play('trainExit');
+    await wait(1.2);
+    for (let i = 0; i < 24; i++) {
+      play('haulCount', { index: i });
+      await wait(0.04);
+    }
+    play('haulMult');
+  },
+  'brake + coins 1..12': async () => {
+    play('trainBrake');
+    await wait(1.6);
+    for (let k = 1; k <= 12; k++) {
+      play('coinCollect', { index: k });
+      await wait(0.16);
+    }
   },
   'bar count + apply': async () => {
     for (let i = 0; i < 40; i++) {
-      audio.play('barTick', { index: i });
+      play('barTick', { index: i });
       await wait(0.035);
     }
-    audio.play('multAdd');
-    await wait(0.6);
-    audio.play('multMul');
-    await wait(0.8);
-    audio.play('barApply');
+    play('barApply');
   },
   anticipation: async () => {
-    audio.play('anticipationStart');
+    play('anticipationStart');
     audio.loop('anticipation', true);
     for (let k = 1; k <= 6; k++) {
       audio.intensity(k / 6);
-      audio.play('fsLand', { index: k });
+      play('ticketLand', { index: k });
       await wait(0.9);
     }
     audio.loop('anticipation', false);
     audio.intensity(0);
-    audio.play('anticipationEnd');
-    audio.play('bonusTrigger', { delay: 0.2 });
+    play('anticipationEnd');
+    play('bonusTrigger', { delay: 0.2 });
   },
-  'big win': async () => {
-    audio.music('bigwin', { fade: 0.3 });
-    audio.play('bigWinStart');
-    for (let t = 0; t < 4; t++) {
-      await wait(1.8);
-      audio.play('bigWinTier', { index: t });
-      for (let i = 0; i < 10; i++) audio.play('coin', { delay: i * 0.08, pan: Math.random() * 1.6 - 0.8 });
-    }
-    await wait(1.8);
-    audio.play('bigWinEnd');
-    await wait(2.2);
-    audio.music('base', { fade: 1.2 });
-  },
-  'witching ramp': async () => {
-    audio.music('witching', { fade: 1 });
+  'rush hour': async () => {
+    play('bonusIntro');
+    audio.music('rush', { fade: 1 });
     for (let i = 0; i <= 20; i++) {
       audio.intensity(i / 20);
       intEl.value = String(i / 20);
@@ -175,72 +184,38 @@ const demos: Record<string, () => Promise<void>> = {
       await wait(0.6);
     }
   },
-  'powder keg chain': async () => {
-    audio.play('wildLand');
-    await wait(0.5);
-    for (let k = 1; k <= 6; k++) {
-      audio.play('explode', { index: k, pan: (k % 3) / 2 - 0.5 });
-      for (let i = 0; i < 5; i++) audio.play('blastDebris', { delay: 0.15 + i * 0.07, pan: Math.random() * 1.6 - 0.8 });
-      audio.play('meterFlame', { index: k, delay: 0.3 });
-      await wait(0.55);
+  'power meter': async () => {
+    for (let k = 1; k <= 14; k++) {
+      play('powerStep', { index: k });
+      await wait(0.22);
+      if (k === 12) play('levelUp');
     }
-    for (let k = 7; k <= 10; k++) {
-      audio.play('meterFlame', { index: k });
-      await wait(0.18);
-    }
-    audio.play('meterFull');
-  },
-  "captain's wheel": async () => {
-    audio.play('wheelAppear');
-    audio.loop('wheelSpin', true);
-    await wait(1.4);
-    audio.loop('wheelSpin', false);
-    audio.play('wheelLand');
-    await wait(0.8);
-    audio.play('hounds', { index: 3 });
     await wait(1.2);
-    audio.play('inferno');
-    await wait(1.4);
-    for (const lvl of [2, 3, 5, 10, 20]) {
-      audio.play('boost', { index: lvl });
-      await wait(0.7);
-    }
+    play('retrigger');
   },
-  'kaboom bomb': async () => {
-    const p = (n: string, o: Parameters<typeof audio.play>[1] = {}) => audio.play(n as SfxName, o);
-    p('bombLand');
-    await wait(0.9);
-    for (let k = 0; k < 3; k++) {
-      p('bombTick');
-      await wait(0.5);
-    }
-    for (let size = 2; size <= 5; size++) {
-      p('explode', { index: size });
-      p('bombGrow', { index: size, delay: 0.08 });
-      await wait(0.9);
-    }
-    p('bombHotLoop');
-    await wait(1.2);
-    p('endRumble');
-    await wait(1.9);
-    p('bombBlast', { index: 5 });
-    p('bombChain', { delay: 0.35 });
-    p('bombChain', { delay: 0.7 });
+  'last train': async () => {
+    audio.music('last', { fade: 1 });
+    await wait(2);
+    play('goldenArrive');
   },
-  "captain's throw": async () => {
-    const p = (n: string, o: Parameters<typeof audio.play>[1] = {}) => audio.play(n as SfxName, o);
-    p('capBelt');
-    for (let k = 1; k <= 3; k++) p('capChargePip', { index: k, delay: 0.5 + k * 0.45 });
-    p('capChargeFull', { delay: 2 });
-    p('capWindup', { delay: 3.2 });
-    p('capThrow', { delay: 4.2 });
-    p('parrotSquawk', { delay: 4.9 });
-    p('bombLand', { delay: 5.1 });
+  'big win': async () => {
+    audio.music('bigwin', { fade: 0.3 });
+    play('bigWinStart');
+    for (let t = 0; t < 4; t++) {
+      await wait(1.8);
+      play('tierSlam');
+      play('bigWinTier', { index: t });
+      for (let i = 0; i < 10; i++) play('coinLand', { index: i % 4, delay: i * 0.08, pan: Math.random() * 1.6 - 0.8 });
+    }
+    await wait(1.8);
+    play('bigWinEnd');
+    await wait(2.2);
+    audio.music('base', { fade: 1.2 });
   },
   'stress (voice cap)': async () => {
     for (let i = 0; i < 200; i++) {
-      audio.play(i % 2 ? 'coin' : 'barTick', { index: i });
-      if (i % 20 === 0) audio.play('pop');
+      play(i % 2 ? 'coinCollect' : 'barTick', { index: i });
+      if (i % 20 === 0) play('reelDrop');
       await wait(0.005);
     }
   },
@@ -265,7 +240,7 @@ async function buildSfx() {
   }
   const desc = (name: string) => meta.find((m) => m.name === name)?.desc ?? '';
   // the typed runtime list first, then every other name in the manifest (newer sounds, loops played once)
-  const names: string[] = [...SFX_ORDER, ...Object.keys(VARIANTS).filter((n) => !(SFX_ORDER as string[]).includes(n) && n !== 'anticipation' && n !== 'wheelSpin')];
+  const names: string[] = [...SFX_ORDER.filter((n) => VARIANTS[n]), ...Object.keys(VARIANTS).filter((n) => !SFX_ORDER.includes(n) && !(LOOPS as readonly string[]).includes(n))];
   for (const name of names) {
     const v = VARIANTS[name];
     const card = document.createElement('div');
@@ -278,13 +253,13 @@ async function buildSfx() {
     d.textContent = desc(name);
     const row = document.createElement('div');
     row.className = 'row idx';
-    const play = document.createElement('button');
-    play.textContent = v && v.ids.length > 1 ? 'random' : 'play';
-    play.onclick = async () => {
+    const btn = document.createElement('button');
+    btn.textContent = v && v.ids.length > 1 ? 'random' : 'play';
+    btn.onclick = async () => {
       await start();
-      audio.play(name as SfxName);
+      play(name);
     };
-    row.appendChild(play);
+    row.appendChild(btn);
     if (v && v.ids.length > 1) {
       v.ids.forEach((_, i) => {
         const num = v.nums?.[i] ?? v.base + i;
@@ -292,7 +267,7 @@ async function buildSfx() {
         b.textContent = String(num);
         b.onclick = async () => {
           await start();
-          audio.play(name as SfxName, { index: num });
+          play(name, { index: num });
         };
         row.appendChild(b);
       });
@@ -337,6 +312,6 @@ requestAnimationFrame(frame);
 setInterval(() => {
   const d = audioDebug();
   $('debug').textContent = JSON.stringify(d, null, 1);
-  // one pip per beat of the playing track's bar (6/8 base counts 2, the 3/4 waltz 3)
+  // one pip per beat of the playing track's bar
   setPips((d.track !== 'none' && TRACKS[d.track]?.beatsPerBar) || TRACKS.base?.beatsPerBar || 4);
 }, 500);

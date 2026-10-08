@@ -1,130 +1,112 @@
 /**
- * BASE GAME: "Powder Keg Cove". An easy-going, jaunty sea shanty in 6/8, D dorian, dotted quarter
- * = 96 (quarter = 144), 32 bars (40 s): the 16-bar tune twice. Concertina lead with fiddle answers
- * at the phrase ends (second pass: the fiddle also harmonises in thirds and sixths), pizzicato bass
- * (the tuba takes over on the second pass), accordion off-beat chords, a light frame drum and
- * shaker, and a low bed of waves and creaking timbers.
- * The metadata counts the dotted-quarter pulse (96 bpm, 2 beats per bar): the game bounces on it.
+ * BASE GAME: "The Midnight Local". An easy, toe-tapping hot-swing tune in F major, 144 bpm, 32 bars
+ * (AABA, 53.3 s). Muted trumpet sings the A sections (the clarinet harmonises the second A and
+ * weaves an obbligato through the last), the clarinet takes the bridge over "doo-wah" muted-trumpet
+ * backgrounds and the train-whistle motif. Stride piano, walking upright bass (two-feel in the first
+ * A), brushes playing the "chugga-chugga" train shuffle with accents on 2 and 4, a ride in the second
+ * half, warm sax pads, and distant trains rumbling through the tunnel.
  */
 import type { TrackDef } from '../types';
-import { CompoundClock, seq } from '../core/score';
-import { bassNote, chordPcs, mtof } from '../core/notes';
+import { Clock, seq } from '../core/score';
+import { chordPcs, hz, mtof } from '../core/notes';
 import { Rng, hashString } from '../core/rng';
-import { Mixer, instrument } from '../core/mixer';
-import { Arr, chart, chordAt, harmonyBelow, seaBed, voicings } from './common';
-import { fiddle, pizz } from '../instruments/strings';
-import { accordion, concertina, tuba } from '../instruments/winds';
-import { frameDrum, shaker } from '../instruments/drums';
+import { Mixer } from '../core/mixer';
+import { Arr, chart, chordAt, harmonyBelow } from './common';
+import { CLAR, MUTE, PIANO, SAX, noodle, stride, swingKit, tunnelBed, walkBass, whistleMotif } from './band';
 
-const PULSE_BPM = 96; // dotted quarter
-const QBPM = PULSE_BPM * 1.5; // notation counts quarter notes
-const QPB = 3; // quarter beats per 6/8 bar
+const BPM = 144;
+const BPB = 4;
 const BARS = 32;
 
-const CHART_16 = ['Dm', 'Dm C', 'C', 'C', 'Dm', 'Dm F', 'G', 'Dm', 'F', 'C', 'Dm', 'Am', 'F', 'G', 'C', 'Dm'];
-const CHART = [...CHART_16, ...CHART_16];
+const A1 = ['F6 D7', 'Gm7 C7', 'F6 D7', 'Gm7 C7', 'F6 F7', 'Bb6 Bdim7', 'F6/C D7', 'Gm7 C7'];
+const A2 = ['F6 D7', 'Gm7 C7', 'F6 D7', 'Gm7 C7', 'F6 F7', 'Bb6 Bdim7', 'Gm7 C7', 'F6'];
+const BR = ['A7', 'A7', 'D7', 'D7', 'G7', 'G7', 'C7', 'C7'];
+const CHART = [...A1, ...A2, ...BR, ...A1];
 
-// the tune: 8 bars "verse" (A) + 8 bars "chorus" (B), phrase ends left open for the fiddle
-const TUNE = `
-D5:4 A4:8 D5:4 E5:8 | F5:4 E5:8 D5:4 C5:8 | E5:4 C5:8 G4:4 C5:8 | E5:4. r:4. |
-D5:4 A4:8 D5:4 E5:8 | F5:4 G5:8 A5:4 C6:8 | B5:4 G5:8 D5:4 E5:8 | D5:4. r:4. |
-A5:4 F5:8 C5:4 F5:8 | G5:4 E5:8 C5:4 E5:8 | F5:4 D5:8 A4:4 D5:8 | C5:4 A4:8 E5:4. |
-A5:4 F5:8 C6:4 A5:8 | B5:4 G5:8 D6:4 B5:8 | C6:4 G5:8 E5:4 C5:8 | D5:4. r:4. |`;
-
-// fiddle answers, first and second time round
-const ANSWERS_1 = `
-r:2. | r:2. | r:2. | r:4. G5:8 F5:8 E5:8 | r:2. | r:2. | r:2. | r:4. A5:8 C6:8 B5:8 |
-r:2. | r:2. | r:2. | r:4. A5:16 B5:16 C6:8 A5:8 | r:2. | r:2. | r:2. | r:4. F5:8 E5:8 C5:8 |`;
-const ANSWERS_2 = `
-r:2. | r:2. | r:2. | r:4. G5:16 A5:16 G5:8 E5:8 | r:2. | r:2. | r:2. | r:4. D6:8 C6:8 B5:8 |
-r:2. | r:2. | r:2. | r:4. E6:8 D6:8 C6:8 | r:2. | r:2. | r:2. | r:4. A5:16 G5:16 F5:8 E5:8 |`;
-
-const CONC = instrument('conc', (s, out, f, v, d) => concertina(s, out, 0, f, d, v), { len: (_f, d) => d + 0.3, velBuckets: 4, durStep: 0.03, rr: 2 });
-const FID = instrument('fid', (s, out, f, v, d, fl) => fiddle(s, out, 0, f, d, v, fl), { len: (_f, d) => d + 0.4, velBuckets: 4, durStep: 0.03, rr: 2 });
-const ACC = instrument('acc', (s, out, f, v, d) => accordion(s, out, 0, f, d, v, { breath: 0.6, bright: 0.75 }), { len: (_f, d) => d + 0.25, velBuckets: 3, durStep: 0.03 });
-const PIZZ = instrument('pizz', (s, out, f, v, d) => pizz(s, out, 0, f, v, { decay: 1.3, dur: d }), { len: (_f, d) => Math.min(1.8, d + 0.5), velBuckets: 3, durStep: 0.05, rr: 2 });
-const TUBA = instrument('tuba', (s, out, f, v, d) => tuba(s, out, 0, f, d, v), { len: (_f, d) => d + 0.3, velBuckets: 3, durStep: 0.03, rr: 2 });
-const DRUM = instrument('drum', (s, out, _f, v, _d, fl) => frameDrum(s, out, 0, v, { muted: fl === 'm', tone: fl === 'm' ? 160 : 92, decay: fl === 'm' ? 0.12 : 0.3 }), { len: 0.45, velBuckets: 5, rr: 3 });
-const SHK = instrument('shk', (s, out, _f, v) => shaker(s, out, 0, v, { len: 0.075 }), { len: 0.2, velBuckets: 3, rr: 3 });
+const A_HEAD = `
+r:8 C5:8 D5:8 F5:8 A5:4 F5:4 | G5:8 F5:8 D5:8 F5:8' r:8 E5:8 r:4 | r:8 C5:8 D5:8 F5:8 A5:4 C6:4 | Bb5:8 A5:8 G5:8 E5:8 C5:2!w |
+A5:4. F5:8 Eb5:4!b C5:4 | D5:8 F5:8 Bb5:8 D6:8 B5:4 Ab5:4 |`;
+const A1_END = `A5:8 F5:8 C5:8 A4:8 F#5:4 D5:4 | G5:8 F5:8 E5:8 D5:8 C5:4 r:4 |`;
+const A2_END = `G5:8 A5:8 Bb5:8 C6:8 E5:4 G5:4 | F5:2.!w r:4 |`;
+const BRIDGE = `
+E5:4 C#5:8 E5:8 A5:4.!s G5:8 | r:8 A5:8 G5:8 E5:8 C#5:4 A4:4 | F#5:4 D5:8 F#5:8 A5:4.!s C6:8 | r:8 C6:8 A5:8 F#5:8 D5:4 C5:4 |
+B4:8 D5:8 F5:8 G5:8 B5:4 G5:4 | A5:8 G5:8 F5:8 D5:8 B4:4 r:4 | C5:8 E5:8 G5:8 Bb5:8 C6:2!s | r:1 |`;
+// muted-trumpet "doo-wah" backgrounds in the bridge (guide tones, wah on each)
+const BACKS = `
+r:4 C#5:2.!w | r:4 C#5:2.!w | r:4 C5:2.!w | r:4 C5:2.!w | r:4 B4:2.!w | r:4 B4:2.!w | r:4 Bb4:2.!w | r:1 |`;
+// right-hand piano pickups into the A sections
+const FILL = `r:2 G5:8 A5:8 Bb5:8 B5:8 |`;
 
 export const BASE: TrackDef = {
   id: 'base',
-  title: 'Powder Keg Cove',
-  desc: 'base game: jaunty 6/8 sea shanty, concertina lead with fiddle answers, D dorian, 96 bpm (dotted quarter)',
-  bpm: PULSE_BPM,
-  beatsPerBar: 2,
+  title: 'The Midnight Local',
+  desc: 'base game: toe-tapping hot swing in F, 144 bpm, AABA: muted trumpet and clarinet, stride piano, walking bass, brushed train shuffle, the whistle motif',
+  bpm: BPM,
+  beatsPerBar: BPB,
   bars: BARS,
   tail: 3,
-  master: { crackle: 0.7, drive: 1.3, width: 0.75, air: 0.5 },
+  master: { crackle: 0.7, drive: 1.3, width: 0.75, air: 0.3 },
   async render() {
-    const clock = new CompoundClock(QBPM, QPB, 0.03);
+    const clock = new Clock(BPM, BPB, 0.63);
     const m = new Mixer(clock.bars(BARS), 44100, hashString('base'));
     const a = new Arr(new Rng(7), clock, BARS, 0.005, 0.07);
-    const slots = chart(CHART, QPB);
-    m.reverb('cove', { seconds: 2.4, rt60: 1.4, predelay: 0.02, dampStart: 7500, dampEnd: 2000, early: 12, earlySpread: 0.05, lowCut: 150 });
+    const slots = chart(CHART, BPB);
+    m.reverb('club', { seconds: 2.2, rt60: 1.3, predelay: 0.018, dampStart: 7500, dampEnd: 2200, early: 12, earlySpread: 0.045, lowCut: 160 });
     m.wow = { rate: 0.3, depth: 0.12 };
 
-    const conc = m.stem('conc', { gain: 0.9, pan: 0.12, wow: true, sends: { cove: 0.25 } });
-    const fid = m.stem('fid', { gain: 1.5, pan: -0.28, wow: true, sends: { cove: 0.3 } });
-    const acc = m.stem('acc', { gain: 0.4, pan: 0.25, lp: 3200, wow: true, sends: { cove: 0.2 } });
-    const bass = m.stem('bass', { gain: 0.38, hp: 45, sends: { cove: 0.08 } });
-    const tb = m.stem('tuba', { gain: 0.34, hp: 35, sends: { cove: 0.08 } });
-    const drum = m.stem('drum', { gain: 0.45, hp: 55, sends: { cove: 0.12 } });
-    const shk = m.stem('shk', { gain: 1.3, pan: -0.35, sends: { cove: 0.1 } });
-    const seaL = m.stem('seaL', { gain: 0.32, pan: -0.6, hp: 110 });
-    const seaR = m.stem('seaR', { gain: 0.32, pan: 0.6, hp: 110 });
+    const mute = m.stem('mute', { gain: 1.0, pan: 0.1, wow: true, sends: { club: 0.24 } });
+    const clar = m.stem('clar', { gain: 0.95, pan: -0.25, wow: true, sends: { club: 0.28 } });
+    const saxes = m.stem('sax', { gain: 0.42, pan: 0.3, lp: 3800, wow: true, sends: { club: 0.25 } });
+    const pno = m.stem('piano', { gain: 0.95, pan: -0.12, sends: { club: 0.2 } });
+    const bass = m.stem('bass', { gain: 0.3, hp: 40, sends: { club: 0.06 } });
+    const brush = m.stem('brush', { gain: 4.5, pan: 0.18, sends: { club: 0.12 } });
+    const kit = m.stem('kit', { gain: 0.42, hp: 45, sends: { club: 0.1 } });
+    const cym = m.stem('cym', { gain: 1.8, pan: 0.35, sends: { club: 0.12 } });
+    const whistle = m.stem('whistle', { gain: 0.5, pan: -0.35, hp: 250, sends: { club: 0.45 } });
+    const tunL = m.stem('tunL', { gain: 0.42, pan: -0.6, hp: 40 });
+    const tunR = m.stem('tunR', { gain: 0.42, pan: 0.6, hp: 40 });
 
-    // concertina: the tune twice, a touch more pushed the second time
-    const tune = seq(TUNE, { name: 'base tune', beatsPerBar: QPB, vel: 0.74 });
-    for (const pass of [0, 1]) a.play(tune, (t, f, d, v) => conc.note(CONC, t, f, v, d * 0.9), { offset: pass * 16 * QPB, velScale: pass ? 1.06 : 1 });
-    // fiddle answers
-    a.play(seq(ANSWERS_1, { name: 'answers 1', beatsPerBar: QPB, vel: 0.68 }), (t, f, d, v) => fid.note(FID, t, f, v, d * 0.9));
-    a.play(seq(ANSWERS_2, { name: 'answers 2', beatsPerBar: QPB, vel: 0.72, startBeat: 16 * QPB }), (t, f, d, v) => fid.note(FID, t, f, v, d * 0.9));
-    // second pass: the fiddle harmonises the tune in thirds and sixths below
-    a.play(tune, (t, f, d, v, ev, mm) => {
-      const pcs = chordPcs(chordAt(slots, ev.beat + 16 * QPB).chord);
-      fid.note(FID, t, mtof(harmonyBelow(mm, pcs)), v * 0.55, d * 0.88);
-    }, { offset: 16 * QPB });
+    // the head: A1, A2, (bridge), A3 on muted trumpet
+    const a1 = seq(`${A_HEAD} ${A1_END}`, { name: 'A1', vel: 0.7 });
+    const a2 = seq(`${A_HEAD} ${A2_END}`, { name: 'A2', vel: 0.74 });
+    a.play(a1, (t, f, d, v) => mute.note(MUTE, t, f, v, d * 0.92));
+    a.play(a2, (t, f, d, v) => mute.note(MUTE, t, f, v, d * 0.92), { offset: 8 * BPB });
+    a.play(a1, (t, f, d, v) => mute.note(MUTE, t, f, v, d * 0.92), { offset: 24 * BPB, velScale: 1.06 });
+    // A2: the clarinet harmonises in thirds and sixths below
+    a.play(a2, (t, f, d, v, ev, mm) => {
+      const pcs = chordPcs(chordAt(slots, ev.beat + 8 * BPB).chord);
+      clar.note(CLAR, t, mtof(harmonyBelow(mm, pcs)), v * 0.6, d * 0.9);
+    }, { offset: 8 * BPB });
+    // bridge: clarinet lead over muted-trumpet backgrounds
+    a.play(seq(BRIDGE, { name: 'bridge', vel: 0.74 }), (t, f, d, v) => clar.note(CLAR, t, f, v, d * 0.93), { offset: 16 * BPB });
+    a.play(seq(BACKS, { name: 'backs', vel: 0.42 }), (t, f, d, v, ev) => mute.note(MUTE, t, f, v, d * 0.9, ev.flags), { offset: 16 * BPB });
+    // A3: a soft clarinet obbligato up high, in the gaps of the tune
+    noodle(a, slots, 24 * BPB + 2, 32 * BPB - 2, new Rng(919), (t, f, d, v) => clar.note(CLAR, t, f, v * 0.5, d), { lo: 77, hi: 89, density: 0.42, vel: 0.55 });
+    // sax pads (3rd and 7th of each chord) from A2 on
+    slots.forEach((slot) => {
+      if (slot.beat < 8 * BPB) return;
+      const pcs = chordPcs(slot.chord);
+      const tones = [pcs[1], pcs[3] ?? pcs[2]].map((pc) => 58 + ((pc - 58 + 120) % 12));
+      for (const mm of tones) saxes.note(SAX, a.t(slot.beat, false), mtof(mm), 0.4, a.len(slot.beat, slot.len) * 0.94);
+    });
 
-    // oom (bass on 1 and 4) - pah (accordion on 3 and 6)
-    const accV = voicings(slots, 53, 65, 3);
-    for (let bar = 0; bar < BARS; bar++) {
-      const second = bar >= 16;
-      for (const half of [0, 1]) {
-        const beat = bar * QPB + half * 1.5;
-        const i = slots.indexOf(chordAt(slots, beat));
-        const slot = slots[i];
-        const root = bassNote(slot.chord, 38);
-        const note = half === 0 || slot.beat === beat ? root : root + 7 > 50 ? root - 5 : root + 7;
-        if (second) tb.note(TUBA, a.t(beat), mtof(note), a.v(half ? 0.62 : 0.74), a.len(beat, 0.8));
-        else bass.note(PIZZ, a.t(beat), mtof(note), a.v(half ? 0.66 : 0.8), a.len(beat, 1.2));
-        for (const mm of accV[i]) acc.note(ACC, a.t(beat + 1), mtof(mm), a.v(second ? 0.5 : 0.42), a.len(beat + 1, 0.42));
-      }
-    }
+    // rhythm section
+    const walk = walkBass(a, slots, bass, { lo: 29, hi: 48, vel: 0.8, two: (bar) => bar < 8 });
+    stride(a, slots, walk, pno, { from: 0, to: 8, vel: 0.5 });
+    stride(a, slots, walk, pno, { from: 8, to: 32, vel: 0.58, rh: true });
+    const fill = seq(FILL, { name: 'fill', vel: 0.5 });
+    for (const bar of [7, 31]) a.play(fill, (t, f, d, v) => pno.note(PIANO, t, f, v, d * 0.9, 'b'), { offset: bar * BPB });
 
-    // frame drum and shaker
-    for (let bar = 0; bar < BARS; bar++) {
-      const b0 = bar * QPB;
-      const full = bar >= 8;
-      const lift = bar >= 16 ? 1.12 : 1;
-      drum.note(DRUM, a.t(b0), 0, a.v(0.55 * lift));
-      drum.note(DRUM, a.t(b0 + 1.5), 0, a.v(0.34 * lift), 0, 'm');
-      if (full) {
-        drum.note(DRUM, a.t(b0 + 1), 0, a.v(0.2 * lift), 0, 'm');
-        drum.note(DRUM, a.t(b0 + 2.5), 0, a.v(0.24 * lift), 0, 'm');
-        if (bar >= 16) {
-          drum.note(DRUM, a.t(b0 + 0.5), 0, a.v(0.1), 0, 'm');
-          drum.note(DRUM, a.t(b0 + 2), 0, a.v(0.12), 0, 'm');
-        }
-      }
-      if (bar % 16 === 15) [2, 2.5].forEach((b, k) => drum.note(DRUM, a.t(b0 + b), 0, a.v(0.3 + k * 0.12), 0, 'm'));
-      const sv = [0.36, 0.15, 0.22, 0.3, 0.15, 0.22];
-      for (let e = 0; e < 6; e++) shk.note(SHK, a.t(b0 + e * 0.5), 0, a.v(sv[e] * (full ? 1 : 0.7) * lift));
-    }
+    swingKit(a, { brush, kit, cym }, { from: 0, to: 8, chug: 0.85, swish: 0.7, kick: 0.22, foot: 0.3 });
+    swingKit(a, { brush, kit, cym }, { from: 8, to: 16, chug: 0.95, swish: 0.6, kick: 0.25, foot: 0.32 });
+    swingKit(a, { brush, kit, cym }, { from: 16, to: 24, chug: 1.05, swish: 0.4, kick: 0.28, foot: 0.32, ride: 0.55 });
+    swingKit(a, { brush, kit, cym }, { from: 24, to: 32, chug: 0.95, swish: 0.4, kick: 0.26, foot: 0.32, ride: 0.6 });
 
-    // the cove: waves and the odd creak of timber, very low
-    seaBed(seaL, seaR, a.period, new Rng(77), { key: 'base', waves: 8, creaks: 3, creakVel: 0.45 });
+    // the train-whistle motif: at the end of the bridge, and a distant answer at the turnaround
+    whistleMotif(whistle, 'base-bridge', a.t(23 * BPB, false), [hz('E5'), hz('G5'), hz('Bb5')], 0.8);
+    whistleMotif(whistle, 'base-turn', a.t(31 * BPB + 2, false), [hz('E5'), hz('G5'), hz('Bb5')], 0.38, { short: 0.22, long: 0.55 });
 
+    tunnelBed(tunL, tunR, a.period, new Rng(77), { key: 'base', passes: 3, vel: 0.8 });
     return m.render(3);
   },
 };

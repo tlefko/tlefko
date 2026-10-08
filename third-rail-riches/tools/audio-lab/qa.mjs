@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { chromium, webkit } from 'playwright';
+import { launchChromium, launchWebkit } from './lib/browser.mjs';
 import { startLabServer, OUT_DIR, ROOT, LAB_DIR } from './lib/server.mjs';
 import { FFMPEG, readWav, writeWav, loudness, decodeToChannels, samplePeak, db } from './lib/audio-io.mjs';
 
@@ -155,7 +155,7 @@ for (const [id, t] of Object.entries(M.TRACKS)) {
 }
 
 // spectrograms for a few SFX
-for (const id of ['howl', 'sixLand', 'sixIgnite', 'bonusTrigger', 'win_3', 'wheelSpin', 'anticipation', 'maxWin', 'fsLand_6', 'reelDrop_0']) {
+for (const id of ['whistle', 'trainDepart', 'trainRun', 'ticketLand_6', 'coinLand_3', 'wildLand_0', 'bonusTrigger', 'anticipation', 'maxWin', 'reelDrop_0', 'symCat']) {
   const tmp = path.join(TMP, `${id}.wav`);
   if (fs.existsSync(tmp)) spectrogram(tmp, path.join(SPEC_DIR, `sfx-${id}.png`), id, 700, 260);
 }
@@ -166,8 +166,9 @@ async function browserCheck() {
   const { url, close } = await startLabServer();
   const results = {};
   try {
-    for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
-      const browser = await engine.launch();
+    for (const name of ['chromium', 'webkit']) {
+      const browser = name === 'chromium' ? await launchChromium() : await launchWebkit();
+      if (!browser) continue;
       const page = await browser.newPage();
       await page.goto(`${url}tools/audio-lab/qa-decode.html`, { waitUntil: 'domcontentloaded', timeout: 180000 });
       const out = await page.evaluate(async (list) => {
@@ -252,7 +253,7 @@ md += '| asset | kind | s | LUFS-I | LUFS-M max | sample pk | true pk | ok | not
 for (const r of rows) md += `| ${r.file.replace('.mp3#', '#')} | ${r.kind} | ${r.seconds.toFixed(2)} | ${f1(r.I)} | ${f1(r.mMax)} | ${f1(r.samplePeak)} | ${f1(r.truePeak)} | ${r.ok ? 'yes' : '**NO**'} | ${r.notes ?? ''} |\n`;
 if (decode) {
   md += '\n**Decoded lengths (samples) and start offset vs ffmpeg, per engine**\n\n| file | expected @44.1k | Chromium | WebKit | expected @48k | Chromium | WebKit | offset Cr/WK | ok |\n|---|---:|---:|---:|---:|---:|---:|:-:|:-:|\n';
-  for (const d of decode) md += `| ${d.file} | ${d.expected44} | ${d.chromium44} | ${d.webkit44} | ${d.expected48} | ${d.chromium48} | ${d.webkit48} | ${d.chromiumOffset}/${d.webkitOffset} | ${d.ok ? 'yes' : '**NO**'} |\n`;
+  for (const d of decode) md += `| ${d.file} | ${d.expected44} | ${d.chromium44} | ${d.webkit44 ?? 'n/a'} | ${d.expected48} | ${d.chromium48} | ${d.webkit48 ?? 'n/a'} | ${d.chromiumOffset}/${d.webkitOffset ?? 'n/a'} | ${d.ok ? 'yes' : '**NO**'} |\n`;
 }
 const docPath = path.join(ROOT, 'docs', 'AUDIO.md');
 if (fs.existsSync(docPath)) {
@@ -265,7 +266,7 @@ fs.writeFileSync(path.join(OUT_DIR, 'qa-table.md'), md);
 
 console.log(md.split('\n').slice(0, 3).join('\n'));
 for (const r of rows) console.log(`${r.ok ? ' ' : '!'} ${r.file.padEnd(40)} I ${f1(r.I).padStart(6)}  M ${f1(r.mMax).padStart(6)}  pk ${f1(r.samplePeak).padStart(6)}  tp ${f1(r.truePeak).padStart(6)}  ${r.notes ?? ''}`);
-if (decode) for (const d of decode) console.log(`${d.ok ? ' ' : '!'} decode ${d.file.padEnd(28)} 44k exp ${d.expected44} cr ${d.chromium44} wk ${d.webkit44} | 48k exp ${d.expected48} cr ${d.chromium48} wk ${d.webkit48} | offset ${d.chromiumOffset}/${d.webkitOffset}`);
+if (decode) for (const d of decode) console.log(`${d.ok ? ' ' : '!'} decode ${d.file.padEnd(28)} 44k exp ${d.expected44} cr ${d.chromium44} wk ${d.webkit44 ?? 'n/a'} | 48k exp ${d.expected48} cr ${d.chromium48} wk ${d.webkit48 ?? 'n/a'} | offset ${d.chromiumOffset}/${d.webkitOffset ?? 'n/a'}`);
 console.log(bad.length ? `${bad.length} FAILURES` : 'all checks passed');
 fs.rmSync(TMP, { recursive: true, force: true });
 if (bad.length) process.exitCode = 1;

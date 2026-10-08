@@ -654,7 +654,7 @@ export function rumble(s: Studio, dest: Dest, t: number, dur: number, vel: numbe
  * loosely but steady tones accurately, so letting a quiet tone carry the seam keeps the decoded
  * post-roll matching the loop start (what qa.mjs checks) without touching the rest of the loop.
  */
-function seamDip(s: Studio, T: number, depth = 0.02, hold = 0.065, ramp = 0.06): GainNode {
+export function seamDip(s: Studio, T: number, depth = 0.02, hold = 0.065, ramp = 0.06): GainNode {
   const g = s.gain(depth);
   g.gain.setValueAtTime(depth, 0);
   g.gain.setValueAtTime(depth, hold);
@@ -665,7 +665,7 @@ function seamDip(s: Studio, T: number, depth = 0.02, hold = 0.065, ramp = 0.06):
 }
 
 /** True when time x (0..T) is clear of the seam sputter. */
-const clearOfSeam = (x: number, T: number) => x > 0.15 && x < T - 0.12;
+export const clearOfSeam = (x: number, T: number) => x > 0.15 && x < T - 0.12;
 
 /**
  * Burning-fuse bed: hiss with a flutter made of LFOs snapped to whole cycles per loop, sparks,

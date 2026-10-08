@@ -2,7 +2,7 @@
  * Thin adapter over the audio module (src/audio). Everything is a safe no-op until the
  * audio module has loaded, and the module is optional so the game runs without it.
  */
-type LoopName = 'anticipation' | 'wheelSpin' | 'bombFuseLoop' | 'bombHotLoop';
+type LoopName = 'anticipation' | 'trainRun';
 type Api = {
   init(): Promise<void>;
   play(name: string, opts?: { rate?: number; volume?: number; pan?: number; index?: number; delay?: number }): void;

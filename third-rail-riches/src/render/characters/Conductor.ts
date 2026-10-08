@@ -26,16 +26,30 @@ const SH_X = 63;
 const SH_Y = 40;
 const ARM = 124; // rubber-hose arm length at rest
 /** Lantern: units per 256-box unit, and the pendulum length (grip to the centre of mass). */
-const LS = 150 / 256;
+const LS = 184 / 256;
 const PEND = (LANTERN.glass[1] + 20 - LANTERN.grip[1]) * LS;
 /** Whistle: units per 128-box unit. */
-const WS = 46 / 128;
+const WS = 60 / 128;
+/** The doffed cap, units per 256 box (the cap on his head is 300). */
+const CAPH_U = 196;
+/** The boot's painted sole line (its ink included) in the boot's 256 box: it stands on y = 0. */
+const BOOT_SOLE = 216;
 /** Boot drawn this wide per 256 box. */
 const BOOT_U = 116;
+/** Ankle to the ball of the foot, units (the boots pivot there to rise on their toes). */
+const TOE = (90 * BOOT_U) / 256;
+/** The lantern's reach below the grip (to its foot) and half its width, units; the swing limits. */
+const LAN_REACH = (LANTERN.foot[1] - LANTERN.grip[1]) * LS;
+const LAN_HALF = 40 * LS;
+/** Furthest the lantern may reach either side (layout.ts CAPTAIN_EXTENT l/r, less a margin). */
+const LAN_X = 204;
+const FLOOR_CLEAR = 7;
+/** Half the head's width at the cheeks (units): a raised lantern keeps its globe outside it. */
+const FACE_R = 92;
 /** Fist centre and the wrist, in glove space (units). */
 const FIST = { x: 4 * GS, y: -70 * GS };
 /** Where the lantern's grip stands when he sets it down on the platform to pray (the foot on y = 0). */
-const PLANT = { x: 112, y: -(LANTERN.foot[1] - LANTERN.grip[1]) * LS - 2 };
+const PLANT = { x: 112, y: -(LANTERN.foot[1] - LANTERN.grip[1] + 5) * LS };
 /** The eyes' centre relative to the neck (for lookAt), units. */
 const EYE_UP = (CON_HEAD_PIVOT[1] - CON_EYES.y) * HS;
 
@@ -342,7 +356,7 @@ export class Conductor extends Container {
     this.eventMode = 'none';
     this.torso.anchor.set(0.5, 0.14);
     // boots stand on their soles (ink included), the platform line at y = 0; the ankle is x 128
-    for (const b of [this.bootL, this.bootR]) b.anchor.set((128 - CON_BOOT_BOX[0]) / CON_BOOT_BOX[2], (211 - CON_BOOT_BOX[1]) / CON_BOOT_BOX[3]);
+    for (const b of [this.bootL, this.bootR]) b.anchor.set((128 - CON_BOOT_BOX[0]) / CON_BOOT_BOX[2], (BOOT_SOLE - CON_BOOT_BOX[1]) / CON_BOOT_BOX[3]);
     this.handL.anchor.set(0.5, 0.86);
     this.handR.anchor.set(0.5, 0.86);
     this.prayS.anchor.set(0.5, 0.85);
@@ -371,6 +385,7 @@ export class Conductor extends Container {
       this.bootL,
       this.bootR,
       this.torso,
+      this.head,
       this.armR,
       this.lanHalo,
       this.lanGlass,
@@ -378,7 +393,6 @@ export class Conductor extends Container {
       this.lanBody,
       this.lanGlow,
       this.handR,
-      this.head,
       this.cord,
       this.whistleS,
       this.armL,
@@ -403,7 +417,7 @@ export class Conductor extends Container {
         svgTexture('con-lan-glass', cropBox(lanternGlass(true), LANTERN_BOX), px(lw * LS), px(lh * LS)),
         svgTexture('con-lan-body', cropBox(lanternBody(), LANTERN_BOX), px(lw * LS), px(lh * LS)),
         svgTexture('con-whistle', whistle(), px(WHISTLE.size * WS)),
-        svgTexture('con-cap-held', cropBox(capHeld(), CAP_HELD_BOX), px((CAP_HELD_BOX[2] * 120) / 256), px((CAP_HELD_BOX[3] * 120) / 256)),
+        svgTexture('con-cap-held', cropBox(capHeld(), CAP_HELD_BOX), px((CAP_HELD_BOX[2] * CAPH_U) / 256), px((CAP_HELD_BOX[3] * CAPH_U) / 256)),
         svgTexture('con-pray', prayingHands(), px(130)),
         ...poses.map((p) => svgTexture(`glove-${p}`, glove(p), px(96))),
       ]),
@@ -450,7 +464,7 @@ export class Conductor extends Container {
     size(this.lanBody, body, lw * LS);
     size(this.whistleS, sw, WHISTLE.size * WS);
     this.whistleBase = this.whistleS.scale.x;
-    size(this.capHand, capH, (CAP_HELD_BOX[2] * 120) / 256);
+    size(this.capHand, capH, (CAP_HELD_BOX[2] * CAPH_U) / 256);
     size(this.prayS, pray, 130);
     // the limbs' cel cross-sections, painted at the rig's device resolution
     const dp = k * res;
@@ -597,7 +611,7 @@ export class Conductor extends Container {
         pose = { ...pose, ...HIP, ...LANT };
         break;
       case 'cheer':
-        pose = { ...pose, bounce: 1.3, lx: -60, ly: -116, lw: 0.2, rx: 34, ry: -128, rw: 0.1, tilt: -0.05 };
+        pose = { ...pose, bounce: 1.3, lx: -60, ly: -116, lw: 0.2, rx: 70, ry: -122, rw: 0.1, tilt: -0.05 };
         gL = 'open';
         this.hop(44);
         this.capPop(18);
@@ -608,23 +622,23 @@ export class Conductor extends Container {
         gL = 'open';
         break;
       case 'dance':
-        pose = { ...pose, bounce: 1.9, lx: -56, ly: -40, lw: 0.2, rx: 46, ry: -58, kick: 1 };
+        pose = { ...pose, bounce: 1.9, lx: -56, ly: -40, lw: 0.2, rx: 62, ry: -40, kick: 1 };
         gL = 'open';
         break;
       case 'shock':
-        pose = { ...pose, lean: -0.1, tilt: -0.06, lx: -66, ly: -52, lw: 0.4, rx: 66, ry: -30, rw: 0.3 };
+        pose = { ...pose, lean: -0.1, tilt: -0.06, lx: -50, ly: -60, lw: 0.4, rx: 44, ry: -40, rw: 0.3 };
         gL = 'open';
         crouch = 0.28;
         this.capPop(26);
         break;
       case 'duck':
-        pose = { ...pose, lean: -0.04, dip: 22, tilt: 0.1, lx: 30, ly: -104, lw: 0.9, rx: -10, ry: -70, rw: -0.4, capLift: -5 };
+        pose = { ...pose, lean: -0.04, dip: 22, tilt: 0.1, lx: -16, ly: -150, lw: 0.5, rx: -36, ry: 36, rw: -0.4, capLift: -5 };
         gL = 'open';
         crouch = 1;
         break;
       case 'watch':
         // the lantern held out toward the board, his free hand shading his eyes
-        pose = { ...pose, lean: 0.07, tilt: 0.05, lx: 70, ly: -88, lw: -1.75, rx: 92, ry: -6, rw: 0.2 };
+        pose = { ...pose, lean: 0.06, tilt: 0.05, lx: 26, ly: -170, lw: -1.45, rx: 60, ry: -10, rw: 0.2 };
         gL = 'flat';
         break;
       case 'pray':
@@ -723,14 +737,14 @@ export class Conductor extends Container {
     // 1) anticipation: a little dip, lantern drawn back, whistle hand up to the chest
     tl.to(P, { crouch: red ? 0.04 : 0.16, lean: -0.04, rx: 30, ry: 40, lx: 0, ly: 10, lw: 0, bounce: 0.3, kick: 0, shake: 0, dip: 0, duration: T(0.1), ease: 'power2.inOut' }, 0)
       // 2) up goes the lantern, the whistle to his lips
-      .to(P, { crouch: 0, lean: 0.03, tilt: -0.04, rx: 36, ry: -150, rw: 0.1, duration: T(0.18), ease: 'back.out(1.6)' }, T(0.1))
+      .to(P, { crouch: 0, lean: 0.03, tilt: -0.04, rx: 64, ry: -142, rw: 0.1, duration: T(0.18), ease: 'back.out(1.6)' }, T(0.1))
       .to(P, { blow: 1, duration: T(0.16), ease: 'power2.out' }, T(0.1))
       .call(() => this.setFace('whistle', 0.1), [], T(0.14))
       // 3) the swing: lantern arcs out toward the track and back, twice
-      .to(P, { rx: red ? 46 : 74, ry: -126, duration: T(0.14), ease: 'sine.inOut' }, T(0.28))
-      .to(P, { rx: red ? 30 : 8, ry: -150, duration: T(0.14), ease: 'sine.inOut' }, T(0.42))
-      .to(P, { rx: red ? 46 : 70, ry: -128, duration: T(0.14), ease: 'sine.inOut' }, T(0.56))
-      .to(P, { rx: 36, ry: -146, duration: T(0.14), ease: 'sine.inOut' }, T(0.7))
+      .to(P, { rx: red ? 70 : 88, ry: -118, duration: T(0.14), ease: 'sine.inOut' }, T(0.28))
+      .to(P, { rx: red ? 58 : 44, ry: -150, duration: T(0.14), ease: 'sine.inOut' }, T(0.42))
+      .to(P, { rx: red ? 70 : 86, ry: -120, duration: T(0.14), ease: 'sine.inOut' }, T(0.56))
+      .to(P, { rx: 64, ry: -140, duration: T(0.14), ease: 'sine.inOut' }, T(0.7))
       // the blast
       .call(() => this.blast(), [], T(0.3))
       .call(() => this.blast(true), [], T(0.48))
@@ -1026,10 +1040,13 @@ export class Conductor extends Container {
       liftR += Math.max(0, -Math.sin(t * 7)) * 26 * dance;
     }
     const spread = P.crouch * 8;
-    this.bootL.position.set(-46 - spread, -liftL);
-    this.bootL.rotation = liftL * 0.004 + P.rock * 0.1;
-    this.bootR.position.set(46 + spread, -liftR);
-    this.bootR.rotation = -liftR * 0.004 - P.rock * 0.1;
+    // up on the toes: each boot turns about its toe, the heel lifting
+    const heel = P.rock * 0.16;
+    const toeUp = TOE * Math.sin(heel);
+    this.bootL.position.set(-46 - spread, -liftL - toeUp);
+    this.bootL.rotation = liftL * 0.004 + heel;
+    this.bootR.position.set(46 + spread, -liftR - toeUp);
+    this.bootR.rotation = -liftR * 0.004 - heel;
     const hipL = U(-36, 0);
     const hipR = U(36, 0);
     const legBend = 8 + (1 - beat) * 12 + P.crouch * 22;
@@ -1150,11 +1167,53 @@ export class Conductor extends Container {
       const steps = 4;
       const h = dt / steps;
       for (let i = 0; i < steps; i++) {
-        const acc = (-(G + ay) * Math.sin(pd.a) - ax * Math.cos(pd.a)) / PEND - 2.2 * pd.v;
+        // the lantern's foot sits at rot((0, L), a) = (-L sin a, L cos a) from the grip; in the grip's
+        // frame gravity is (−ax, G − ay), so a'' = (ax cos a − (G − ay) sin a) / L, damped
+        const acc = (ax * Math.cos(pd.a) - (G - ay) * Math.sin(pd.a)) / PEND - 2.8 * pd.v;
         pd.v += acc * h;
         pd.a += pd.v * h;
       }
+    }
+    if (!planted && P.plant > 0.001) {
+      // being set down: the hand steadies it upright as it nears the platform
+      const k = clamp(P.plant * 1.4, 0, 1);
+      pd.a *= 1 - k * Math.min(1, dt * 20);
+      pd.v *= 1 - k;
+    }
+    if (!planted) {
       pd.a = clamp(pd.a, -1.1, 1.1);
+      // keep the swing inside the motion envelope (layout.ts CAPTAIN_EXTENT) and off the floor: the
+      // lantern knocks against the limit and swings back
+      // (a grip already past the limit just keeps the lantern tipped a little inward)
+      const lim = (room: number) => Math.asin(clamp(room / LAN_REACH, -0.25, 1));
+      // foot x = gx − L sin a: the right limit bounds a from below, the left one from above
+      const loA = -lim(LAN_X - LAN_HALF - gx);
+      let hiA = lim(LAN_X - LAN_HALF + gx);
+      // raised above his chin, the lantern may not swing in across his face: its globe stays
+      // clear of the head (centre x 0, ~FACE_R wide)
+      const raised = clamp((-gy - (-HIP_Y + TORSO_LEN - 30)) / 50, 0, 1);
+      if (raised > 0) {
+        const guard = Math.asin(clamp((gx - LAN_HALF - FACE_R) / (0.65 * LAN_REACH), -0.3, 1));
+        hiA = Math.min(hiA, guard + (1 - raised) * 1.2);
+      }
+      hiA = Math.max(loA, hiA);
+      if (pd.a > hiA) {
+        pd.a = hiA;
+        if (pd.v > 0) pd.v *= -0.35;
+      } else if (pd.a < loA) {
+        pd.a = loA;
+        if (pd.v < 0) pd.v *= -0.35;
+      }
+      // the fount's lower corner: L cos a + half-width |sin a| must stay above the platform; a
+      // lantern held too low tips outward as it touches down
+      const low2 = (a: number) => gy + LAN_REACH * Math.cos(a) + LAN_HALF * Math.abs(Math.sin(a));
+      if (P.plant < 0.01 && low2(pd.a) > -FLOOR_CLEAR) {
+        const s0 = pd.a >= 0 ? 1 : -1;
+        let a = Math.abs(pd.a);
+        for (let i = 0; i < 24 && low2(s0 * a) > -FLOOR_CLEAR; i++) a += 0.05;
+        pd.a = s0 * Math.min(a, 1.4);
+        pd.v *= 0.2;
+      }
     }
     // a lantern in the hand tips a little with the wrist (the bail is stiff), the rest is the swing
     const la = planted ? 0 : pd.a + (P.plant > 0 ? 0 : clamp(P.rw * 0.15, -0.1, 0.1));

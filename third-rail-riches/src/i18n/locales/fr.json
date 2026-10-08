@@ -206,6 +206,7 @@
     "rCoin": "Les Jetons de Métro apparaissent sur les rouleaux 2 à 6 et portent une valeur de jeton de {min}x à {maxc}x la {bet}, affichée sur le jeton. Les jetons de bronze valent moins de 1x, les gris de 1x à 5x, les dorés de 10x à 50x et ceux de platine 100x ou plus. Un Jeton de Métro ne rapporte rien tout seul : un train doit le ramasser.",
     "rExpress": "Activez le Pass Express à côté du bouton Lancer et chaque tour se joue à {x}x la {bet}. Chaque tour avec le Pass Express a au moins une Locomotive sur le rouleau 1. Le RTP est de {rtp}, comme dans tous les modes. Les tours gratuits gagnés lors d'un tour avec le Pass Express sont des tours gratuits normaux de l'Heure de Pointe.",
     "rPayTitle": "Gains des symboles",
+    "rGeneral": "Tout dysfonctionnement annule l'ensemble des gains et des parties. Une connexion internet stable est requise. En cas de déconnexion, rechargez le jeu pour terminer les parties inachevées. Le retour attendu est calculé sur un grand nombre de parties. L'affichage du jeu ne représente aucun appareil physique et n'est fourni qu'à titre d'illustration. Les gains sont déterminés selon le montant reçu du serveur de jeu distant et non selon les événements survenant dans le navigateur web. TM and © 2026 Engine.",
     "splashBoost": "Pour {cost}x la valeur de jeu, une Locomotive à chaque tour.",
     "coachBoost": "Pass Express : une Locomotive à chaque tour, pour {cost}x la valeur de jeu.",
     "errLimit": "Vous avez atteint une limite de jeu définie sur votre compte.",

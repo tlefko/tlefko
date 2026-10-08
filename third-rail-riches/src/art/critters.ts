@@ -96,7 +96,7 @@ interface PigeonPose {
 }
 
 const PIGEON_BODY =
-  'M128 36 C174 36 202 68 202 108 C202 130 196 144 188 156 C212 170 230 196 230 232 C202 244 160 248 128 248 C96 248 54 244 26 232 C26 196 44 170 68 156 C60 144 54 130 54 108 C54 68 82 36 128 36 Z';
+  'M128 30 C178 30 210 64 210 108 C210 132 202 148 194 158 C214 174 226 200 222 234 C196 246 160 250 128 250 C96 250 60 246 34 234 C30 200 42 174 62 158 C54 148 46 132 46 108 C46 64 78 30 128 30 Z';
 /** Left wing, local space: shoulder at the origin, reaching up and left. */
 const PIGEON_WING = 'M10 -4 C-14 -30 -58 -44 -86 -38 Q-98 -34 -92 -24 Q-100 -14 -88 -8 Q-94 4 -78 6 Q-80 18 -62 16 C-40 22 -12 18 10 10 Z';
 const PIGEON_WING_BARS = ['M-70 -30 Q-60 -12 -44 4', 'M-50 -36 Q-38 -16 -22 0'];
@@ -138,11 +138,11 @@ function pigeonArt(p: PigeonPose): string {
   });
   // a little cowlick of head feathers
   const tufts = [
-    taper([[122, 42], [114, 24], [100, 14]], 7, 2.6, 12),
-    taper([[132, 42], [136, 22], [148, 10]], 7.5, 2.6, 12),
+    taper([[122, 36], [114, 18], [100, 8]], 7, 2.6, 12),
+    taper([[132, 36], [136, 16], [148, 4]], 7.5, 2.6, 12),
   ].map((tt, i) => celForm(tt.d, { ...T, t: bt, cut: [-3, -4], seed: 102 + i }));
   // wings: raised in the cheer, pigeon-grey with the two black wing bars
-  const wingT = (side: 0 | 1) => `translate(${side ? 200 : 56} 176) rotate(${side ? -(p.wing ?? 0) : p.wing ?? 0})`;
+  const wingT = (side: 0 | 1) => `translate(${side ? 198 : 58} 180) rotate(${side ? -(p.wing ?? 0) : p.wing ?? 0}) scale(.86)`;
   const m0 = (d: string, side: 0 | 1) => (side ? mirrorX(d, 0) : d);
   const wings =
     p.wing === null
@@ -160,12 +160,12 @@ function pigeonArt(p: PigeonPose): string {
         );
 
   // eyes: orange rings round pie eyes
-  const L: V = [94, 104];
-  const R: V = [162, 104];
+  const L: V = [92, 106];
+  const R: V = [164, 106];
   const ring = (c: V) =>
-    `${cel(ell(c[0], c[1], 25, 28), { base: ORANGE, shade: mix(ORANGE, C.fireDeep, 0.55), light: mix(ORANGE, C.amberLight, 0.6), cut: [-6, -7] })}<path d="${ell(c[0], c[1], 25, 28)}" fill="none" stroke="${C.ink}" stroke-width="6"/>`;
-  const eyes = `${ring(L)}${ring(R)}${eyePair(L, R, 17, 20, p.eyes, ORANGE, { sw: 4.5, lidR: 0 })}`;
-  const browArt = p.eyes === 'wide' ? brow(72, 66, 108, 70, -5, 4) + brow(146, 68, 184, 62, 5, 4) : brow(74, 72, 110, 76, -4, 3.8) + brow(144, 70, 184, 60, 6, 4);
+    `${cel(ell(c[0], c[1], 26, 29), { base: ORANGE, shade: mix(ORANGE, C.fireDeep, 0.55), light: mix(ORANGE, C.amberLight, 0.6), cut: [-6, -7] })}<path d="${ell(c[0], c[1], 26, 29)}" fill="none" stroke="${C.ink}" stroke-width="6"/>`;
+  const eyes = `${ring(L)}${ring(R)}${eyePair(L, R, 18, 21, p.eyes, ORANGE, { sw: 4.5, lidR: 0 })}`;
+  const browArt = p.eyes === 'wide' ? brow(70, 66, 108, 68, -5, 4) + brow(148, 68, 186, 64, -5, 4) : brow(72, 72, 110, 74, -4, 3.8) + brow(146, 70, 186, 58, -6, 4);
 
   // beak: dark grey with the white cere on top; open for the coo
   const BEAK = { base: mix(C.g4, C.pigeonDeep, 0.35), shade: mix(C.g5, C.ink, 0.3), light: C.g3 };
@@ -181,7 +181,7 @@ function pigeonArt(p: PigeonPose): string {
     ${beakF}<path d="${upper}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linejoin="round"/>
     ${cereF}<path d="${cere}" fill="none" stroke="${C.ink}" stroke-width="4.5" stroke-linejoin="round"/>
     ${shine([[119, 130], [121, 138], [124, 146]], 1.8, 0.6)}`;
-  const notes = p.beak === 'coo' ? cheer([128, 160], [-10, 10, 170, 190], 40, 58, 3) : '';
+  const notes = p.beak === 'coo' ? cheer([128, 150], [-30, -150], 96, 112, 3) : '';
   const burst = p.burst ? cheer([128, 112], [-150, -120, -60, -30], 104, 122) : '';
   const tw = p.twinkle ?? [214, 40];
 
@@ -195,9 +195,9 @@ function pigeonArt(p: PigeonPose): string {
       { fills: bodyF.fills, lines: bodyF.line() },
     ],
     top: `<g transform="${bt}">
-      ${shine([[66, 102], [74, 74], [96, 54], [122, 46]], 3.4, 0.6)}
+      ${shine([[60, 96], [70, 68], [94, 48], [120, 40]], 3.4, 0.6)}
       ${shine([[48, 196], [64, 178], [86, 172]], 2.4, 0.55)}
-      <ellipse cx="68" cy="146" rx="13" ry="7" fill="${C.pinkLight}" opacity=".45"/><ellipse cx="188" cy="146" rx="13" ry="7" fill="${C.pinkLight}" opacity=".45"/>
+      <ellipse cx="66" cy="148" rx="13" ry="7" fill="${C.pinkLight}" opacity=".45"/><ellipse cx="190" cy="148" rx="13" ry="7" fill="${C.pinkLight}" opacity=".45"/>
       ${eyes}${browArt}${beakArt}</g>${notes}${burst}${sparkle(tw[0], tw[1], 11, C.white, 0.9)}`,
   });
 }
@@ -215,9 +215,9 @@ export function pigeonHead(pose: Pose = 'idle'): string {
 /** Pigeon win loop: wings up with a coo, a head-bob, a winking flap, and a proud puffed chest. */
 export const pigeonWinFrames: (() => string)[] = [
   () => pigeonArt({ eyes: 'happy', beak: 'open', wing: 46, puff: 1.03, burst: true, twinkle: [36, 44] }),
-  () => pigeonArt({ eyes: 'wide', beak: 'coo', wing: 6, bob: 8, twinkle: [214, 52] }),
+  () => pigeonArt({ eyes: 'wide', beak: 'coo', wing: 36, bob: 8, twinkle: [214, 52] }),
   () => pigeonArt({ eyes: 'wink', beak: 'open', wing: 58, puff: 1.05, burst: true, twinkle: [40, 60] }),
-  () => pigeonArt({ eyes: 'happy', beak: 'coo', wing: 22, puff: 1.02, twinkle: [212, 40] }),
+  () => pigeonArt({ eyes: 'happy', beak: 'coo', wing: 38, puff: 1.02, twinkle: [212, 40] }),
 ];
 
 /* ------------------------------------------------------------------ */
@@ -305,8 +305,8 @@ function catArt(p: CatPose): string {
       .join('');
   // bandage cross on the right cheek
   const strip = (rot: number) =>
-    `<g transform="rotate(${rot} 186 148)"><rect x="166" y="141" width="40" height="14" rx="4" fill="${C.paperWarm}" stroke="${C.ink}" stroke-width="3.6"/><rect x="180" y="142.5" width="12" height="11" fill="${mix(C.paperWarm, C.tileDeep, 0.45)}"/>
-      <circle cx="172" cy="145.5" r="1.1" fill="${C.tileDeep}"/><circle cx="172" cy="150.5" r="1.1" fill="${C.tileDeep}"/><circle cx="200" cy="145.5" r="1.1" fill="${C.tileDeep}"/><circle cx="200" cy="150.5" r="1.1" fill="${C.tileDeep}"/></g>`;
+    `<g transform="rotate(${rot} 196 162)"><rect x="176" y="155" width="40" height="14" rx="4" fill="${C.paperWarm}" stroke="${C.ink}" stroke-width="3.6"/><rect x="190" y="156.5" width="12" height="11" fill="${mix(C.paperWarm, C.tileDeep, 0.45)}"/>
+      <circle cx="182" cy="159.5" r="1.1" fill="${C.tileDeep}"/><circle cx="182" cy="164.5" r="1.1" fill="${C.tileDeep}"/><circle cx="210" cy="159.5" r="1.1" fill="${C.tileDeep}"/><circle cx="210" cy="164.5" r="1.1" fill="${C.tileDeep}"/></g>`;
   const bandage = `${strip(38)}${strip(-38)}`;
   const browArt = p.eyes === 'wide' ? brow(76, 96, 112, 100, -5, 4.2) + brow(144, 100, 180, 94, -5, 4.2) : brow(78, 104, 114, 108, -2, 4.2) + brow(142, 106, 178, 98, -6, 4.2);
   const burst = p.burst ? cheer([128, 128], [-160, -130, -50, -20], 108, 126) : '';
@@ -373,7 +373,7 @@ const DOG_MUZZLE = 'M64 172 C64 148 192 148 192 172 C196 216 172 242 128 242 C84
 const DOG_JOWL = 'M128 172 C106 166 72 168 64 192 C58 212 80 224 102 218 C116 214 124 202 128 192 Z';
 const DOG_JAW = 'M78 204 C72 242 184 242 178 204 C160 218 96 218 78 204 Z';
 const DOG_FANG = 'M90 214 L96 186 L106 212 Z';
-const DOG_NOSE = 'M104 160 C104 146 152 146 152 160 C152 174 140 182 128 182 C116 182 104 174 104 160 Z';
+const DOG_NOSE = 'M106 168 C106 155 150 155 150 168 C150 181 139 188 128 188 C117 188 106 181 106 168 Z';
 const CAP_CROWN = 'M40 98 C30 58 76 22 128 20 C180 22 226 58 216 98 Q128 84 40 98 Z';
 const CAP_BAND = 'M44 94 Q128 80 212 94 L210 114 Q128 100 46 114 Z';
 const CAP_VISOR = 'M46 110 Q128 96 210 110 C212 124 184 134 128 134 C72 134 44 124 46 110 Z';
@@ -384,9 +384,9 @@ function dogArt(p: DogPose): string {
   const LITE = { base: C.dogLight, shade: mix(C.dogLight, C.dog, 0.75) };
   const COP = tones(C.cop, C.copDeep, C.copLight);
   const cut: V = [-12, -14];
-  const capT = `translate(0 ${-(p.cap ?? 0)}) rotate(${-6 + (p.capTilt ?? 0)} 128 110)`;
+  const capT = `translate(0 ${-8 - (p.cap ?? 0)}) rotate(${-6 + (p.capTilt ?? 0)} 128 110)`;
   const laugh = p.mouth === 'laugh';
-  const jawT = laugh ? 'translate(0 9)' : '';
+  const jawT = laugh ? 'translate(0 14)' : '';
 
   const ears = [DOG_EAR, mirrorX(DOG_EAR)].map((d, i) => celForm(d, { base: mix(C.dog, C.dogDeep, 0.35), shade: T.shade, cut: [-5, -6], seed: 121 + i }));
   const faceF = celForm(DOG_FACE, {
@@ -411,12 +411,12 @@ function dogArt(p: DogPose): string {
     inner: `<path d="M128 50 L131.5 59 L141 59 L133.5 65 L136.5 74 L128 68.5 L119.5 74 L122.5 65 L115 59 L124.5 59 Z" transform="${capT}" fill="${C.goldDeep}"/>`,
   });
 
-  const L: V = [96, 146];
-  const R: V = [160, 146];
+  const L: V = [94, 146];
+  const R: V = [162, 146];
   const eyes = eyePair(L, R, 15, 17, p.eyes, C.dog, { lidL: 7, lidR: 7, sw: 6 });
-  const bags = p.eyes === 'open' || p.eyes === 'wide' ? `<path d="M82 164 Q96 172 110 164 M146 164 Q160 172 174 164" stroke="${T.hatch}" stroke-width="3" fill="none" stroke-linecap="round"/>` : '';
-  const brows = p.eyes === 'wide' ? brow(74, 124, 112, 126, -5, 4.6) + brow(144, 126, 182, 124, -5, 4.6) : brow(76, 126, 114, 134, -2, 4.8) + brow(180, 126, 142, 134, 2, 4.8);
-  const mouthIn = laugh ? mouth('M70 192 Q128 214 186 192 L184 216 Q128 236 72 216 Z', 0, [128, 222, 34, 12]) : '';
+  const bags = p.eyes === 'open' || p.eyes === 'wide' ? `<path d="M80 166 Q94 174 108 166 M148 166 Q162 174 176 166" stroke="${T.hatch}" stroke-width="3" fill="none" stroke-linecap="round"/>` : '';
+  const brows = p.eyes === 'wide' ? brow(72, 118, 110, 120, -5, 4.6) + brow(146, 120, 184, 118, -5, 4.6) : brow(74, 122, 114, 130, -2, 4.8) + brow(182, 122, 142, 130, 2, 4.8);
+  const mouthIn = laugh ? mouth('M70 192 Q128 214 186 192 L184 222 Q128 244 72 222 Z', 0, [128, 230, 36, 13]) : '';
   const whistle = p.mouth === 'whistle';
   const whistleArt = whistle
     ? `<g transform="rotate(-14 160 206)">
@@ -439,18 +439,17 @@ function dogArt(p: DogPose): string {
       { fills: faceF.fills, lines: faceF.line() },
       { fills: mouthIn, lines: '' },
       { fills: jawF.fills, lines: jawF.line() },
-      { fills: fangs + jowls.map((j) => j.fills).join(''), lines: jowls.map((j) => j.line('stroke-width="6.5"')).join('') },
+      { fills: jowls.map((j) => j.fills).join(''), lines: jowls.map((j) => j.line('stroke-width="6.5"')).join('') },
       { fills: crownF.fills + bandF.fills, lines: crownF.line() + bandF.line('stroke-width="5"') },
       { fills: visorF.fills + badgeF.fills, lines: visorF.line() + badgeF.line('stroke-width="4.5"') },
     ],
     top: `
-      ${fangs.replace(/fill="[^"]+" stroke/g, `fill="${C.white}" stroke`)}
-      <path d="M100 140 Q96 132 100 126" stroke="none"/>
+      ${fangs}
       ${eyes}${bags}${brows}
-      <path d="M108 142 Q128 134 148 142" stroke="${T.hatch}" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M114 150 Q128 144 142 150" stroke="${T.hatch}" stroke-width="3" fill="none" stroke-linecap="round"/>
       ${cel(DOG_NOSE, { base: C.inkSoft, shade: C.ink, light: C.g4, cut: [-5, -6] })}<path d="${DOG_NOSE}" fill="none" stroke="${C.ink}" stroke-width="5"/>
-      <ellipse cx="117" cy="168" rx="5" ry="3.4" fill="${C.ink}"/><ellipse cx="139" cy="168" rx="5" ry="3.4" fill="${C.ink}"/>
-      ${shine([[114, 156], [124, 151], [136, 151]], 3, 0.7)}
+      <ellipse cx="118" cy="175" rx="5" ry="3.4" fill="${C.ink}"/><ellipse cx="138" cy="175" rx="5" ry="3.4" fill="${C.ink}"/>
+      ${shine([[115, 164], [124, 159], [136, 159]], 3, 0.7)}
       ${[[84, 196], [92, 204], [80, 206], [172, 196], [164, 204], [176, 206]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="${T.hatch}"/>`).join('')}
       ${whistleArt}
       <g transform="${capT}">

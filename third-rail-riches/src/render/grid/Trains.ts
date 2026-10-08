@@ -10,6 +10,7 @@ import { headlightBeam } from '../../art/fx';
 import { Sym, type SpinResult, type Train } from '../../math/types';
 import type { Particles } from '../fx/Particles';
 import type { GridView } from './GridView';
+import { rowTrackY, trackGauge } from './Reels';
 import type { SymbolView } from './SymbolView';
 
 interface TrainTextures {
@@ -98,7 +99,8 @@ export class TrainLayer extends Container {
 
   /** The y a train rides at on a row (its wheels on the row's track). */
   private rowY(row: number) {
-    return cellCenter(this.L, 0, row).y + this.L.S * 0.12;
+    // the wheels (bottom at ~0.45 of the train's height below its centre) sit on the lower rail
+    return rowTrackY(this.L, row) + trackGauge(this.L) / 2 - this.L.S * 0.62 * 0.45;
   }
   private colX(c: number) {
     return cellCenter(this.L, c, 0).x;

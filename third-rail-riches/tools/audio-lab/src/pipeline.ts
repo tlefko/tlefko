@@ -1,7 +1,7 @@
 /** Page-side render pipeline: Tone.Offline render -> fold/trim -> master post -> WAV. */
 import { renderOffline } from './core/studio';
 import {
-  type Channels, crackleBed, eq, fadeIn, fold, peak, rms, saturate, scale, trimHead, trimTail, width, dbToGain,
+  type Channels, crackleBed, eq, fadeIn, fadeOut, fold, peak, rms, saturate, scale, trimHead, trimTail, width, dbToGain,
 } from './core/dsp';
 import { Rng, hashString } from './core/rng';
 import type { SfxDef, TrackDef } from './types';
@@ -34,6 +34,8 @@ export async function renderSfx(def: SfxDef): Promise<RenderResult> {
   const head = trimHead(raw, -58);
   let chs = trimTail(head.chs, SR, -56);
   fadeIn(chs, 16);
+  // a sound still ringing at the end of its render window must not stop with a click
+  fadeOut(chs, Math.min(Math.round(0.03 * SR), Math.floor(chs[0].length / 4)));
   if (def.drive) {
     scale(chs, 1 / Math.max(1e-9, peak(chs)));
     saturate(chs, def.drive);

@@ -1,46 +1,28 @@
-import { Container, Graphics, Mesh, MeshGeometry, Sprite, Texture, TilingSprite } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, TilingSprite } from 'pixi.js';
 import { svgTexture, canvasTexture, freeTexture, evict } from '../textures';
 import {
-  skyBackdrop,
-  moonDisc,
-  cloudWisp,
-  sparkle,
-  headland,
-  HEADLAND_LIGHT,
-  lighthouse,
-  LIGHTHOUSE_LAMP,
-  lighthouseBeam,
-  distantShip,
-  seaRow,
-  glint,
-  fogTile,
-  bulwarkTile,
-  deckTile,
-  mastTile,
-  mastFoot,
-  poleTile,
-  poleCap,
-  lanternBracket,
-  lantern,
-  LANTERN_WICK,
-  sailCorner,
-  jollyRoger,
-  barrel,
-  cannon,
-  cannonballs,
-  ropeCoil,
-  treasurePile,
+  stationBackdrop,
+  pendantLamp,
+  PENDANT,
+  clockFace,
+  clockHand,
+  CLOCK,
+  HAND,
+  pigeonPerch,
+  commuterCrowd,
+  sparkArc,
+  starGlint,
+  SIGNAL,
+  SIGNAL_COLORS,
+  TUNNEL,
+  PIT,
   mix,
-  rng,
-  type Box,
+  type BackdropSpec,
 } from '../../art/scene';
-import { flame } from '../../art/characters';
 import { C } from '../../art/kit';
-import { quality } from '../quality';
-import type { Layout } from '../layout';
+import { PARROT_EXTENT, PARROT_UNITS, type Layout } from '../layout';
 
 type BonusKind = 'tantrum' | 'witching' | 'limbo';
-type PropKind = 'barrel' | 'cannon' | 'balls' | 'rope' | 'treasure';
 
 const hex = (c: string) => parseInt(c.slice(1), 16);
 function lerpColor(a: number, b: number, t: number): number {
@@ -53,6 +35,7 @@ function lerpColor(a: number, b: number, t: number): number {
   return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(bl);
 }
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+const smooth = (t: number) => t * t * (3 - 2 * t);
 
 /** Soft round light (white, tinted per use). Created once, shared, never freed. */
 let softLight: Texture | null = null;
@@ -68,17 +51,18 @@ function softLightTexture(): Texture {
   }));
 }
 
-/** Night sea under the wave rows: bright at the horizon, deep toward the ship. Created once. */
-let seaGrad: Texture | null = null;
-function seaGradTexture(): Texture {
-  return (seaGrad ??= canvasTexture(4, 256, (ctx) => {
-    const g = ctx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, mix(C.skyLow, C.seaFoam, 0.25));
-    g.addColorStop(0.05, mix(C.skyLow, C.seaDeep, 0.5));
-    g.addColorStop(0.45, mix(C.seaDeep, C.night, 0.55));
-    g.addColorStop(1, C.nightDeep);
+/** Horizontal band of light, soft top and bottom (the third rail's glow). Created once. */
+let bandTex: Texture | null = null;
+function bandTexture(): Texture {
+  return (bandTex ??= canvasTexture(4, 64, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 64);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.42, 'rgba(255,255,255,.55)');
+    g.addColorStop(0.5, 'rgba(255,255,255,1)');
+    g.addColorStop(0.58, 'rgba(255,255,255,.55)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 4, 256);
+    ctx.fillRect(0, 0, 4, 64);
   }));
 }
 
@@ -93,29 +77,6 @@ function shadowTexture(): Texture {
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 128, 128);
-  }));
-}
-
-/** Shooting-star streak: a fading tail with a bright head at the right end (white). Created once. */
-let streakTex: Texture | null = null;
-function streakTexture(): Texture {
-  return (streakTex ??= canvasTexture(256, 16, (ctx) => {
-    const g = ctx.createLinearGradient(0, 0, 256, 0);
-    g.addColorStop(0, 'rgba(255,255,255,0)');
-    g.addColorStop(0.8, 'rgba(255,255,255,.55)');
-    g.addColorStop(1, 'rgba(255,255,255,1)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(0, 8);
-    ctx.lineTo(247, 4);
-    ctx.arc(247, 8, 4, -Math.PI / 2, Math.PI / 2);
-    ctx.closePath();
-    ctx.fill();
-    const h = ctx.createRadialGradient(248, 8, 0, 248, 8, 8);
-    h.addColorStop(0, 'rgba(255,255,255,1)');
-    h.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = h;
-    ctx.fillRect(232, 0, 24, 16);
   }));
 }
 
@@ -151,15 +112,33 @@ async function rasterOnce(svg: string, w: number, h: number): Promise<Texture> {
 
 interface Lamp {
   root: Container;
-  spill: Sprite;
+  globe: Sprite;
+  core: Sprite;
   glow: Sprite;
-  back: Sprite;
-  fire: Sprite;
-  ghost: Sprite;
-  front: Sprite;
+  spill: Sprite;
   seed: number;
-  swing: number;
-  flameW: number;
+  h: number;
+}
+
+interface Tunnel {
+  /** Vanishing point (headlight origin) and portal size. */
+  vx: number;
+  vy: number;
+  w: number;
+  side: -1 | 1;
+  core: Sprite;
+  halo: Sprite;
+  spill: Sprite;
+  /** Mood glow (Last Train gold). */
+  gold: Sprite;
+}
+
+interface Signal {
+  glows: Sprite[];
+  tunnel: number;
+  /** Current aspect 0 red, 1 amber, 2 green, and the time it changed. */
+  aspect: number;
+  blink: number;
 }
 
 interface Plan {
@@ -167,91 +146,62 @@ interface Plan {
   W: number;
   H: number;
   S: number;
-  sideW: number;
-  floorY: number;
-  bulTop: number;
-  horizon: number;
-  moon: { x: number; y: number; r: number };
-  calm: Box[];
-  mast: { x: number; w: number } | null;
-  pole: { x: number; top: number; w: number } | null;
-  flag: { x: number; y: number; w: number; dir: 1 | -1 };
-  headL: { k: number } | null;
-  headR: { k: number } | null;
-  light: { x: number; y: number; h: number } | null;
-  ship: { x: number; w: number } | null;
-  sail: { w: number; h: number } | null;
-  rig: { top: number; x: number[]; ratFrom: number } | null;
-  lamps: { x: number; y: number; h: number; hang: boolean; bracket?: { x: number; y: number; w: number; flip: boolean } }[];
-  props: { kind: PropKind; x: number; w: number; flip?: boolean }[];
-  clouds: { x: number; y: number; w: number }[];
+  spec: BackdropSpec;
+  lamps: { x: number; top: number; y: number; h: number }[];
+  clock: { x: number; y: number; r: number } | null;
+  railY: number;
+  crowdY: number;
+  moteBoxes: { x: number; y: number; w: number; h: number }[];
 }
 
 /**
- * Powder Keg Cove: the deck of a pirate ship moored in a moonlit cove.
+ * Third Rail Riches: an art-deco subway station at midnight.
  *
- * Back to front: a baked night sky (stars, cloud banks) with a few twinkling stars, the moon and
- * its halo with a wisp of cloud drifting across it, the cove's headlands with a lighthouse whose
- * beam sweeps, a distant galleon, a stage-cutout sea of sliding wave rows with a shimmering moon
- * path, then the ship: mast and tarred rigging, a sail corner, the Jolly Roger waving on its
- * staff, the bulwark and deck, props, and ship lanterns with flickering flames and warm glow.
- * Bonus moods crossfade the moon, flames and fog (Moonlight Raid = ghost green).
+ * One backdrop raster per layout holds everything static (scene.ts stationBackdrop: vault and
+ * girder, mosaic frieze, cream tile wall, emerald band, columns, posters, signs, the track pit
+ * with the third rail, tunnel mouths and signal heads, the near platform with its furniture).
+ * Over it, the living parts: pendant lamps that glow and breathe, signal aspects that change for
+ * passing trains, the station clock whose minute hand jumps every few seconds, pigeons on the
+ * clock, sparks crackling along the third rail, dust motes in the lamplight, steam from a grate,
+ * and every 20-40 s a distant train's headlight swelling and sweeping past inside a tunnel mouth.
  *
- * Big static layers are rasterised once per layout; per frame only sprite transforms, alphas,
- * tints, TilingSprite offsets and the flag's small vertex grid change. Layers that fade to zero
- * stop rendering (Pixi 8 still draws a batched sprite at alpha 0).
+ * Moods (setBonusLight): 'witching' = RUSH HOUR (warmer, lamps up and flickering, a crowd of
+ * commuter silhouettes on the platform, trains every few seconds, signals green), 'limbo' = LAST
+ * TRAIN (midnight blue, lamps dimmed, golden light breathing out of both tunnels), 'tantrum' = a
+ * short electric surge (lamps flicker blue, the third rail flares and sparks).
  *
- * Low quality (setLow): half the moon glints and a handful of twinkles, the back wave rows hold
- * still and the rest roll slower without bobbing, the cloud wisp parks over the moon, the
- * lighthouse keeps its lamp but loses the sweeping beam, the flag waves on a coarser grid, and the
- * lantern spill light is dropped. Soft distant layers are rasterised at 3/4 size.
+ * Low quality (setLow): no lamp spill, a third of the motes, two steam puffs, sparks half as
+ * often, the crowd holds still, and the backdrop raster is capped at 1.5x.
  */
 export class Background extends Container {
-  private sky = new Sprite();
-  private twinkleLayer = new Container();
-  private twinkles: { s: Sprite; phase: number; speed: number; base: number; size: number }[] = [];
-  private halo = new Sprite();
-  private moon = new Sprite();
-  private moonGhost = new Sprite();
-  private wisp = new Sprite();
-  private cove = new Container();
-  private headL = new Sprite();
-  private headR = new Sprite();
-  private light = new Sprite();
-  private ship = new Sprite();
-  private beam = new Sprite();
-  private flash = new Sprite();
-  private sea = new Container();
-  private seaBase = new Sprite();
-  private rows: { t: TilingSprite; speed: number; sway: number; phase: number; y0: number; bob: number; off: number }[] = [];
-  private glintLayer = new Container();
-  private glints: { s: Sprite; w: number; x0: number; phase: number; speed: number; a: number }[] = [];
-  private moonPath = new Sprite();
-  private fog: TilingSprite[] = [];
-  private shipLayer = new Container();
-  private sail = new Sprite();
-  private sailBase = { x: 1, y: 1 };
-  private shadows = [new Sprite(), new Sprite()];
-  private star = new Sprite();
-  private starRun = { t: 0, next: 6, dur: 0.8, x: 0, y: 0, dx: 0, dy: 0, len: 0, on: false };
-  private starZones: Box[] = [];
-  private rigG = new Graphics();
-  private pole = new TilingSprite({ texture: Texture.EMPTY });
-  private poleCapS = new Sprite();
-  private flagMesh: Mesh | null = null;
-  private flagGeo: MeshGeometry | null = null;
-  private flagBase: Float32Array | null = null;
-  private flagDims = { w: 1, h: 1, dir: 1 };
-  private bulwark = new TilingSprite({ texture: Texture.EMPTY });
-  private mast = new TilingSprite({ texture: Texture.EMPTY });
-  private mastFootS = new Sprite();
-  private deck = new TilingSprite({ texture: Texture.EMPTY });
-  private propLayer = new Container();
-  private glint = new Sprite();
-  private glintSpot = { x: 0, y: 0, w: 0, next: 2, t: 0 };
+  private backdrop = new Sprite();
   private frameGlow = new Sprite();
+  private tunnelLayer = new Container();
+  private tunnels: Tunnel[] = [];
+  private rail = new Sprite();
+  private railHot = new Sprite();
+  private sparkLayer = new Container();
+  private sparks: { s: Sprite; flash: Sprite; t: number; dur: number; on: boolean }[] = [];
+  private sparkTex: Texture[] = [];
+  private sparkNext = 2;
+  private signalLayer = new Container();
+  private signals: Signal[] = [];
+  private crowdLayer = new Container();
+  private crowd: TilingSprite[] = [];
+  private steamLayer = new Container();
+  private steam: { s: Sprite; t: number; dur: number; x: number; y: number; size: number }[] = [];
   private lampLayer = new Container();
+  private rods = new Graphics();
   private lamps: Lamp[] = [];
+  private clockLayer = new Container();
+  private clockFaceS = new Sprite();
+  private hourHand = new Sprite();
+  private minuteHand = new Sprite();
+  private pigeons: { s: Sprite; x: number; y: number; w: number; t: number; next: number; peck: boolean }[] = [];
+  private pigeonTex: { sit: Texture; peck: Texture } | null = null;
+  private moteLayer = new Container();
+  private motes: { s: Sprite; box: number; x: number; y: number; vx: number; vy: number; phase: number; size: number }[] = [];
+  private shadows = [new Sprite(), new Sprite()];
   private moodTint = new Sprite(Texture.WHITE);
   private floorGlow = new Sprite();
   private plan: Plan | null = null;
@@ -261,470 +211,385 @@ export class Background extends Container {
   private moodK = 0;
   private moodTarget = 0;
   private kind: BonusKind = 'witching';
-  /** Low quality: lighter animation (see setLow); `lowK` eases 0..1 so a switch never jumps. */
   private low = false;
-  private lowK = 0;
-  private flagPhase = 0;
-  private flagArgs: { tex: Texture; x: number; y: number; w: number; h: number; dir: 1 | -1 } | null = null;
-  private flagN = { nx: 12, ny: 4 };
+  /** Clock: whole minutes since 11:00 and the displayed (sprung) minute angle. */
+  private clockMin = 57;
+  private clockShown = 57;
+  private clockVel = 0;
+  private clockNext = 8;
+  /** The passing train: which tunnel, time into the run, and when the next one comes. */
+  private train = { on: false, i: 0, t: 0, dur: 4.2, next: 9 };
+  /** Electric surge flicker state (tantrum) and lamp flicker drop-outs (rush hour). */
+  private flick = { v: 1, t: 0 };
 
   constructor() {
     super();
     this.eventMode = 'none';
-    this.halo.anchor.set(0.5);
-    this.halo.blendMode = 'add';
-    this.moon.anchor.set(0.5);
-    this.moonGhost.anchor.set(0.5);
-    this.moonGhost.alpha = 0;
-    this.wisp.anchor.set(0.5);
-    this.beam.anchor.set(0, 0.5);
-    this.beam.blendMode = 'add';
-    this.flash.anchor.set(0.5);
-    this.flash.blendMode = 'add';
-    this.glintLayer.blendMode = 'add';
     this.frameGlow.anchor.set(0.5);
     this.frameGlow.blendMode = 'add';
-    this.glint.anchor.set(0.5);
-    this.glint.blendMode = 'add';
-    this.glint.alpha = 0;
+    this.rail.blendMode = 'add';
+    this.railHot.blendMode = 'add';
+    this.sparkLayer.blendMode = 'add';
     this.moodTint.alpha = 0;
     this.moodTint.blendMode = 'multiply';
     this.floorGlow.alpha = 0;
     this.floorGlow.blendMode = 'add';
-    this.cove.addChild(this.headL, this.headR, this.ship, this.beam, this.light, this.flash);
-    this.sea.addChild(this.seaBase);
     for (const sh of this.shadows) sh.anchor.set(0.5);
-    this.star.anchor.set(1, 0.5);
-    this.star.blendMode = 'add';
-    this.star.visible = false;
-    this.shipLayer.addChild(this.rigG, this.sail, this.pole, this.poleCapS, this.bulwark, this.mast, this.mastFootS, this.deck, ...this.shadows, this.frameGlow, this.propLayer, this.glint, this.lampLayer);
-    this.addChild(this.sky, this.twinkleLayer, this.star, this.halo, this.moon, this.moonGhost, this.wisp, this.cove, this.sea, this.glintLayer, this.shipLayer, this.moodTint, this.floorGlow);
+    this.clockFaceS.anchor.set(0.5);
+    this.hourHand.anchor.set(HAND.px / HAND.w, HAND.py / HAND.h);
+    this.minuteHand.anchor.set(HAND.px / HAND.w, HAND.py / HAND.h);
+    this.clockLayer.addChild(this.clockFaceS, this.hourHand, this.minuteHand);
+    this.lampLayer.addChild(this.rods);
+    this.addChild(
+      this.backdrop,
+      this.frameGlow,
+      this.tunnelLayer,
+      this.rail,
+      this.railHot,
+      this.signalLayer,
+      this.crowdLayer,
+      this.steamLayer,
+      this.clockLayer,
+      this.lampLayer,
+      this.sparkLayer,
+      this.moteLayer,
+      ...this.shadows,
+      this.moodTint,
+      this.floorGlow,
+    );
   }
 
   /** Where everything goes for this viewport. */
   private makePlan(L: Layout): Plan {
-    const { W, H, S, frame, logo, winBar, meter, floorY } = L;
+    const { W, H, S, frame, logo, winBar, floorY } = L;
     const P = L.portrait;
     const sideW = (W - frame.w) / 2;
-    const frameBottom = frame.y + frame.h;
-    const calm: Box[] = [logo, winBar, meter, { x: frame.x - S * 0.2, y: frame.y - S * 0.45, w: frame.w + S * 0.4, h: frame.h + S * 0.5 }];
-    if (P) {
-      const band = floorY - frameBottom;
-      const bulH = Math.max(S * 0.75, band * 0.34);
-      const bulTop = floorY - bulH;
-      const horizon = frameBottom + band * 0.3;
-      const moon = { x: W - S * 0.98, y: S * 0.98, r: S * 0.5 };
-      const mast = { x: S * 0.3, w: S * 0.34 };
-      const flagW = Math.min(S * 1.5, logo.x - mast.x - S * 0.35);
-      const lightH = Math.min(S * 0.78, horizon - frameBottom - S * 0.02);
-      return {
-        P,
-        W,
-        H,
-        S,
-        sideW,
-        floorY,
-        bulTop,
-        horizon,
-        moon,
-        calm,
-        mast,
-        pole: null,
-        flag: { x: mast.x + mast.w * 0.3, y: S * 0.42, w: flagW, dir: 1 },
-        headL: { k: (S * 0.85) / 360 },
-        headR: { k: (S * 0.85) / 360 },
-        light: lightH > S * 0.4 ? { x: W * 0.53, y: horizon + S * 0.02, h: lightH } : null,
-        ship: { x: W * 0.36, w: S * 0.62 },
-        sail: null,
-        rig: null,
-        lamps: [
-          { x: W * 0.355, y: bulTop + S * 0.06, h: S * 0.55, hang: false },
-          { x: W * 0.665, y: bulTop + S * 0.06, h: S * 0.55, hang: false },
-        ],
-        props: [
-          { kind: 'cannon', x: W * 0.5, w: S * 1.05 },
-          { kind: 'balls', x: W * 0.5 + S * 0.72, w: S * 0.42 },
-        ],
-        clouds: [
-          { x: -S * 0.2, y: S * 1.9, w: S * 2.2 },
-          { x: W - S * 2.1, y: S * 1.85, w: S * 2.3 },
-        ],
-      };
-    }
-    const bulH = Math.min(S * 1.75, H * 0.24);
-    const bulTop = floorY - bulH;
-    const horizon = bulTop - S * 1.6;
     const right = frame.x + frame.w;
-    const r = Math.min(S * 0.55, sideW * 0.26);
-    // compact landscape: the win bar holds the top of the right zone, so the moon (and the flag
-    // staff's top) sit under it and the lighthouse, which would crowd the flag, stays dark
-    const skyTop = L.compact ? winBar.y + winBar.h + S * 0.12 : 0;
-    const moon = L.compact ? { x: right + sideW * 0.34, y: skyTop + r * 1.45, r } : { x: right + sideW * 0.42, y: Math.max(r * 1.3, S * 1.05), r };
-    const pole = { x: W - Math.max(S * 0.24, 8), top: Math.max(skyTop + S * 0.28, moon.y - r * 0.95), w: Math.max(3, S * 0.085) };
-    const flagW = Math.min(S * 1.3, sideW * 0.46);
-    const roomy = sideW > S * 2.2;
-    const kR = (S * 1.5) / 360;
-    const mast = { x: S * 0.3, w: S * 0.46 };
-    const logoBottom = logo.y + logo.h;
-    const charTop = L.captain.y - L.captain.h;
-    return {
-      P,
-      W,
-      H,
-      S,
-      sideW,
-      floorY,
-      bulTop,
-      horizon,
-      moon,
-      calm,
-      mast,
-      pole,
-      flag: { x: pole.x - pole.w * 0.4, y: pole.top + S * 0.1, w: flagW, dir: -1 },
-      headL: { k: (S * 1.55) / 360 },
-      headR: { k: kR },
-      light: roomy && !L.compact ? { x: W - (800 - HEADLAND_LIGHT.x) * kR, y: horizon - (360 - HEADLAND_LIGHT.y) * kR, h: S * 1.25 } : null,
-      ship: roomy ? { x: right + sideW * 0.33, w: S * 0.9 } : null,
-      sail: { w: (logo.x + logo.w) * 1.36, h: (logo.y + logo.h) * 1.56 },
-      rig: sideW > S * 1.3 ? { top: -S * 2, x: [S * 1.05, S * 1.6, S * 2.15].map((x) => Math.min(x, sideW - S * 0.3)), ratFrom: logoBottom + S * 0.3 } : null,
-      lamps: [hangFrom({ x: mast.x + mast.w / 2 - S * 0.02, y: clamp(logoBottom + S * 0.2, logoBottom, charTop - S * 0.9), w: S * 0.8, flip: false }, S * 0.62), { x: right + S * 0.36, y: bulTop + S * 0.08, h: S * 0.55, hang: false }],
-      props: [
-        { kind: 'barrel', x: S * 0.5, w: S * 0.85 },
-        { kind: 'balls', x: frame.x - S * 0.36, w: S * 0.5 },
-        { kind: 'rope', x: right + S * 0.45, w: S * 0.78 },
-        { kind: 'treasure', x: W - S * 0.62, w: S * 0.95 },
-      ],
-      clouds: [
-        { x: sideW * 0.02, y: horizon - S * 0.3, w: sideW * 0.8 },
-        { x: W - sideW * 0.9, y: horizon - S * 0.12, w: sideW * 0.62 },
-        { x: sideW * 0.12, y: logoBottom + Math.max(S * 0.5, (charTop - logoBottom) * 0.42), w: sideW * 0.55 },
-      ],
+    const fb = frame.y + frame.h;
+    const ceilY = Math.max(7, S * 0.28);
+    const lipY = floorY - S * (P ? 0.34 : 0.4);
+    const pitH = S * (P ? 0.5 : 0.6);
+    const baseY = lipY - pitH;
+    const bandY = baseY - S * (P ? 0.92 : 1.1);
+    const tunnels: BackdropSpec['tunnels'] = [];
+    const signals: BackdropSpec['signals'] = [];
+    const columns: BackdropSpec['columns'] = [];
+    const posters: BackdropSpec['posters'] = [];
+    const signs: BackdropSpec['signs'] = [];
+    const props: BackdropSpec['props'] = [];
+    const grates: BackdropSpec['grates'] = [];
+    const pools: { x: number; y: number }[] = [];
+    const lamps: Plan['lamps'] = [];
+    let clock: Plan['clock'] = null;
+    const lampH = S * 0.62;
+    const tunnelAt = (tw: number, side: -1 | 1, x: number) => {
+      const th = (tw * TUNNEL.h) / TUNNEL.w;
+      tunnels.push({ x, w: tw, side });
+      return { th, top: lipY - th };
     };
+    if (P) {
+      const room = lipY - fb - S * 0.12;
+      const tw = Math.min(W * 0.27, (room * TUNNEL.w) / TUNNEL.h);
+      if (tw > S * 0.8) {
+        const a = tunnelAt(tw, -1, -tw * 0.14);
+        tunnelAt(tw, 1, W - tw * 0.86);
+        const sh = Math.min(S * 0.7, a.th * 0.42);
+        signals.push({ x: tw * 0.86 + S * 0.24, y: a.top + a.th * 0.18, h: sh }, { x: W - tw * 0.86 - S * 0.24, y: a.top + a.th * 0.18, h: sh });
+      }
+      props.push({ kind: 'bench', x: W / 2, w: Math.min(S * 1.5, W * 0.32), y: floorY - S * 0.12 });
+      // lamp top-left, clock top-right (the logo holds the middle)
+      const lx = Math.min(S * 0.8, logo.x * 0.5 + S * 0.1);
+      lamps.push({ x: lx, top: 0, y: Math.min(logo.y + logo.h * 0.55, S * 1.5), h: Math.min(lampH, S * 0.62) });
+      const r = Math.max(S * 0.3, Math.min(S * 0.5, (W - (logo.x + logo.w)) * 0.36));
+      clock = { x: W - r - S * 0.22, y: ceilY + S * 0.2 + r + S * 0.25, r };
+      pools.push({ x: lx, y: lamps[0].y }, { x: W / 2, y: bandY - S * 1.1 });
+      // a medallion sign on the wall between the cast, where the wall under the reels has room
+      const sw = Math.min(S * 1.9, W * 0.38);
+      const sgY = bandY - S * 0.55 - sw * 0.32;
+      if (sgY > fb + S * 0.25) signs.push({ x: W / 2 - sw / 2, y: sgY, w: sw, kind: 1 });
+    } else {
+      // tunnel mouths at the screen edges, a little cut off (they bore away sideways), behind the cast
+      const tw = Math.min(sideW * 0.86, S * 2.3, ((lipY - ceilY - S * 0.7) * TUNNEL.w) / TUNNEL.h);
+      const tx = -tw * 0.16;
+      const a = tunnelAt(tw, -1, tx);
+      tunnelAt(tw, 1, W - tx - tw);
+      // engaged columns flank the reels; the signal heads are bolted to them, clear of the cast
+      const colW = S * 0.38;
+      columns.push({ x: frame.x - S * 0.26, w: colW }, { x: right + S * 0.26, w: colW });
+      const sh = Math.min(S * 0.8, (bandY - ceilY) * 0.3);
+      const sy = Math.max(a.top - sh * 0.2, bandY - sh * 1.15);
+      signals.push({ x: frame.x - S * 0.26, y: sy, h: sh }, { x: right + S * 0.26, y: sy, h: sh });
+      const logoBottom = logo.y + logo.h;
+      const ly = clamp(logoBottom + S * 0.55, S * 1.4, bandY - S * 0.9);
+      const lx = S * 0.68;
+      lamps.push({ x: frame.x - lx, top: 0, y: ly, h: lampH }, { x: right + lx, top: 0, y: ly, h: lampH });
+      // the clock in the right zone, between the lamp and the edge: under the win bar in compact,
+      // and only where the rat's reach leaves room
+      const ratTop = L.parrot.y - (L.parrot.h * PARROT_EXTENT.h) / PARROT_UNITS;
+      const top = L.compact ? winBar.y + winBar.h + S * 0.12 : ceilY + S * 0.3;
+      const ca = right + lx + lampH * 0.36 + S * 0.14;
+      const cb = W - S * 0.12;
+      const r = Math.min(S * 0.6, (cb - ca) / 2, (ratTop - top + S * 0.6) * 0.42);
+      if (r > S * 0.28) clock = { x: (ca + cb) / 2, y: top + r + S * 0.12, r };
+      // enamel signs over the tunnel mouths, where the wall above has room and nothing else is
+      const sw = Math.min(tw * 0.78, S * 1.5);
+      const sgY = a.top - sw * 0.32 - S * 0.16;
+      if (sgY > ceilY + S * 0.5) {
+        const lsx = Math.max(S * 0.1, tx + tw * 0.5 - sw / 2);
+        if (lsx + sw < frame.x - S * 0.55 && sgY > logoBottom + S * 0.1) signs.push({ x: lsx, y: sgY, w: sw, kind: 0 });
+        const rsx = Math.min(W - S * 0.1 - sw, W - tx - tw * 0.5 - sw / 2);
+        if (rsx > right + S * 0.55 && (!clock || sgY > clock.y + clock.r + S * 0.12)) signs.push({ x: rsx, y: sgY, w: sw, kind: 2 });
+      }
+      props.push({ kind: 'vending', x: Math.max(S * 0.42, sideW * 0.12), w: S * 0.6, y: floorY - S * 0.12 });
+      props.push({ kind: 'bench', x: W - Math.max(S * 0.95, sideW * 0.28), w: S * 1.5, y: floorY - S * 0.12 });
+      props.push({ kind: 'bin', x: frame.x - S * 0.5, w: S * 0.34, y: floorY - S * 0.1 });
+      grates.push({ x: W / 2 + S * 1.2, y: floorY - S * 0.16, w: S * 0.95 });
+      for (const l of lamps) pools.push({ x: l.x, y: l.y });
+    }
+    const spec: BackdropSpec = { w: W, h: H, S, ceilY, bandY, baseY, lipY, floorY, tunnels, signals, columns, posters, signs, props, grates, lamps: pools };
+    const moteBoxes = lamps.map((l) => ({ x: l.x - S * 1.1, y: l.y - S * 0.3, w: S * 2.2, h: S * 1.8 }));
+    return { P, W, H, S, spec, lamps, clock, railY: baseY + pitH * PIT.third, crowdY: lipY + S * 0.2, moteBoxes };
   }
 
   async layout(L: Layout, res: number) {
     const stamp = ++this.stamp;
     const p = this.makePlan(L);
-    const { W, S } = p;
-    const u = S / 100;
+    const { W, H, S } = p;
     const px = (v: number) => Math.max(8, Math.round(v * res));
-    const skyH = Math.ceil(p.horizon + 6);
-    // cap the sky raster at a safe GPU texture width; the sprite scales it back up
-    const skyScale = Math.min(res, 4096 / Math.max(1, W));
-    const flagH = p.flag.w * (210 / 320);
-    const moonBox = p.moon.r * 2 * (256 / 224);
-    const headW = (k: number) => 800 * k;
-    const lampH = Math.max(...p.lamps.map((l) => l.h), 8);
-    const lampW = lampH * (128 / 224);
-    const flameW = lampW * LANTERN_WICK.flameW * 1.12;
-    const bulH = p.floorY - p.bulTop;
-    const deckH = Math.max(S * 0.6, p.H - p.floorY);
-    const seaH = p.bulTop - p.horizon;
-    const rowHs = [0.14, 0.19, 0.25, 0.33, 0.44].map((k) => Math.max(4, seaH * k));
-    const tex = (key: string, svg: string, w: number, h?: number) => svgTexture(`cove-${key}`, svg, px(w), h === undefined ? undefined : px(h));
-    // soft, distant layers (headlands, ship, beam, fog, sea rows) at 3/4 size in low quality: they are
-    // blurred or tiny on screen, so the smaller raster can't be seen
-    const soft = quality.low ? 0.75 : 1;
-    const softTex = (key: string, svg: string, w: number) => svgTexture(`cove-${key}`, svg, Math.max(8, Math.round(w * res * soft)));
-
-    const [
-      skyT,
-      moonT,
-      ghostT,
-      wispT,
-      sparkT,
-      headLT,
-      headRT,
-      lightT,
-      beamT,
-      shipT,
-      glintT,
-      fogT,
-      bulT,
-      deckT,
-      mastT,
-      footT,
-      poleT,
-      capT,
-      bracketT,
-      backT,
-      frontT,
-      fireT,
-      greenT,
-      spiritT,
-      sailT,
-      flagT,
-      rowTs,
-      propTs,
-    ] = await Promise.all([
-      rasterOnce(
-        skyBackdrop({ w: W, h: skyH, horizon: p.horizon, moon: p.moon, calm: p.calm, u, clouds: p.clouds, seed: 17 }),
-        W * skyScale,
-        skyH * skyScale,
-      ),
-      tex('moon', moonDisc(false), moonBox),
-      tex('moon-ghost', moonDisc(true), moonBox),
-      tex('wisp', cloudWisp(), p.moon.r * 3.4),
-      tex('spark', sparkle(), S * 0.34),
-      p.headL ? softTex('head-l', headland('left'), headW(p.headL.k)) : Promise.resolve(Texture.EMPTY),
-      p.headR ? softTex('head-r', headland('right'), headW(p.headR.k)) : Promise.resolve(Texture.EMPTY),
-      p.light ? tex('light', lighthouse(), p.light.h * (128 / 320)) : Promise.resolve(Texture.EMPTY),
-      softTex('beam', lighthouseBeam(), S * 3),
-      p.ship ? softTex('ship', distantShip(), p.ship.w) : Promise.resolve(Texture.EMPTY),
-      tex('glint', glint(), p.moon.r * 2),
-      softTex('fog', fogTile(), S * 5.2),
-      tex('bulwark', bulwarkTile(4), bulH * 4),
-      tex('deck', deckTile(), deckH * 4),
-      p.mast ? tex('mast', mastTile(), p.mast.w * (128 / 84)) : Promise.resolve(Texture.EMPTY),
-      p.mast ? tex('mast-foot', mastFoot(), p.mast.w * (256 / 84)) : Promise.resolve(Texture.EMPTY),
-      p.pole ? tex('pole', poleTile(), p.pole.w * 2) : Promise.resolve(Texture.EMPTY),
-      p.pole ? tex('pole-cap', poleCap(), p.pole.w * 2.6) : Promise.resolve(Texture.EMPTY),
-      tex('bracket', lanternBracket(), S * 0.8),
-      tex('lamp-back', lantern('back'), lampW),
-      tex('lamp-front', lantern('front'), lampW),
-      tex('flame-fire', flame('fire'), flameW),
-      tex('flame-green', flame('green'), flameW),
-      tex('flame-spirit', flame('spirit'), flameW),
-      p.sail ? tex('sail', sailCorner(), p.sail.w) : Promise.resolve(Texture.EMPTY),
-      tex('flag', jollyRoger(), p.flag.w),
-      Promise.all(rowHs.map((h, i) => softTex(`sea${i}`, seaRow(i / (rowHs.length - 1), i), h * 4))),
-      Promise.all(p.props.map((pr) => tex(`prop-${pr.kind}`, PROP_ART[pr.kind](), pr.w))),
+    // cap the backdrop raster at a safe GPU texture size (and 1.5x in low quality); the sprite scales it back
+    const bs = Math.min(this.low ? Math.min(res, 1.5) : res, 4096 / Math.max(1, W), 4096 / Math.max(1, H));
+    const tex = (key: string, svg: string, w: number, h?: number) => svgTexture(`stn-${key}`, svg, px(w), h === undefined ? undefined : px(h));
+    const lampW = Math.max(...p.lamps.map((l) => l.h), 8) * (PENDANT.w / PENDANT.h);
+    // the bezel's radius is 120 of the face's 256 units
+    const clockPx = p.clock ? (p.clock.r * CLOCK.size) / 120 : 8;
+    const pigeonW = p.clock ? p.clock.r * 0.62 : 8;
+    const crowdH = S * 3.0;
+    const [bdT, lampT, faceT, hourT, minT, sitT, peckT, crowdA, crowdB, spark1, spark2, spark3, glintT] = await Promise.all([
+      rasterOnce(stationBackdrop(p.spec), W * bs, H * bs),
+      tex('lamp', pendantLamp(), lampW),
+      tex('clock', clockFace(), clockPx),
+      tex('hand-h', clockHand('hour'), (clockPx * HAND.w) / CLOCK.size),
+      tex('hand-m', clockHand('minute'), (clockPx * HAND.w) / CLOCK.size),
+      tex('pigeon-sit', pigeonPerch('sit'), pigeonW),
+      tex('pigeon-peck', pigeonPerch('peck'), pigeonW),
+      tex('crowd-a', commuterCrowd(3), (crowdH * 1000) / 420),
+      tex('crowd-b', commuterCrowd(8), (crowdH * 0.86 * 1000) / 420),
+      tex('spark1', sparkArc(1), S * 0.9),
+      tex('spark2', sparkArc(2), S * 0.9),
+      tex('spark3', sparkArc(5), S * 0.9),
+      tex('glint', starGlint(), S * 0.3),
     ]);
     if (stamp !== this.stamp) {
-      freeTexture(skyT);
+      freeTexture(bdT);
       return;
     }
     this.plan = p;
+    const sp = p.spec;
 
-    // sky: swap in the new raster and free the old one in the same tick
-    const oldSky = this.sky.texture;
-    this.sky.texture = skyT;
-    freeTexture(oldSky);
-    this.sky.width = W;
-    this.sky.height = skyH;
+    const old = this.backdrop.texture;
+    this.backdrop.texture = bdT;
+    freeTexture(old);
+    this.backdrop.width = W;
+    this.backdrop.height = H;
 
-    // twinkling stars (a handful; the rest are baked into the sky)
-    this.twinkleLayer.removeChildren().forEach((c) => c.destroy());
-    this.twinkles = [];
-    const R = rng(29);
-    const inCalm = (x: number, y: number) => p.calm.some((b) => x > b.x - S * 0.2 && x < b.x + b.w + S * 0.2 && y > b.y - S * 0.2 && y < b.y + b.h + S * 0.2);
-    for (let i = 0, tries = 0; i < (p.P ? 7 : 12) && tries < 200; tries++) {
-      const x = R() * W;
-      const y = R() * p.horizon * 0.8;
-      if (inCalm(x, y) || Math.hypot(x - p.moon.x, y - p.moon.y) < p.moon.r * 2.4) continue;
-      const s = new Sprite(sparkT);
-      s.anchor.set(0.5);
-      s.position.set(x, y);
-      s.tint = R() < 0.3 ? hex(C.goldLight) : hex(C.moon);
-      const size = S * (0.12 + R() * 0.16);
-      this.twinkleLayer.addChild(s);
-      this.twinkles.push({ s, phase: R() * 10, speed: 0.6 + R() * 1.4, base: 0.55 + R() * 0.45, size });
-      i++;
-    }
+    // warm light pooled behind the reels (the board is the lit subject)
+    this.frameGlow.texture = softLightTexture();
+    this.frameGlow.tint = hex(C.amber);
+    this.frameGlow.position.set(L.grid.x + L.grid.w / 2, L.grid.y + L.grid.h * 0.55);
+    this.frameGlow.width = L.frame.w * 1.6;
+    this.frameGlow.height = L.frame.h * 1.5;
 
-    // moon, ghost moon, halo, drifting wisp
-    for (const m of [this.moon, this.moonGhost]) {
-      m.position.set(p.moon.x, p.moon.y);
-      m.width = m.height = moonBox;
-    }
-    this.moon.texture = moonT;
-    this.moonGhost.texture = ghostT;
-    this.halo.texture = softLightTexture();
-    this.halo.position.set(p.moon.x, p.moon.y);
-    this.halo.width = this.halo.height = p.moon.r * 7;
-    this.wisp.texture = wispT;
-    this.wisp.width = p.moon.r * 3.4;
-    this.wisp.height = this.wisp.width * (140 / 512);
-
-    // cove
-    this.headL.visible = !!p.headL;
-    if (p.headL) {
-      this.headL.texture = headLT;
-      this.headL.anchor.set(0, 1);
-      this.headL.width = headW(p.headL.k);
-      this.headL.height = 360 * p.headL.k;
-      this.headL.position.set(0, p.horizon + 1);
-    }
-    this.headR.visible = !!p.headR;
-    if (p.headR) {
-      this.headR.texture = headRT;
-      this.headR.anchor.set(1, 1);
-      this.headR.width = headW(p.headR.k);
-      this.headR.height = 360 * p.headR.k;
-      this.headR.position.set(W, p.horizon + 1);
-    }
-    this.light.visible = this.beam.visible = this.flash.visible = !!p.light;
-    // hidden pieces drop their raster too, so nothing ever points at a texture evicted below
-    this.beam.texture = beamT;
-    if (!p.light) this.light.texture = Texture.EMPTY;
-    if (!p.ship) this.ship.texture = Texture.EMPTY;
-    if (!p.sail) this.sail.texture = Texture.EMPTY;
-    if (!p.pole) this.pole.texture = this.poleCapS.texture = Texture.EMPTY;
-    if (!p.headL) this.headL.texture = Texture.EMPTY;
-    if (!p.headR) this.headR.texture = Texture.EMPTY;
-    if (!p.mast) this.mast.texture = this.mastFootS.texture = Texture.EMPTY;
-    if (p.light) {
-      this.light.texture = lightT;
-      this.light.anchor.set(0.5, 1);
-      this.light.height = p.light.h;
-      this.light.width = p.light.h * (128 / 320);
-      this.light.position.set(p.light.x, p.light.y);
-      const lx = p.light.x;
-      const ly = p.light.y - p.light.h * (1 - LIGHTHOUSE_LAMP.y);
-      this.beam.position.set(lx, ly);
-      this.beam.height = p.light.h * 0.42;
-      this.flash.texture = softLightTexture();
-      this.flash.tint = hex(C.goldLight);
-      this.flash.position.set(lx, ly);
-      this.flash.width = this.flash.height = p.light.h * 0.9;
-    }
-    this.ship.visible = !!p.ship;
-    if (p.ship) {
-      this.ship.texture = shipT;
-      this.ship.anchor.set(0.5, 114 / 150);
-      this.ship.width = p.ship.w;
-      this.ship.height = p.ship.w * (150 / 256);
-      this.ship.position.set(p.ship.x, p.horizon + seaH * 0.05);
-    }
-
-    // sea: base gradient + wave rows + moon path
-    this.seaBase.texture = seaGradTexture();
-    this.seaBase.position.set(0, p.horizon);
-    this.seaBase.width = W;
-    this.seaBase.height = seaH + S * 0.2;
-    for (const r of this.rows) r.t.destroy();
-    this.rows = [];
-    const rowTops = [0.0, 0.08, 0.21, 0.38, 0.6];
-    rowHs.forEach((h, i) => {
-      const t = new TilingSprite({ texture: rowTs[i], width: W, height: h });
-      t.tileScale.set(1 / (res * soft));
-      const y0 = p.horizon + seaH * rowTops[i] - h * 0.06;
-      t.position.set(0, y0);
-      this.sea.addChild(t);
-      this.rows.push({ t, speed: (i % 2 ? -1 : 1) * (3 + i * 5) * u, sway: (2 + i * 3) * u, phase: i * 1.7, y0, bob: 0.3 + i * 0.35, off: this.t * (i % 2 ? -1 : 1) * (3 + i * 5) * u });
+    // tunnels: headlight core, halo and spill (the passing train), and the Last Train's gold
+    this.tunnelLayer.removeChildren().forEach((c) => c.destroy());
+    this.tunnels = sp.tunnels.map((t) => {
+      const k = t.w / TUNNEL.w;
+      const th = TUNNEL.h * k;
+      const vp = t.side < 0 ? TUNNEL.vpL : TUNNEL.vpR;
+      const vx = t.x + vp.x * k;
+      const vy = sp.lipY - th + vp.y * k;
+      const mk = (tint: string) => {
+        const s = new Sprite(softLightTexture());
+        s.anchor.set(0.5);
+        s.blendMode = 'add';
+        s.tint = hex(tint);
+        s.alpha = 0;
+        s.visible = false;
+        this.tunnelLayer.addChild(s);
+        return s;
+      };
+      const tn: Tunnel = { vx, vy, w: t.w, side: t.side, gold: mk(C.gold), halo: mk(C.amberLight), spill: mk(C.amber), core: mk(C.cream) };
+      tn.gold.position.set(vx, vy);
+      tn.gold.width = t.w * 1.5;
+      tn.gold.height = th * 1.3;
+      return tn;
     });
-    this.glintLayer.removeChildren().forEach((c) => c !== this.moonPath && c.destroy());
-    this.glints = [];
-    // soft column of moonlight on the water under the moon
-    this.moonPath.texture = softLightTexture();
-    this.moonPath.anchor.set(0.5, 0.5);
-    this.moonPath.position.set(p.moon.x, p.horizon + seaH * 0.55);
-    this.moonPath.width = p.moon.r * 2.6;
-    this.moonPath.height = seaH * 1.25;
-    this.glintLayer.addChild(this.moonPath);
-    const GR = rng(41);
-    const nG = p.P ? 9 : 16;
-    for (let i = 0; i < nG; i++) {
-      const d = (i + 0.5) / nG;
-      const y = p.horizon + seaH * (0.03 + 0.95 * Math.pow(d, 1.35));
-      const w = p.moon.r * (0.28 + 1.5 * d) * (0.6 + GR() * 0.6);
-      const s = new Sprite(glintT);
+
+    // the third rail's glow strip and its surge layer
+    for (const r of [this.rail, this.railHot]) {
+      r.texture = bandTexture();
+      r.tint = hex(C.volt);
+      r.width = W;
+      r.height = S * 0.32;
+      r.position.set(0, p.railY - S * 0.16);
+    }
+    this.railHot.tint = hex(C.voltLight);
+    this.railHot.height = S * 0.16;
+    this.railHot.y = p.railY - S * 0.08;
+
+    // sparks along the third rail
+    this.sparkTex = [spark1, spark2, spark3];
+    this.sparkLayer.removeChildren().forEach((c) => c.destroy());
+    this.sparks = [0, 1, 2].map(() => {
+      const s = new Sprite(spark1);
       s.anchor.set(0.5);
-      s.tint = hex(C.moon);
-      const x0 = p.moon.x + (GR() - 0.5) * p.moon.r * (0.3 + d * 0.8);
-      s.position.set(x0, y);
-      s.width = w;
-      s.height = Math.max(1.5, w * 0.16);
-      this.glintLayer.addChild(s);
-      this.glints.push({ s, w, x0, phase: GR() * 6, speed: 1.2 + GR() * 2.2, a: 0.35 + (1 - d) * 0.25 + GR() * 0.3 });
-    }
-    // fog for the Moonlight Raid (hidden until the mood fades it in)
-    for (const fg of this.fog) fg.destroy();
-    const fh = S * 5.2 * (160 / 512);
-    this.fog = [0, 1].map((i) => {
-      const t = new TilingSprite({ texture: fogT, width: W, height: fh });
-      t.tileScale.set(1 / (res * soft));
-      t.position.set(0, i ? p.bulTop - fh * 0.7 : p.horizon - fh * 0.5);
-      t.tint = hex(C.greenGlow);
-      t.alpha = 0;
-      return t;
+      s.visible = false;
+      const flash = new Sprite(softLightTexture());
+      flash.anchor.set(0.5);
+      flash.tint = hex(C.voltLight);
+      flash.visible = false;
+      this.sparkLayer.addChild(flash, s);
+      return { s, flash, t: 0, dur: 0.2, on: false };
     });
-    this.sea.addChild(this.fog[0]);
-    this.addChildAt(this.fog[1], this.getChildIndex(this.shipLayer) + 1);
 
-    // sail corner (top-left, behind the logo)
-    this.sail.visible = !!p.sail;
-    if (p.sail) {
-      this.sail.texture = sailT;
-      this.sail.position.set(0, 0);
-      this.sail.width = p.sail.w;
-      this.sail.height = p.sail.h * (512 / 500);
-      this.sailBase = { x: this.sail.scale.x, y: this.sail.scale.y };
-    }
+    // signal aspects: three glow sprites per head
+    this.signalLayer.removeChildren().forEach((c) => c.destroy());
+    this.signals = sp.signals.map((g, i) => {
+      const k = g.h / SIGNAL.h;
+      const x0 = g.x - (SIGNAL.w * k) / 2;
+      const glows = SIGNAL.lenses.map((ln) => {
+        const s = new Sprite(softLightTexture());
+        s.anchor.set(0.5);
+        s.blendMode = 'add';
+        s.tint = hex(SIGNAL_COLORS[ln.color]);
+        s.position.set(x0 + ln.x * k, g.y + ln.y * k);
+        s.width = s.height = SIGNAL.r * k * 4.2;
+        s.alpha = 0;
+        this.signalLayer.addChild(s);
+        return s;
+      });
+      return { glows, tunnel: i, aspect: 0, blink: 0 };
+    });
 
-    // flag staff (landscape) + cap
-    this.pole.visible = this.poleCapS.visible = !!p.pole;
-    if (p.pole) {
-      this.pole.texture = poleT;
-      this.pole.tileScale.set(1 / res);
-      this.pole.width = p.pole.w * 2;
-      this.pole.height = p.bulTop + S * 0.5 - p.pole.top;
-      this.pole.position.set(p.pole.x - p.pole.w, p.pole.top);
-      this.poleCapS.texture = capT;
-      this.poleCapS.anchor.set(0.5, 0.92);
-      this.poleCapS.width = this.poleCapS.height = p.pole.w * 2.6;
-      this.poleCapS.position.set(p.pole.x, p.pole.top + p.pole.w * 0.3);
-    }
+    // Rush Hour crowd: two rows of silhouettes on the platform, hidden until the mood fades them in
+    for (const c of this.crowd) c.destroy();
+    this.crowd = [crowdB, crowdA].map((t, i) => {
+      const h = crowdH * (i ? 1 : 0.86);
+      const ts = new TilingSprite({ texture: t, width: W, height: h });
+      ts.tileScale.set(1 / res);
+      ts.position.set(0, p.crowdY - h - S * (i ? 0 : 0.18));
+      ts.tilePosition.x = i ? 0 : S * 1.3;
+      ts.alpha = i ? 1 : 0.7;
+      this.crowdLayer.addChild(ts);
+      return ts;
+    });
+    this.crowdLayer.alpha = 0;
+    this.crowdLayer.visible = false;
 
-    // rigging: tarred shrouds from the masthead to the rail, ratlines across them
-    const g = this.rigG.clear();
-    if (p.rig && p.mast) {
-      const top = { x: p.mast.x, y: p.rig.top };
-      const rail = p.bulTop + S * 0.06;
-      const lw = Math.max(1.5, S * 0.034);
-      const tar = hex(mix(C.inkSoft, C.night, 0.35));
-      const at = (x: number, y: number) => top.x + ((x - top.x) * (y - top.y)) / (rail - top.y);
-      for (let y = rail - S * 0.34; y > p.rig.ratFrom; y -= S * 0.3) {
-        const xs = p.rig.x.map((x) => at(x, y));
-        g.moveTo(xs[0], y).quadraticCurveTo((xs[0] + xs[2]) / 2, y + S * 0.03, xs[2], y).stroke({ width: lw * 0.75 + 1.4, color: hex(C.ink), alpha: 0.9 });
-        g.moveTo(xs[0], y).quadraticCurveTo((xs[0] + xs[2]) / 2, y + S * 0.03, xs[2], y).stroke({ width: lw * 0.75, color: tar });
-      }
-      for (const x of p.rig.x) {
-        g.moveTo(top.x, top.y).lineTo(x, rail).stroke({ width: lw + 1.6, color: hex(C.ink) });
-        g.moveTo(top.x, top.y).lineTo(x, rail).stroke({ width: lw, color: tar });
-        g.moveTo(top.x + lw * 0.35, top.y).lineTo(x + lw * 0.35, rail).stroke({ width: Math.max(0.8, lw * 0.25), color: hex(C.moonGlow), alpha: 0.28 });
+    // steam from the platform grate
+    this.steamLayer.removeChildren().forEach((c) => c.destroy());
+    this.steam = [];
+    const gr = sp.grates[0];
+    if (gr) {
+      for (let i = 0; i < 5; i++) {
+        const s = new Sprite(softLightTexture());
+        s.anchor.set(0.5);
+        s.tint = hex(C.paperWarm);
+        this.steamLayer.addChild(s);
+        this.steam.push({ s, t: i * 0.9, dur: 4.5, x: gr.x, y: gr.y, size: gr.w });
       }
     }
 
-    // the Jolly Roger: a small vertex grid waved in update()
-    this.flagArgs = { tex: flagT, x: p.flag.x, y: p.flag.y, w: p.flag.w, h: flagH, dir: p.flag.dir };
-    this.flagN = this.low ? { nx: 6, ny: 2 } : { nx: 12, ny: 4 };
-    this.buildFlag(flagT, p.flag.x, p.flag.y, p.flag.w, flagH, p.flag.dir);
+    // pendant lamps: rod from the vault, globe, core, glow and spill
+    this.lampLayer.removeChildren().forEach((c) => c !== this.rods && c.destroy({ children: true }));
+    this.lamps = [];
+    const rods = this.rods.clear();
+    p.lamps.forEach((lp, i) => {
+      const k = lp.h / PENDANT.h;
+      const fitTop = lp.y - PENDANT.gy * k;
+      const rw = Math.max(1.5, S * 0.028);
+      rods.moveTo(lp.x, lp.top).lineTo(lp.x, fitTop + 2).stroke({ width: rw + 2, color: hex(C.ink) });
+      rods.moveTo(lp.x, lp.top).lineTo(lp.x, fitTop + 2).stroke({ width: rw, color: hex(C.goldDeep) });
+      rods.moveTo(lp.x - rw * 0.25, lp.top).lineTo(lp.x - rw * 0.25, fitTop + 2).stroke({ width: Math.max(0.6, rw * 0.3), color: hex(C.goldLight), alpha: 0.6 });
+      const root = new Container();
+      root.position.set(lp.x, fitTop);
+      const spill = new Sprite(softLightTexture());
+      const glow = new Sprite(softLightTexture());
+      const core = new Sprite(softLightTexture());
+      for (const s of [spill, glow, core]) {
+        s.anchor.set(0.5);
+        s.blendMode = 'add';
+        s.position.set(0, PENDANT.gy * k);
+      }
+      spill.width = spill.height = lp.h * 8;
+      glow.width = glow.height = lp.h * 4.6;
+      core.width = core.height = PENDANT.r * 2 * k * 1.25;
+      const globe = new Sprite(lampT);
+      globe.anchor.set(PENDANT.cx / PENDANT.w, 0);
+      globe.width = PENDANT.w * k;
+      globe.height = PENDANT.h * k;
+      root.addChild(spill, glow, globe, core);
+      this.lampLayer.addChild(root);
+      this.lamps.push({ root, globe, core, glow, spill, seed: i * 2.3 + 0.7, h: lp.h });
+    });
 
-    // bulwark, mast, deck
-    this.bulwark.texture = bulT;
-    this.bulwark.tileScale.set(1 / res);
-    this.bulwark.position.set(0, p.bulTop);
-    this.bulwark.width = W;
-    this.bulwark.height = bulH;
-    // the gun-port bay (centre 600 of 960) sits left of centre in portrait, near the hatch in landscape
-    this.bulwark.tilePosition.x = (p.P ? W * 0.3 : p.W - p.sideW * 0.2) - bulH * 4 * (600 / 960);
-    this.mast.visible = this.mastFootS.visible = !!p.mast;
-    if (p.mast) {
-      const mw = p.mast.w * (128 / 84);
-      this.mast.texture = mastT;
-      this.mast.tileScale.set(1 / res);
-      this.mast.width = mw;
-      this.mast.height = p.floorY + S * 0.05;
-      this.mast.position.set(p.mast.x - mw / 2, 0);
-      this.mast.tilePosition.y = -mw * 5 * (560 / 640) + p.bulTop * 0.5;
-      this.mastFootS.texture = footT;
-      this.mastFootS.anchor.set(0.5, 214 / 256);
-      this.mastFootS.width = this.mastFootS.height = p.mast.w * (256 / 84);
-      this.mastFootS.position.set(p.mast.x, p.floorY + S * 0.04);
+    // station clock + pigeons on top
+    this.clockLayer.visible = !!p.clock;
+    for (const pg of this.pigeons) pg.s.destroy();
+    this.pigeons = [];
+    this.pigeonTex = { sit: sitT, peck: peckT };
+    if (p.clock) {
+      const c = p.clock;
+      this.clockFaceS.texture = faceT;
+      this.clockFaceS.width = this.clockFaceS.height = clockPx;
+      this.clockFaceS.position.set(c.x, c.y);
+      const k = clockPx / CLOCK.size;
+      for (const hnd of [this.hourHand, this.minuteHand]) {
+        hnd.width = HAND.w * k;
+        hnd.height = HAND.h * k;
+        hnd.position.set(c.x, c.y);
+      }
+      this.hourHand.texture = hourT;
+      this.minuteHand.texture = minT;
+      const top = c.y - c.r; // the bezel's top
+      [
+        { dx: -0.32, flip: false },
+        { dx: 0.3, flip: true },
+      ].forEach((d, i) => {
+        const s = new Sprite(sitT);
+        s.anchor.set(0.5, 116 / 128);
+        s.width = s.height = pigeonW;
+        if (d.flip) s.scale.x *= -1;
+        const x = c.x + c.r * d.dx;
+        const y = top + c.r * 0.05 + Math.abs(d.dx) * c.r * 0.22;
+        s.position.set(x, y);
+        this.clockLayer.addChild(s);
+        this.pigeons.push({ s, x, y, w: pigeonW, t: 0, next: 2 + i * 3.1, peck: false });
+      });
+    } else {
+      this.clockFaceS.texture = this.hourHand.texture = this.minuteHand.texture = Texture.EMPTY;
     }
-    this.deck.texture = deckT;
-    this.deck.tileScale.set(1 / res);
-    this.deck.position.set(0, p.floorY);
-    this.deck.width = W;
-    this.deck.height = deckH;
 
-    // soft contact shadows where the crew stand on the deck (the character rigs draw none)
-    const crew = [
+    // dust motes drifting in the lamplight
+    this.moteLayer.removeChildren().forEach((c) => c.destroy());
+    this.motes = [];
+    const nPer = 7;
+    p.moteBoxes.forEach((b, bi) => {
+      for (let i = 0; i < nPer; i++) {
+        const s = new Sprite(softLightTexture());
+        s.anchor.set(0.5);
+        s.blendMode = 'add';
+        s.tint = hex(C.amberLight);
+        const size = S * (0.03 + Math.random() * 0.04);
+        this.moteLayer.addChild(s);
+        this.motes.push({ s, box: bi, x: b.x + Math.random() * b.w, y: b.y + Math.random() * b.h, vx: (Math.random() - 0.5) * S * 0.05, vy: (Math.random() * 0.6 - 0.15) * S * 0.04, phase: Math.random() * 6, size });
+      }
+    });
+
+    // soft contact shadows where the cast stands
+    [
       { c: L.captain, w: 0.46 },
-      { c: L.parrot, w: 0.5 },
-    ];
-    crew.forEach(({ c, w }, i) => {
+      { c: L.parrot, w: 0.55 },
+    ].forEach(({ c, w }, i) => {
       const sh = this.shadows[i];
       sh.texture = shadowTexture();
       sh.width = c.h * w;
@@ -732,98 +597,15 @@ export class Background extends Container {
       sh.position.set(c.x, c.y + S * 0.02);
       sh.alpha = 0.55;
     });
-    // shooting stars cross open sky in the side zones only, never behind the logo, bar or meter
-    const starTop = L.compact ? L.winBar.y + L.winBar.h + S * 0.2 : S * 0.25;
-    this.starZones = p.P
-      ? [{ x: L.logo.x + L.logo.w + S * 0.3, y: S * 0.2, w: W - (L.logo.x + L.logo.w) - S * 0.5, h: Math.max(S * 0.6, L.winBar.y - S * 0.6) }]
-      : [{ x: L.frame.x + L.frame.w + S * 0.35, y: starTop, w: p.sideW - S * 0.7, h: Math.max(S * 0.5, p.horizon * 0.45 - starTop + S * 0.25) }];
-    this.star.texture = streakTexture();
-    this.star.tint = hex(C.moon);
-    this.star.visible = false;
-    this.starRun.on = false;
-
-    // warm light pooled behind the hatch (the reels are the lit subject)
-    this.frameGlow.texture = softLightTexture();
-    this.frameGlow.tint = hex(C.fireHot);
-    this.frameGlow.position.set(L.grid.x + L.grid.w / 2, L.grid.y + L.grid.h * 0.55);
-    this.frameGlow.width = L.frame.w * 1.7;
-    this.frameGlow.height = L.frame.h * 1.45;
-    this.frameGlowBase = { w: this.frameGlow.width, h: this.frameGlow.height };
-
-    // props on the deck
-    this.propLayer.removeChildren().forEach((c) => c.destroy());
-    p.props.forEach((pr, i) => {
-      const s = new Sprite(propTs[i]);
-      s.anchor.set(0.5, PROP_FOOT[pr.kind]);
-      s.width = s.height = pr.w;
-      if (pr.flip) s.scale.x *= -1;
-      s.position.set(pr.x, p.floorY + S * 0.05);
-      this.propLayer.addChild(s);
-      if (pr.kind === 'treasure') this.glintSpot = { x: pr.x, y: p.floorY - pr.w * 0.28, w: pr.w, next: 1.5, t: 0 };
-    });
-    this.glint.texture = sparkT;
-    this.glint.visible = p.props.some((pr) => pr.kind === 'treasure');
-
-    // lanterns: glow, tinted glass, crossfading flames, cage
-    this.lampLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
-    this.lamps = [];
-    p.lamps.forEach((lp, i) => {
-      if (lp.bracket) {
-        const b = new Sprite(bracketT);
-        b.anchor.set(4 / 160, 10 / 110);
-        b.width = lp.bracket.w;
-        b.height = lp.bracket.w * (110 / 160);
-        if (lp.bracket.flip) b.scale.x *= -1;
-        b.position.set(lp.bracket.x, lp.bracket.y);
-        this.lampLayer.addChild(b);
-      }
-      const k = lp.h / 224;
-      const root = new Container();
-      root.position.set(lp.x, lp.y);
-      const glow = new Sprite(softLightTexture());
-      glow.anchor.set(0.5);
-      glow.blendMode = 'add';
-      glow.tint = hex(C.fireHot);
-      glow.width = glow.height = lp.h * 4.4;
-      // wide, faint spill of warm light onto the rail, rigging and crew
-      const spill = new Sprite(softLightTexture());
-      spill.anchor.set(0.5);
-      spill.blendMode = 'add';
-      spill.tint = hex(C.fire);
-      spill.width = spill.height = lp.h * 10;
-      const back = new Sprite(backT);
-      const front = new Sprite(frontT);
-      for (const s of [back, front]) {
-        s.anchor.set(0.5, lp.hang ? LAMP_RING / 224 : LAMP_FOOT / 224);
-        s.width = 128 * k;
-        s.height = 224 * k;
-      }
-      back.tint = hex(C.fireHot);
-      const wickY = (lp.hang ? 224 * LANTERN_WICK.y - LAMP_RING : 224 * LANTERN_WICK.y - LAMP_FOOT) * k;
-      glow.position.set(0, wickY - lp.h * 0.12);
-      spill.position.set(0, wickY);
-      const fire = new Sprite(fireT);
-      const ghost = new Sprite(this.kind === 'limbo' ? spiritT : this.kind === 'tantrum' ? fireT : greenT);
-      const fw = 128 * k * LANTERN_WICK.flameW * 1.12;
-      for (const s of [fire, ghost]) {
-        s.anchor.set(0.5, 0.94);
-        s.width = s.height = fw;
-        s.position.set(0, wickY);
-      }
-      ghost.alpha = 0;
-      root.addChild(spill, glow, back, fire, ghost, front);
-      this.lampLayer.addChild(root);
-      this.lamps.push({ root, spill, glow, back, fire, ghost, front, seed: i * 2.3 + 0.7, swing: lp.hang ? 0.045 : 0, flameW: fw });
-    });
-    this.flameTex = { fire: fireT, green: greenT, spirit: spiritT };
 
     // bonus lighting overlays
     this.moodTint.width = W;
-    this.moodTint.height = p.H;
+    this.moodTint.height = H;
     this.floorGlow.texture = riseTexture();
     this.floorGlow.width = W;
-    this.floorGlow.height = p.H * 0.62;
-    this.floorGlow.y = p.H - p.H * 0.62;
+    this.floorGlow.height = H * 0.62;
+    this.floorGlow.y = H - H * 0.62;
+    void glintT;
 
     this.applyMood();
     this.applyLow();
@@ -831,76 +613,31 @@ export class Background extends Container {
 
     // drop rasters from earlier viewport sizes (everything above now points at this layout's)
     const keep = new Set<string>();
-    for (const t of [moonT, ghostT, wispT, sparkT, headLT, headRT, lightT, beamT, shipT, glintT, fogT, bulT, deckT, mastT, footT, poleT, capT, bracketT, backT, frontT, fireT, greenT, spiritT, sailT, flagT, ...rowTs, ...propTs])
-      if (t && t !== Texture.EMPTY && t.source?.label) keep.add(t.source.label);
-    evict('cove-', keep);
-  }
-
-  private flameTex: Record<'fire' | 'green' | 'spirit', Texture | null> = { fire: null, green: null, spirit: null };
-
-  private buildFlag(tex: Texture, x: number, y: number, w: number, h: number, dir: 1 | -1) {
-    const { nx, ny } = this.flagN;
-    const pos = new Float32Array((nx + 1) * (ny + 1) * 2);
-    const uvs = new Float32Array((nx + 1) * (ny + 1) * 2);
-    const idx: number[] = [];
-    for (let j = 0; j <= ny; j++)
-      for (let i = 0; i <= nx; i++) {
-        const k = (j * (nx + 1) + i) * 2;
-        pos[k] = (i / nx) * w * dir;
-        pos[k + 1] = (j / ny) * h;
-        uvs[k] = i / nx;
-        uvs[k + 1] = j / ny;
-        if (i < nx && j < ny) {
-          const a = j * (nx + 1) + i;
-          idx.push(a, a + 1, a + nx + 1, a + 1, a + nx + 2, a + nx + 1);
-        }
-      }
-    if (this.flagMesh) {
-      this.flagMesh.destroy();
-      this.flagMesh = null;
-    }
-    this.flagGeo?.destroy();
-    this.flagGeo = new MeshGeometry({ positions: pos, uvs, indices: new Uint32Array(idx) });
-    this.flagBase = pos.slice();
-    this.flagDims = { w, h, dir };
-    this.flagMesh = new Mesh({ geometry: this.flagGeo, texture: tex });
-    this.flagMesh.position.set(x, y);
-    this.shipLayer.addChildAt(this.flagMesh, this.shipLayer.getChildIndex(this.poleCapS));
+    for (const t of [lampT, faceT, hourT, minT, sitT, peckT, crowdA, crowdB, spark1, spark2, spark3, glintT]) if (t && t !== Texture.EMPTY && t.source?.label) keep.add(t.source.label);
+    evict('stn-', keep);
   }
 
   /** Low quality on or off at runtime: no re-raster, only what animates and what draws changes. */
   setLow(low: boolean) {
     if (low === this.low) return;
     this.low = low;
-    if (!this.plan) this.lowK = low ? 1 : 0;
-    this.flagN = low ? { nx: 6, ny: 2 } : { nx: 12, ny: 4 };
-    const f = this.flagArgs;
-    if (f) this.buildFlag(f.tex, f.x, f.y, f.w, f.h, f.dir);
     this.applyLow();
     this.update(0);
   }
 
   private applyLow() {
     const low = this.low;
-    // every other moon glint and five twinkling stars stay; the rest are baked sky or simply gone
-    this.glints.forEach((g, i) => (g.s.visible = !low || i % 2 === 0));
-    this.twinkles.forEach((tw, i) => (tw.s.visible = !low || i < 5));
     for (const l of this.lamps) l.spill.visible = !low;
-    // the beam's sweep is a big additive quad: low keeps the lamp's pulse and drops the beam
-    this.beam.visible = !!this.plan?.light && !low;
-    // warm pool behind the hatch, smaller in low (it is mostly hidden behind the frame anyway)
-    const L = this.frameGlowBase;
-    this.frameGlow.width = L.w * (low ? 0.8 : 1);
-    this.frameGlow.height = L.h * (low ? 0.85 : 1);
+    this.motes.forEach((m, i) => (m.s.visible = !low || i % 3 === 0));
+    this.steam.forEach((s, i) => (s.s.visible = !low || i < 2));
   }
-  private frameGlowBase = { w: 1, h: 1 };
 
-  /** Per-bonus lighting. null = the normal moonlit night. */
+  /** Per-bonus lighting. null = the normal midnight station. */
   setBonusLight(kind: BonusKind | null) {
     if (kind) this.kind = kind;
     this.moodTarget = kind ? 1 : 0;
-    const ft = this.flameTex[this.kind === 'witching' ? 'green' : this.kind === 'limbo' ? 'spirit' : 'fire'];
-    if (ft) for (const l of this.lamps) l.ghost.texture = ft;
+    // a mood starting brings a train sooner (Rush Hour's busy line, the Last Train arriving)
+    if (kind && kind !== 'tantrum' && !this.train.on) this.train.next = Math.min(this.train.next, this.train.t + 1.5);
   }
 
   /** Bonus lighting: tint the scenery (colour, strength 0..1). */
@@ -909,47 +646,35 @@ export class Background extends Container {
     this.moodTint.alpha = alpha;
   }
 
+  private moodSpec() {
+    return {
+      witching: { tint: MOOD.rush, a: 0.28, glow: hex(C.amber), ga: 0.3, lamp: hex(C.amberLight), lampK: 1.3 },
+      tantrum: { tint: MOOD.surge, a: 0.38, glow: hex(C.volt), ga: 0.34, lamp: hex(C.volt), lampK: 1.1 },
+      limbo: { tint: MOOD.midnight, a: 0.78, glow: hex(C.gold), ga: 0.22, lamp: hex(C.amber), lampK: 0.5 },
+    }[this.kind];
+  }
+
   /** Push the current mood blend into every mood-driven sprite. */
   private applyMood() {
     const k = this.moodK;
-    const spec = {
-      // multiply tints are pale mixes of the mood hue; white is the neutral (no tint)
-      witching: { tint: MOOD.greenTint, a: 0.3, glow: hex(C.greenMid), ga: 0.34, halo: hex(C.green), moonTint: 0xffffff, lamp: hex(C.green), fog: 0.42, rim: hex(C.greenGlow) },
-      tantrum: { tint: MOOD.emberTint, a: 0.42, glow: hex(C.fire), ga: 0.5, halo: hex(C.fire), moonTint: MOOD.emberMoon, lamp: hex(C.fire), fog: 0, rim: hex(C.fireHot) },
-      limbo: { tint: MOOD.spiritTint, a: 0.45, glow: hex(C.octo), ga: 0.42, halo: hex(C.octoLight), moonTint: MOOD.spiritMoon, lamp: hex(C.octoLight), fog: 0.3, rim: MOOD.spiritMoon },
-    }[this.kind];
+    const spec = this.moodSpec();
     this.setMood(spec.tint, spec.a * k);
     this.floorGlow.tint = spec.glow;
     this.floorGlow.alpha = spec.ga * k;
-    const ghost = this.kind === 'witching' ? k : 0;
-    this.moonGhost.alpha = ghost;
-    this.moon.alpha = 1 - ghost;
-    this.moon.tint = lerpColor(0xffffff, spec.moonTint, k);
-    this.halo.tint = lerpColor(hex(C.moonGlow), spec.halo, k);
-    for (const fg of this.fog) fg.alpha = spec.fog * k;
-    const warm = hex(C.fireHot);
+    const warm = hex(C.amber);
     for (const l of this.lamps) {
-      const lit = lerpColor(warm, spec.lamp, this.kind === 'tantrum' ? 0 : k);
-      l.glow.tint = lit;
-      l.spill.tint = lerpColor(hex(C.fire), spec.lamp, this.kind === 'tantrum' ? 0 : k);
-      l.back.tint = lit;
-      l.ghost.alpha = this.kind === 'tantrum' ? 0 : k;
-      l.fire.alpha = this.kind === 'tantrum' ? 1 : 1 - k;
+      l.glow.tint = lerpColor(warm, spec.lamp, k);
+      l.spill.tint = lerpColor(hex(C.amberDeep), spec.lamp, k * 0.7);
+      l.core.tint = lerpColor(hex(C.amberLight), this.kind === 'tantrum' ? hex(C.voltCore) : spec.lamp, k);
     }
-    this.frameGlow.tint = lerpColor(warm, spec.lamp, k);
-    const gl = lerpColor(hex(C.moon), spec.rim, k);
-    for (const g of this.glints) g.s.tint = gl;
-    this.moonPath.tint = lerpColor(hex(C.moonGlow), spec.rim, k);
-    // faded-out layers leave the render (the mood tint and floor glow cover most of the screen)
+    this.frameGlow.tint = lerpColor(warm, spec.glow, k * 0.6);
+    const rush = this.kind === 'witching' ? k : 0;
+    this.crowdLayer.alpha = rush * 0.62;
+    this.crowdLayer.visible = this.crowdLayer.alpha > 0.002;
+    const last = this.kind === 'limbo' ? k : 0;
+    for (const tn of this.tunnels) tn.gold.visible = last > 0.002;
     this.moodTint.renderable = this.moodTint.alpha > 0.002;
     this.floorGlow.renderable = this.floorGlow.alpha > 0.002;
-    this.moonGhost.renderable = this.moonGhost.alpha > 0.002;
-    this.moon.renderable = this.moon.alpha > 0.002;
-    for (const fg of this.fog) fg.renderable = fg.alpha > 0.002;
-    for (const l of this.lamps) {
-      l.ghost.renderable = l.ghost.alpha > 0.002;
-      l.fire.renderable = l.fire.alpha > 0.002;
-    }
   }
 
   update(dtMs: number) {
@@ -959,195 +684,234 @@ export class Background extends Container {
     const p = this.plan;
     if (!p) return;
     const S = p.S;
+    const low = this.low;
 
-    // bonus light blend eases in/out over ~1 s
     if (this.moodK !== this.moodTarget) {
       const d = this.moodTarget - this.moodK;
       this.moodK = Math.abs(d) < 0.004 ? this.moodTarget : this.moodK + d * (1 - Math.exp(-dt * 3.2));
       this.applyMood();
     }
+    const k = this.moodK;
+    const kind = this.kind;
+    const rush = kind === 'witching' ? k : 0;
+    const last = kind === 'limbo' ? k : 0;
+    const surge = kind === 'tantrum' ? k : 0;
+    const spec = this.moodSpec();
 
-    const low = this.low;
-    const lowTarget = low ? 1 : 0;
-    if (this.lowK !== lowTarget) {
-      const d = lowTarget - this.lowK;
-      this.lowK = Math.abs(d) < 0.01 ? lowTarget : this.lowK + d * (1 - Math.exp(-dt * 3));
-    }
-    const lk = this.lowK;
-    for (const tw of this.twinkles) {
-      if (!tw.s.visible) continue;
-      const w = Math.sin(t * tw.speed + tw.phase);
-      const pop = Math.pow(Math.max(0, Math.sin(t * tw.speed * 0.37 + tw.phase * 2)), 12);
-      tw.s.alpha = tw.base * (0.35 + 0.45 * (w * 0.5 + 0.5)) + pop * 0.4;
-      tw.s.width = tw.s.height = tw.size * (0.75 + 0.25 * w + pop * 0.5);
-    }
-
-    const m = p.moon;
-    this.halo.alpha = (0.34 + this.moodK * 0.22) * (1 + Math.sin(t * 0.7) * 0.06);
-    this.moonPath.alpha = 0.16 + Math.sin(t * 1.3) * 0.02;
-    // the wisp drifts right to left across the moon and loops, fading at the ends of its run
-    // (low quality parks it across the moon's lower edge)
-    const run = m.r * 5.5;
-    const drift = ((t * S * 0.055 + run * 0.3) % run) / run;
-    const ph = drift + (0.42 - drift) * lk;
-    this.wisp.position.set(m.x + run * (0.5 - ph), m.y + m.r * 0.38);
-    this.wisp.alpha = Math.min(1, Math.sin(Math.PI * ph) * 2.2) * 0.9;
-    this.wisp.renderable = this.wisp.alpha > 0.002;
-
-    if (p.light) {
-      const th = t * ((Math.PI * 2) / 11);
-      const c = Math.cos(th);
-      const s = Math.sin(th);
-      // apparent length follows the cosine of the rotation; negative flips it to point left
-      if (this.beam.visible) {
-        this.beam.scale.x = (c * S * 3.1) / Math.max(1, this.beam.texture.orig.width);
-        this.beam.alpha = 0.16 + 0.26 * Math.max(0, s) + 0.06;
-      }
-      this.flash.alpha = 0.35 + 0.65 * Math.pow(Math.max(0, s), 6);
-    }
-    if (p.ship) this.ship.y = p.horizon + (p.bulTop - p.horizon) * 0.05 + Math.sin(t * 0.8) * S * 0.012;
-
-    // low quality: the two far rows hold still, the near ones roll slower and stop swaying and bobbing
-    const calm = 1 - lk;
-    for (let i = 0; i < this.rows.length; i++) {
-      const r = this.rows[i];
-      r.off += r.speed * dt * (1 - lk * (i < 2 ? 1 : 0.4));
-      r.t.tilePosition.x = r.off + Math.sin(t * 0.45 + r.phase) * r.sway * calm;
-      r.t.y = r.y0 + Math.sin(t * 0.9 + r.phase) * r.bob * (S / 100) * calm;
-    }
-    for (const g of this.glints) {
-      if (!g.s.visible) continue;
-      const k = Math.sin(t * g.speed + g.phase);
-      g.s.width = g.w * (0.72 + 0.28 * k);
-      g.s.alpha = g.a * (0.55 + 0.45 * Math.sin(t * g.speed * 1.7 + g.phase * 2));
-      g.s.x = g.x0 + Math.sin(t * 0.6 + g.phase) * S * 0.03;
-    }
-    for (let i = 0; i < this.fog.length; i++) {
-      const fg = this.fog[i];
-      if (fg.alpha > 0.001) fg.tilePosition.x = t * S * (i ? -0.12 : 0.08);
-    }
-
-    this.flagPhase += dt * (4.2 - 1.6 * lk);
-    this.waveFlag();
-
-    if (this.sail.visible) {
-      this.sail.scale.set(this.sailBase.x * (1 + Math.sin(t * 0.55 + 0.8) * 0.004), this.sailBase.y * (1 + Math.sin(t * 0.55) * 0.007));
-    }
-
-    // an occasional shooting star
-    const sr = this.starRun;
-    sr.t += dt;
-    if (!sr.on && sr.t > sr.next && this.starZones.length) {
-      const z = this.starZones[0];
-      if (z.w > S * 0.8 && z.h > S * 0.4) {
-        const dir = Math.random() < 0.5 ? -1 : 1;
-        const ang = (0.35 + Math.random() * 0.3) * (dir < 0 ? -1 : 1);
-        sr.len = Math.min(z.w * 0.8, S * (1.3 + Math.random()));
-        sr.dx = Math.cos(ang) * dir;
-        sr.dy = Math.abs(Math.sin(ang));
-        sr.x = z.x + (dir > 0 ? Math.random() * z.w * 0.3 : z.w - Math.random() * z.w * 0.3);
-        sr.y = z.y + Math.random() * z.h * 0.4;
-        sr.dur = 0.65 + Math.random() * 0.3;
-        sr.on = true;
-        this.star.visible = true;
-        this.star.rotation = Math.atan2(sr.dy, sr.dx);
-      }
-      sr.t = 0;
-      sr.next = 9 + Math.random() * 10;
-    }
-    if (sr.on) {
-      const k = sr.t / sr.dur;
-      if (k >= 1) {
-        sr.on = false;
-        this.star.visible = false;
+    // flicker: a held value that drops out now and then (rush hour), or stutters (surge)
+    const fl = this.flick;
+    fl.t -= dt;
+    if (fl.t <= 0) {
+      const busy = surge > 0.05 ? 1 : rush > 0.05 ? 0.25 : 0.03;
+      if (Math.random() < busy) {
+        fl.v = surge > 0.05 ? 0.25 + Math.random() * 0.6 : 0.55 + Math.random() * 0.3;
+        fl.t = 0.04 + Math.random() * 0.08;
       } else {
-        const e = 1 - Math.pow(1 - k, 2);
-        this.star.position.set(sr.x + sr.dx * sr.len * e, sr.y + sr.dy * sr.len * e);
-        this.star.width = sr.len * 0.55 * Math.sin(Math.PI * Math.min(1, k * 1.2));
-        this.star.height = Math.max(3, S * 0.075);
-        this.star.alpha = Math.sin(Math.PI * k) * 0.9;
+        fl.v = 1;
+        fl.t = 0.12 + Math.random() * 0.5;
       }
     }
+    const flicker = fl.v;
 
+    // lamps breathe, sway a hair, and flicker with the mood
+    const lampK = 1 + (spec.lampK - 1) * k;
     for (const l of this.lamps) {
-      const n = Math.sin(t * 9 + l.seed) * 0.5 + Math.sin(t * 13.7 + l.seed * 2) * 0.3 + Math.sin(t * 23 + l.seed) * 0.2;
-      const fw = l.flameW * (1 + n * 0.06);
-      const fh = l.flameW * (1 + n * 0.14);
-      const sk = Math.sin(t * 3 + l.seed) * 0.08;
-      l.fire.width = l.ghost.width = fw;
-      l.fire.height = l.ghost.height = fh;
-      l.fire.skew.x = l.ghost.skew.x = sk;
-      l.glow.alpha = 0.4 + n * 0.05;
-      l.spill.alpha = 0.13 + n * 0.015;
-      l.back.alpha = 0.78 + n * 0.08;
-      if (l.swing) l.root.rotation = Math.sin(t * 1.1 + l.seed) * l.swing;
+      const n = Math.sin(t * 1.7 + l.seed) * 0.5 + Math.sin(t * 2.9 + l.seed * 2) * 0.3;
+      const f = flicker * lampK;
+      l.glow.alpha = (0.5 + n * 0.04) * f;
+      l.spill.alpha = (0.075 + n * 0.008) * f;
+      l.core.alpha = (0.55 + n * 0.05) * Math.min(1.2, f);
+      // the surge drains the amber out of the glass: a cool grey globe lit blue-white by the core
+      l.globe.tint = lerpColor(0xffffff, MOOD.drained, surge * (flicker < 0.9 ? 1 : 0.6));
+      if (surge > 0.05) l.core.alpha = (0.75 + n * 0.05) * f;
+      l.root.rotation = Math.sin(t * 0.9 + l.seed) * 0.012;
     }
-    this.frameGlow.alpha = 0.2 + Math.sin(t * 7.3) * 0.012 + Math.sin(t * 11.1) * 0.008;
+    this.frameGlow.alpha = (0.17 + Math.sin(t * 1.3) * 0.012) * (0.7 + 0.3 * flicker);
 
-    // a glint pops on the treasure every couple of seconds
-    const gs = this.glintSpot;
-    if (this.glint.visible) {
-      gs.t += dt;
-      if (gs.t > gs.next) {
-        gs.t = 0;
-        gs.next = 1.6 + Math.random() * 2.2;
-        this.glint.position.set(gs.x + (Math.random() - 0.5) * gs.w * 0.5, gs.y + (Math.random() - 0.3) * gs.w * 0.2);
+    // third rail: a low hum with a slow pulse, surging white-blue in the tantrum
+    const hum = 0.2 + Math.sin(t * 2.3) * 0.03 + Math.sin(t * 7.1) * 0.015;
+    this.rail.alpha = hum * (1 - last * 0.4) + surge * 0.25 * flicker;
+    this.railHot.alpha = surge * (0.3 + 0.4 * (1 - flicker));
+    this.railHot.renderable = this.railHot.alpha > 0.002;
+
+    // sparks crackle along the rail
+    this.sparkNext -= dt;
+    if (this.sparkNext <= 0) {
+      const sp = this.sparks.find((s) => !s.on);
+      if (sp) {
+        sp.on = true;
+        sp.t = 0;
+        sp.dur = 0.16 + Math.random() * 0.14;
+        const x = S * 0.5 + Math.random() * (p.W - S);
+        sp.s.position.set(x, p.railY - S * 0.03);
+        sp.flash.position.set(x, p.railY);
+        sp.s.visible = sp.flash.visible = true;
+        sp.s.rotation = (Math.random() - 0.5) * 0.5;
       }
-      const k = gs.t / 0.55;
-      const a = k < 1 ? Math.sin(Math.PI * k) : 0;
-      this.glint.alpha = a;
-      this.glint.renderable = a > 0.002;
-      this.glint.width = this.glint.height = gs.w * 0.42 * (0.4 + a * 0.6);
-      this.glint.rotation = k * 0.8;
+      const base = surge > 0.05 ? 0.25 + Math.random() * 0.5 : 2.5 + Math.random() * 4.5;
+      this.sparkNext = base * (low ? 2 : 1);
+    }
+    for (const sp of this.sparks) {
+      if (!sp.on) continue;
+      sp.t += dt;
+      const q = sp.t / sp.dur;
+      if (q >= 1) {
+        sp.on = false;
+        sp.s.visible = sp.flash.visible = false;
+        continue;
+      }
+      // the bolt re-strikes a couple of times: swap shapes and flip
+      const step = Math.floor(q * 3);
+      sp.s.texture = this.sparkTex[(step + Math.floor(sp.t * 97)) % this.sparkTex.length];
+      sp.s.scale.y = (step % 2 ? -1 : 1) * Math.abs(sp.s.scale.y || 1);
+      sp.s.width = S * (0.55 + 0.35 * Math.sin(Math.PI * q));
+      sp.s.height = sp.s.width * 0.5 * (step % 2 ? -1 : 1);
+      sp.s.alpha = (1 - q * 0.6) * (step === 1 ? 0.7 : 1);
+      sp.flash.width = sp.flash.height = S * (0.6 + 0.4 * (1 - q));
+      sp.flash.alpha = 0.55 * (1 - q);
     }
 
-    if (this.floorGlow.alpha > 0) this.floorGlow.scale.y = Math.abs(this.floorGlow.scale.y) * (1 + Math.sin(t * 1.3) * 0.0025);
-  }
-
-  /** Travelling sine wave along the flag, growing toward the fly end. */
-  private waveFlag() {
-    const geo = this.flagGeo;
-    const base = this.flagBase;
-    if (!geo || !base) return;
-    const pos = geo.positions;
-    const { w, h, dir } = this.flagDims;
-    const { nx, ny } = this.flagN;
-    // low quality: a slower (flagPhase), softer wave on the coarse grid
-    const amp = 1 - 0.3 * this.lowK;
-    const fp = this.flagPhase;
-    for (let j = 0; j <= ny; j++)
-      for (let i = 0; i <= nx; i++) {
-        const k = (j * (nx + 1) + i) * 2;
-        const u = i / nx;
-        const v = j / ny;
-        const ph = u * 5.2 - fp + v * 0.5;
-        const a = Math.pow(u, 1.15) * amp;
-        pos[k] = base[k] + dir * (Math.cos(ph) - 1) * w * 0.035 * a;
-        pos[k + 1] = base[k + 1] + Math.sin(ph) * h * 0.1 * a + u * u * h * 0.04;
+    // the passing train: the headlight swells deep in a tunnel, sweeps past and fades
+    const tr = this.train;
+    tr.t += dt;
+    if (!tr.on && tr.t >= tr.next && this.tunnels.length) {
+      tr.on = true;
+      tr.t = 0;
+      tr.i = Math.random() < 0.5 ? 0 : this.tunnels.length - 1;
+      tr.dur = 4 + Math.random() * 1.2;
+    }
+    for (const tn of this.tunnels) tn.core.visible = tn.halo.visible = tn.spill.visible = false;
+    let approach = -1;
+    if (tr.on) {
+      const q = tr.t / tr.dur;
+      if (q >= 1) {
+        tr.on = false;
+        tr.t = 0;
+        tr.next = rush > 0.5 ? 6 + Math.random() * 6 : last > 0.5 ? 12 + Math.random() * 8 : 20 + Math.random() * 20;
+      } else {
+        const tn = this.tunnels[tr.i];
+        approach = tr.i;
+        // 0..0.55 grows toward us, 0.55..0.75 sweeps sideways past the mouth, then fades
+        const grow = smooth(clamp(q / 0.55, 0, 1));
+        const pass = smooth(clamp((q - 0.5) / 0.3, 0, 1));
+        const fade = 1 - smooth(clamp((q - 0.7) / 0.3, 0, 1));
+        const a = grow * fade;
+        const sx = tn.vx - tn.side * tn.w * 0.5 * pass;
+        tn.core.visible = tn.halo.visible = tn.spill.visible = true;
+        tn.core.position.set(sx, tn.vy);
+        tn.core.width = tn.core.height = tn.w * (0.08 + 0.22 * grow);
+        tn.core.alpha = 0.9 * a;
+        tn.halo.position.set(sx, tn.vy);
+        tn.halo.width = tn.w * (0.4 + 1.1 * grow);
+        tn.halo.height = tn.w * (0.3 + 0.8 * grow);
+        tn.halo.alpha = 0.42 * a;
+        // light sweeping over the pit and floor in front of the mouth
+        tn.spill.position.set(sx + tn.side * tn.w * 0.3 * (1 - pass), p.spec.lipY - S * 0.05);
+        tn.spill.width = tn.w * (0.9 + 1.4 * grow);
+        tn.spill.height = S * 0.9;
+        tn.spill.alpha = 0.3 * a;
       }
-    geo.getBuffer('aPosition').update();
+    }
+    // Last Train: gold breathes out of both mouths
+    for (const tn of this.tunnels) if (tn.gold.visible) tn.gold.alpha = last * (0.6 + Math.sin(t * 1.4) * 0.1);
+
+    // signals: red at rest; amber, then green, for a train coming out of its tunnel; green for Rush Hour
+    for (const sg of this.signals) {
+      let aspect = 0;
+      if (rush > 0.5 || last > 0.5) aspect = 2;
+      if (approach === sg.tunnel) {
+        const q = tr.t / tr.dur;
+        aspect = q < 0.18 ? 1 : 2;
+      }
+      if (aspect !== sg.aspect) {
+        sg.aspect = aspect;
+        sg.blink = 0;
+      }
+      sg.blink += dt;
+      const shimmer = 0.92 + Math.sin(t * 5 + sg.tunnel) * 0.04;
+      sg.glows.forEach((g, i) => {
+        let a = i === aspect ? 0.85 * shimmer : 0;
+        // amber blinks
+        if (i === 1 && aspect === 1) a *= Math.sin(sg.blink * 12) > -0.2 ? 1 : 0.15;
+        // the surge stutters every lens
+        if (surge > 0.05) a = (i === Math.floor(t * 9 + sg.tunnel) % 3 ? 0.9 : 0.1) * flicker;
+        g.alpha = a;
+        g.renderable = a > 0.002;
+      });
+    }
+
+    // the crowd shuffles
+    if (this.crowdLayer.visible && !low) {
+      this.crowd.forEach((c, i) => {
+        c.tilePosition.x = (i ? S * 0 : S * 1.3) + Math.sin(t * (0.35 + i * 0.12) + i) * S * 0.12;
+        c.tilePosition.y = Math.abs(Math.sin(t * (1.9 + i * 0.4))) * S * -0.02;
+      });
+    }
+
+    // steam rising from the grate
+    for (const st of this.steam) {
+      if (!st.s.visible) continue;
+      st.t += dt;
+      const q = (st.t % st.dur) / st.dur;
+      st.s.position.set(st.x + Math.sin(q * 5 + st.dur) * st.size * 0.15, st.y - q * S * 1.4);
+      st.s.width = st.size * (0.5 + q * 1.1);
+      st.s.height = st.s.width * 0.8;
+      st.s.alpha = Math.sin(Math.PI * q) * 0.13 * (1 + rush * 0.3);
+    }
+
+    // the clock: the minute hand jumps every 8 s with a little overshoot, the hour hand follows
+    if (this.clockLayer.visible) {
+      this.clockNext -= dt;
+      if (this.clockNext <= 0) {
+        this.clockNext = 8;
+        this.clockMin += 1;
+      }
+      const dd = this.clockMin - this.clockShown;
+      this.clockVel += (dd * 260 - this.clockVel * 18) * dt;
+      this.clockShown += this.clockVel * dt;
+      const m = this.clockShown;
+      this.minuteHand.rotation = (m / 60) * Math.PI * 2;
+      this.hourHand.rotation = ((11 + m / 60) / 12) * Math.PI * 2;
+      // pigeons peck and hop now and then
+      for (const pg of this.pigeons) {
+        pg.t += dt;
+        if (pg.t > pg.next) {
+          pg.t = 0;
+          pg.peck = !pg.peck;
+          pg.next = pg.peck ? 0.35 + Math.random() * 0.3 : 2.5 + Math.random() * 5;
+          if (this.pigeonTex) pg.s.texture = pg.peck ? this.pigeonTex.peck : this.pigeonTex.sit;
+        }
+        pg.s.y = pg.y - (pg.peck ? 0 : Math.max(0, Math.sin(pg.t * 9)) * (pg.t < 0.35 ? pg.w * 0.06 : 0));
+      }
+    }
+
+    // dust motes drift and twinkle in the lamplight
+    for (const m of this.motes) {
+      if (!m.s.visible) continue;
+      const b = p.moteBoxes[m.box];
+      m.x += (m.vx + Math.sin(t * 0.6 + m.phase) * S * 0.02) * dt;
+      m.y += m.vy * dt;
+      if (m.x < b.x) m.x += b.w;
+      if (m.x > b.x + b.w) m.x -= b.w;
+      if (m.y < b.y) m.y += b.h;
+      if (m.y > b.y + b.h) m.y -= b.h;
+      m.s.position.set(m.x, m.y);
+      // fade toward the box edges so wrapping never pops
+      const ex = Math.min(m.x - b.x, b.x + b.w - m.x) / (b.w * 0.25);
+      const ey = Math.min(m.y - b.y, b.y + b.h - m.y) / (b.h * 0.25);
+      const edge = clamp(Math.min(ex, ey), 0, 1);
+      m.s.alpha = edge * (0.25 + 0.25 * Math.sin(t * 1.3 + m.phase)) * flicker * (1 - last * 0.5);
+      m.s.width = m.s.height = m.size * 3;
+    }
+
+    if (this.floorGlow.renderable) this.floorGlow.alpha = spec.ga * k * (surge > 0 ? 0.6 + 0.4 * flicker : 1 + Math.sin(t * 1.3) * 0.05);
   }
 }
 
 /** Mood tints derived from the palette (pale mixes toward white for multiply blending). */
 const MOOD = {
-  greenTint: hex(mix(C.green, C.white, 0.3)),
-  emberTint: hex(mix(C.fire, C.white, 0.3)),
-  emberMoon: hex(mix(C.fire, C.white, 0.45)),
-  spiritTint: hex(mix(C.octoLight, C.white, 0.35)),
-  spiritMoon: hex(mix(C.octoLight, C.white, 0.5)),
+  drained: hex(mix(C.voltLight, C.g1, 0.5)),
+  rush: hex(mix(C.amber, C.white, 0.45)),
+  surge: hex(mix(C.volt, C.white, 0.45)),
+  midnight: hex(mix(C.voltNight, C.white, 0.32)),
 };
-
-/** Lantern ring top and base (y in its 224-unit box). */
-const LAMP_RING = 3.5;
-const LAMP_FOOT = 210;
-
-/** A lantern hung from a wall bracket: the bracket's plate sits at (x, y), the ring on its hook. */
-function hangFrom(b: { x: number; y: number; w: number; flip: boolean }, h: number) {
-  const k = b.w / 160;
-  return { x: b.x + (b.flip ? -1 : 1) * (136 - 4) * k, y: b.y + (46 - 10) * k, h, hang: true, bracket: b };
-}
-
-const PROP_ART: Record<PropKind, () => string> = { barrel, cannon, balls: cannonballs, rope: ropeCoil, treasure: treasurePile };
-/** Where each prop's base sits in its 256 box (anchor y). */
-const PROP_FOOT: Record<PropKind, number> = { barrel: 232 / 256, cannon: 226 / 256, balls: 224 / 256, rope: 214 / 256, treasure: 222 / 256 };

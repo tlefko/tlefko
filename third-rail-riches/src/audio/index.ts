@@ -13,16 +13,15 @@
 import { AUDIO_SR, AUDIO_VERSION, BANKS, SOUNDS, TRACKS, VARIANTS, type BankId, type TrackInfo } from './manifest';
 
 export type SfxName =
-  | 'uiClick' | 'uiToggle' | 'uiOpen' | 'uiClose' | 'betUp' | 'betDown' | 'spinPress' | 'buy' | 'error'
-  | 'reelDrop' | 'reelStop' | 'symbolFall' | 'sixLand' | 'sixIgnite' | 'fsLand' | 'anticipationStart' | 'anticipationEnd'
-  | 'win' | 'pop' | 'cascade' | 'wheelAppear' | 'wheelTick' | 'wheelLand' | 'howl'
-  | 'cashBronze' | 'cashSilver' | 'cashGold' | 'multAdd' | 'multMul' | 'maxWin'
-  | 'barTick' | 'barApply' | 'bonusTrigger' | 'bonusIntro' | 'bonusEnd' | 'retrigger'
-  | 'bigWinStart' | 'bigWinTier' | 'bigWinEnd' | 'iris' | 'coin'
-  // original rules: Powder Kegs, the fuse meter, Captain's Wheel outcomes
-  | 'explode' | 'blastDebris' | 'meterFlame' | 'meterFull' | 'hounds' | 'inferno' | 'boost' | 'wildLand';
-export type Track = 'base' | 'tantrum' | 'witching' | 'limbo' | 'bigwin' | 'none';
-export type LoopName = 'anticipation' | 'wheelSpin' | 'bombFuseLoop' | 'bombHotLoop';
+  | 'uiClick' | 'uiToggle' | 'uiOpen' | 'uiClose' | 'betUp' | 'betDown' | 'spinPress' | 'buy' | 'error' | 'iris' | 'boostOn' | 'boostOff' | 'lowPowerClick'
+  | 'reelDrop' | 'reelStop' | 'ticketLand' | 'coinLand' | 'locoLand' | 'switchLand' | 'wildLand'
+  | 'win' | 'clusterTrace' | 'symPretzel' | 'symCoffee' | 'symNewspaper' | 'symUmbrella' | 'symPigeon' | 'symCat' | 'symBulldog' | 'symRat' | 'symConductor'
+  | 'whistle' | 'trainDepart' | 'trainExit' | 'trainBrake' | 'coinCollect' | 'switchThrow' | 'branch' | 'haulCount' | 'haulMult' | 'barTick' | 'barApply'
+  | 'anticipationStart' | 'anticipationEnd' | 'bonusTrigger' | 'bonusIntro' | 'bonusEnd' | 'retrigger' | 'powerStep' | 'levelUp' | 'goldenArrive'
+  | 'bigWinStart' | 'bigWinTier' | 'bigWinEnd' | 'maxWin' | 'tierSlam' | 'introSting' | 'playSting' | 'carouselWhoosh' | 'coachPop';
+/** Music tracks: base game, Rush Hour free spins, Last Train buy, big win, and the short Power Surge anticipation bed. */
+export type Track = 'base' | 'rush' | 'last' | 'bigwin' | 'surge' | 'none';
+export type LoopName = 'anticipation' | 'trainRun';
 
 export interface PlayOptions {
   /** Playback rate (pitch). Omit to get a tiny random variation on frequent sounds. */
@@ -32,9 +31,7 @@ export interface PlayOptions {
   /** Stereo position -1..1. */
   pan?: number;
   /**
-   * Variation or step. Stepped (rising) sounds: fsLand 1..6, win 0..7 (per cascade), bigWinTier 0..3,
-   * explode 1..6 (chain position), meterFlame 1..10, hounds 1..5 (count), boost = multiplier level
-   * 2..20 (nearest step at or below). Past the last step the pitch keeps rising a semitone per step
+   * Variation or step. Stepped (rising) sounds: ticketLand 1..6, coinCollect 1..12, bigWinTier 0..3. Past the last step the pitch keeps rising a semitone per step
    * (max +5). For other sounds it picks a variation.
    */
   index?: number;
@@ -71,39 +68,29 @@ const PARAMS: Partial<Record<SfxName, Partial<SfxParams>>> = {
   spinPress: { voices: 1, minGap: 0.08 },
   reelDrop: { voices: 6, minGap: 0.02, jitter: 0.025 },
   reelStop: { voices: 2, minGap: 0.05 },
-  symbolFall: { voices: 4, minGap: 0.035, jitter: 0.05, priority: 0 },
-  pop: { voices: 5, minGap: 0.03, jitter: 0.04 },
-  cascade: { voices: 2, minGap: 0.06, jitter: 0.03 },
-  coin: { voices: 8, minGap: 0.018, jitter: 0.04, priority: 0 },
-  wheelTick: { voices: 3, minGap: 0.012, jitter: 0.02, priority: 0 },
+  coinLand: { voices: 6, minGap: 0.02, jitter: 0.02 },
+  coinCollect: { voices: 4, minGap: 0.03, priority: 0 },
+  haulCount: { voices: 2, minGap: 0.022, jitter: 0.03, priority: 0 },
   barTick: { voices: 2, minGap: 0.022, jitter: 0.03, priority: 0 },
+  powerStep: { voices: 3, minGap: 0.03 },
   win: { voices: 3, minGap: 0.05 },
-  fsLand: { voices: 3, minGap: 0.04 },
-  sixLand: { voices: 3, minGap: 0.04 },
-  sixIgnite: { voices: 3, minGap: 0.05 },
-  cashBronze: { voices: 3, minGap: 0.04 },
-  cashSilver: { voices: 2, minGap: 0.05 },
-  howl: { voices: 1, minGap: 0.3, priority: 2 },
+  ticketLand: { voices: 3, minGap: 0.04 },
+  wildLand: { voices: 4, minGap: 0.03, jitter: 0.02 },
   bonusTrigger: { voices: 1, minGap: 0.3, priority: 3, duck: [0.45, 1.6] },
   bonusIntro: { voices: 1, minGap: 0.3, priority: 3, duck: [0.5, 2.2] },
   bonusEnd: { voices: 1, minGap: 0.3, priority: 3, duck: [0.5, 2.4] },
+  goldenArrive: { voices: 1, minGap: 0.3, priority: 3, duck: [0.45, 2.4] },
+  levelUp: { voices: 1, minGap: 0.2, priority: 3, duck: [0.3, 1.2] },
   bigWinStart: { voices: 1, minGap: 0.2, priority: 3, duck: [0.4, 1.6] },
   bigWinTier: { voices: 2, minGap: 0.15, priority: 3, duck: [0.35, 1.2] },
   bigWinEnd: { voices: 1, minGap: 0.2, priority: 3, duck: [0.4, 2] },
   maxWin: { voices: 1, minGap: 0.5, priority: 4, duck: [0.7, 3.5] },
-  multMul: { voices: 2, priority: 2, duck: [0.25, 0.8] },
+  tierSlam: { voices: 1, minGap: 0.2, priority: 3, duck: [0.35, 1.2] },
+  haulMult: { voices: 2, priority: 2, duck: [0.25, 0.8] },
   barApply: { voices: 2, priority: 2, duck: [0.25, 0.8] },
-  explode: { voices: 4, minGap: 0.04, jitter: 0.015, priority: 2 },
-  blastDebris: { voices: 4, minGap: 0.03, jitter: 0.06, priority: 0 },
-  meterFlame: { voices: 3, minGap: 0.03, priority: 0 },
-  meterFull: { voices: 1, minGap: 0.4, priority: 3, duck: [0.45, 1.4] },
-  hounds: { voices: 2, minGap: 0.1, priority: 2 },
-  inferno: { voices: 2, minGap: 0.1, priority: 2, duck: [0.25, 0.9] },
-  boost: { voices: 2, minGap: 0.08, priority: 2 },
-  wildLand: { voices: 4, minGap: 0.03, jitter: 0.02 },
 };
 /** Sounds whose index is a rising step (clamped, then pitched up a little past the last step). */
-const STEPPED = new Set<string>(['fsLand', 'win', 'bigWinTier', 'explode', 'meterFlame', 'hounds', 'boost', 'bombGrow', 'bombBlast', 'capChargePip']);
+const STEPPED = new Set<string>(['ticketLand', 'coinCollect', 'bigWinTier']);
 
 const MAX_VOICES = 32;
 const DEFAULT_FADE = 0.9;
@@ -163,7 +150,7 @@ let volume = 1;
 let tension = 0;
 let desiredTrack: Track = 'none';
 let pendingFade = DEFAULT_FADE;
-const loopWanted: Record<LoopName, boolean> = { anticipation: false, wheelSpin: false, bombFuseLoop: false, bombHotLoop: false };
+const loopWanted: Record<LoopName, boolean> = { anticipation: false, trainRun: false };
 
 // assets
 const banks: Partial<Record<BankId, AudioBuffer>> = {};
@@ -559,7 +546,7 @@ function stopCurrentSources(): void {
 }
 
 // ------------------------------------------------------------------------------------------------
-// tension (Witching Hour stem + anticipation)
+// tension (Rush Hour stem + anticipation)
 function updateTension(): void {
   if (!ctx || !tensionFilter || !tensionGain) return;
   const t = 0.25;
@@ -570,8 +557,8 @@ function updateTension(): void {
     rampTo(antic.src.playbackRate, 1 + 0.12 * tension, 0.3);
     rampTo(antic.gain.gain, 0.8 + 0.2 * tension, 0.2);
   }
-  // under the anticipation bed the music recedes (not in Witching Hour, whose stem is the tension)
-  const lvl = loopWanted.anticipation && current?.track !== 'witching' ? tension : 0;
+  // under the anticipation bed the music recedes (not in Rush Hour, whose stem is the tension)
+  const lvl = loopWanted.anticipation && current?.track !== 'rush' ? tension : 0;
   rampTo(tensionFilter.frequency, 20000 * Math.pow(1600 / 20000, lvl), 0.25);
   rampTo(tensionGain.gain, 1 - 0.35 * lvl, 0.25);
 }

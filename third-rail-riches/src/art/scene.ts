@@ -149,21 +149,22 @@ export function stationBackdrop(s: BackdropSpec): string {
   out += `<rect x="0" y="${f(bandY + bh)}" width="${f(w)}" height="${f(Math.max(1.5, bh * 0.16))}" fill="${C.ink}" opacity=".35"/>`;
 
   // ---- night: the whole wall sits in shadow, lifted by the lamps
+  const dusk = mix(C.inkSoft, C.nightDeep, 0.45);
   defs.push(
     lin(`${id}night`, [
-      [0, C.ink, 0.72],
-      [0.12, C.nightDeep, 0.58],
-      [0.5, C.nightDeep, 0.42],
-      [1, C.nightDeep, 0.6],
+      [0, C.ink, 0.86],
+      [0.14, dusk, 0.74],
+      [0.55, dusk, 0.62],
+      [1, dusk, 0.72],
     ], 0, 1, `gradientUnits="userSpaceOnUse" x1="0" y1="${f(ceilY)}" x2="0" y2="${f(baseY)}"`),
   );
   out += `<rect x="0" y="${f(ceilY)}" width="${f(w)}" height="${f(baseY - ceilY)}" fill="url(#${id}night)"/>`;
   // side vignette
-  defs.push(lin(`${id}vig`, [[0, C.ink, 0.45], [0.18, C.ink, 0], [0.82, C.ink, 0], [1, C.ink, 0.45]], 1, 0));
+  defs.push(lin(`${id}vig`, [[0, C.ink, 0.5], [0.16, C.ink, 0], [0.84, C.ink, 0], [1, C.ink, 0.5]], 1, 0));
   out += `<rect x="0" y="0" width="${f(w)}" height="${f(baseY)}" fill="url(#${id}vig)"/>`;
-  // warm pools of lamplight
+  // warm pools of lamplight: a cream-amber heart over a wide amber falloff
   s.lamps.forEach((l, i) => {
-    defs.push(radial(`${id}pool${i}`, [[0, C.amber, 0.34], [0.35, C.amber, 0.14], [1, C.amber, 0]], `gradientUnits="userSpaceOnUse" cx="${f(l.x)}" cy="${f(l.y + S * 0.4)}" r="${f(S * 2.6)}"`));
+    defs.push(radial(`${id}pool${i}`, [[0, C.amberLight, 0.4], [0.18, C.amber, 0.24], [0.5, C.amber, 0.08], [1, C.amber, 0]], `gradientUnits="userSpaceOnUse" cx="${f(l.x)}" cy="${f(l.y + S * 0.3)}" r="${f(S * 2.1)}"`));
     out += `<rect x="0" y="${f(ceilY)}" width="${f(w)}" height="${f(baseY - ceilY)}" fill="url(#${id}pool${i})"/>`;
   });
 

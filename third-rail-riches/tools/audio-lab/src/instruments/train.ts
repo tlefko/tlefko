@@ -227,7 +227,6 @@ export function airHorn(s: Studio, dest: Dest, t: number, dur: number, freqs: nu
   const end = t + dur + 0.02;
   const d = o.doppler;
   if (d) {
-    const w = d.width ?? 0.25;
     pan.pan.setValueAtTime(d.pan0 ?? -0.7, t);
     pan.pan.linearRampToValueAtTime(d.pan1 ?? 0.7, t + dur);
     lp.frequency.setValueAtTime(2500 * b, t);
@@ -239,7 +238,6 @@ export function airHorn(s: Studio, dest: Dest, t: number, dur: number, freqs: nu
     g.gain.linearRampToValueAtTime(lvl, t + d.at);
     g.gain.linearRampToValueAtTime(lvl * 0.3, t + dur - 0.05);
     g.gain.linearRampToValueAtTime(0, t + dur);
-    void w;
   }
   freqs.forEach((f, i) => {
     for (const [type, a, dc] of [['sawtooth', 1, -4], ['square', 0.45, 5]] as const) {
@@ -315,8 +313,7 @@ export function guardWhistle(s: Studio, dest: Dest, t: number, dur: number, vel:
   g.gain.setValueAtTime(vel * 0.2, t + dur - 0.03);
   g.gain.linearRampToValueAtTime(0, t + dur);
   const am = s.gain(0.7, g);
-  const trill = s.osc('triangle', o.trill ?? 31, t, t + dur, s.gain(0.3, am.gain));
-  void trill;
+  s.osc('triangle', o.trill ?? 31, t, t + dur, s.gain(0.3, am.gain));
   const end = t + dur + 0.01;
   for (const [m, a] of [[1, 1], [o.ratio ?? 1.26, 0.8]] as const) {
     const osc = s.osc('sine', f * m, t, end, s.gain(a, am));

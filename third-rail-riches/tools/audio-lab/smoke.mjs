@@ -1,21 +1,33 @@
 #!/usr/bin/env node
 // Runtime smoke test: drives src/audio (via the audition page) in Chromium and WebKit.
 //   node tools/audio-lab/smoke.mjs
-import { chromium, webkit } from 'playwright';
+import { launchChromium, launchWebkit } from './lib/browser.mjs';
 import { startLabServer } from './lib/server.mjs';
 
-// static check: every SfxName in the runtime has assets in the manifest
+// The ids the game calls (docs/SOUNDS.md) and the loops it toggles.
+const GAME_IDS = [
+  'uiClick', 'uiToggle', 'uiOpen', 'uiClose', 'betUp', 'betDown', 'spinPress', 'buy', 'error', 'iris', 'boostOn', 'boostOff', 'lowPowerClick',
+  'reelDrop', 'reelStop', 'ticketLand', 'coinLand', 'locoLand', 'switchLand', 'wildLand',
+  'win', 'clusterTrace', 'symPretzel', 'symCoffee', 'symNewspaper', 'symUmbrella', 'symPigeon', 'symCat', 'symBulldog', 'symRat', 'symConductor',
+  'whistle', 'trainDepart', 'trainExit', 'trainBrake', 'coinCollect', 'switchThrow', 'branch', 'haulCount', 'haulMult', 'barTick', 'barApply',
+  'anticipationStart', 'anticipationEnd', 'bonusTrigger', 'bonusIntro', 'bonusEnd', 'retrigger', 'powerStep', 'levelUp', 'goldenArrive',
+  'bigWinStart', 'bigWinTier', 'bigWinEnd', 'maxWin', 'tierSlam', 'introSting', 'playSting', 'carouselWhoosh', 'coachPop',
+];
+const LOOPS = ['anticipation', 'trainRun'];
+// static check: every game id and loop has assets; the runtime's SfxName union is compared as a warning
 {
   const fs = await import('node:fs');
   const idx = fs.readFileSync(new URL('../../src/audio/index.ts', import.meta.url), 'utf8');
   const man = fs.readFileSync(new URL('../../src/audio/manifest.ts', import.meta.url), 'utf8');
-  const union = /export type SfxName =([\s\S]*?);/.exec(idx)[1];
-  const names = [...union.matchAll(/'([A-Za-z]+)'/g)].map((m) => m[1]);
   const vs = JSON.parse(/export const VARIANTS[^=]*= (\{[\s\S]*?\n\});/.exec(man)[1]);
-  const missing = names.filter((n) => !vs[n]);
-  console.log(`${missing.length ? 'FAIL' : 'ok  '} [static] ${names.length} SfxNames, all have assets${missing.length ? '; missing: ' + missing.join(', ') : ''}`);
+  const missing = GAME_IDS.filter((n) => !vs[n]);
+  console.log(`${missing.length ? 'FAIL' : 'ok  '} [static] ${GAME_IDS.length} game ids, all have assets${missing.length ? '; missing: ' + missing.join(', ') : ''}`);
   if (missing.length) process.exitCode = 1;
-  for (const loop of ['anticipation', 'wheelSpin']) if (!vs[loop]) { console.log(`FAIL [static] loop ${loop} missing`); process.exitCode = 1; }
+  for (const loop of LOOPS) if (!vs[loop] || !/loopStart/.test(man)) { console.log(`FAIL [static] loop ${loop} missing`); process.exitCode = 1; }
+  const union = /export type SfxName =([\s\S]*?);/.exec(idx)?.[1] ?? '';
+  const typed = [...union.matchAll(/'([A-Za-z]+)'/g)].map((m) => m[1]);
+  const stale = typed.filter((n) => !vs[n]);
+  if (stale.length) console.log(`warn [static] SfxName in src/audio/index.ts lists ${stale.length} names with no assets: ${stale.join(', ')}`);
 }
 const { url, close } = await startLabServer();
 const failures = [];
@@ -24,8 +36,9 @@ const check = (engine, cond, msg) => {
   if (!cond) failures.push(`[${engine}] ${msg}`);
 };
 try {
-  for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
-    const browser = await engine.launch({ args: name === 'chromium' ? ['--autoplay-policy=no-user-gesture-required'] : [] });
+  for (const name of ['chromium', 'webkit']) {
+    const browser = name === 'chromium' ? await launchChromium() : await launchWebkit();
+    if (!browser) continue;
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
@@ -36,9 +49,9 @@ try {
     // 1. everything is safe before init and no context exists
     const pre = await page.evaluate(() => {
       const { audio, audioDebug, TRACKS } = window.__audio;
-      audio.play('win', { index: 2 });
-      audio.loop('wheelSpin', true);
-      audio.loop('wheelSpin', false);
+      audio.play('ticketLand', { index: 2 });
+      audio.loop('trainRun', true);
+      audio.loop('trainRun', false);
       audio.intensity(0.5);
       audio.intensity(0);
       audio.duck(0.5, 1);
@@ -74,27 +87,26 @@ try {
     // 4. every SFX plays without throwing; stress stays under the voice cap
     const sfx = await page.evaluate(async () => {
       const { audio, audioDebug, VARIANTS } = window.__audio;
-      const names = Object.keys(VARIANTS).filter((n) => n !== 'anticipation' && n !== 'wheelSpin');
+      const names = Object.keys(VARIANTS).filter((n) => n !== 'anticipation' && n !== 'trainRun');
       for (const n of names) audio.play(n);
       let maxVoices = 0;
       for (let i = 0; i < 300; i++) {
-        audio.play(i % 3 ? 'coin' : 'barTick', { index: i });
-        audio.play('pop');
+        audio.play(i % 3 ? 'coinCollect' : 'barTick', { index: i });
+        audio.play('reelDrop');
         if (i % 10 === 0) { await new Promise((r) => setTimeout(r, 5)); maxVoices = Math.max(maxVoices, audioDebug().voices); }
       }
       maxVoices = Math.max(maxVoices, audioDebug().voices);
       return { count: names.length, maxVoices };
     });
-    check(name, sfx.count >= 49, `played ${sfx.count} sfx names`);
+    check(name, sfx.count >= 60, `played ${sfx.count} sfx names`);
     const picks = await page.evaluate(() => {
       const { pick } = window.__audio.audioDebug();
-      return { b12: pick('boost', 12), b20: pick('boost', 20), b25: pick('boost', 25), e1: pick('explode', 1), e9: pick('explode', 9), m10: pick('meterFlame', 10), h3: pick('hounds', 3), f0: pick('fsLand', 0), r2: pick('reelDrop', 7) };
+      return { t1: pick('ticketLand', 1), t6: pick('ticketLand', 6), c0: pick('coinLand', 0), c3: pick('coinLand', 3), k12: pick('coinCollect', 12), p13: pick('powerStep', 13), r5: pick('reelDrop', 5), w3: pick('bigWinTier', 3) };
     });
-    check(name, picks.b12.id === 'boost_10' && picks.b20.id === 'boost_20' && picks.b25.id === 'boost_20' && picks.b25.rate > 1.3, `boost level mapping ${JSON.stringify([picks.b12, picks.b20, picks.b25])}`);
-    check(name, picks.e1.id === 'explode_1' && picks.e9.id === 'explode_6' && picks.e9.rate > 1 && picks.m10.id === 'meterFlame_10' && picks.h3.id === 'hounds_3' && picks.f0.id === 'fsLand_1' && picks.r2.id === 'reelDrop_2', `stepped/variant mapping ${JSON.stringify(picks)}`);
+    check(name, picks.t1.id === 'ticketLand_1' && picks.t6.id === 'ticketLand_6' && picks.c0.id === 'coinLand_0' && picks.c3.id === 'coinLand_3' && picks.k12.id === 'coinCollect_12' && picks.p13.id === 'powerStep_1' && picks.r5.id === 'reelDrop_5' && picks.w3.id === 'bigWinTier_3', `indexed mapping ${JSON.stringify(picks)}`);
     check(name, sfx.maxVoices <= 32, `voice cap respected under stress (max ${sfx.maxVoices})`);
 
-    // 5. loops, intensity, track switching with the witching stem
+    // 5. loops, intensity, track switching with the Rush Hour tension stem
     const sw = await page.evaluate(async () => {
       const { audio, audioDebug } = window.__audio;
       audio.loop('anticipation', true);
@@ -103,8 +115,12 @@ try {
       const loops = audioDebug().loops.slice();
       audio.loop('anticipation', false);
       audio.intensity(0);
-      audio.music('witching', { fade: 0.3 });
-      for (let i = 0; i < 150 && audioDebug().track !== 'witching'; i++) await new Promise((r) => setTimeout(r, 100));
+      audio.loop('trainRun', true);
+      await new Promise((r) => setTimeout(r, 200));
+      loops.push(...audioDebug().loops);
+      audio.loop('trainRun', false);
+      audio.music('rush', { fade: 0.3 });
+      for (let i = 0; i < 150 && audioDebug().track !== 'rush'; i++) await new Promise((r) => setTimeout(r, 100));
       const w = audioDebug();
       audio.intensity(0.7);
       const b = [];
@@ -112,9 +128,9 @@ try {
       audio.music('base', { fade: 0.3 });
       return { loops, track: w.track, decoded: w.decodedTracks, beats: b };
     });
-    check(name, sw.loops.includes('anticipation'), 'anticipation loop starts');
-    check(name, sw.track === 'witching', `switched to witching (decoded: ${sw.decoded.join(', ')})`);
-    check(name, sw.beats[0].bpm === 80 && sw.beats.some((x, i) => i > 0 && (x.beat !== sw.beats[0].beat || x.bar !== sw.beats[0].bar)), `beat clock follows witching: ${JSON.stringify(sw.beats)}`);
+    check(name, sw.loops.includes('anticipation') && sw.loops.includes('trainRun'), `anticipation and trainRun loops start (${sw.loops.join(', ')})`);
+    check(name, sw.track === 'rush' && sw.decoded.some((f) => f.includes('rush-tension')), `switched to rush with its stem (decoded: ${sw.decoded.join(', ')})`);
+    check(name, sw.beats[0].bpm === 200 && sw.beats.some((x, i) => i > 0 && (x.beat !== sw.beats[0].beat || x.bar !== sw.beats[0].bar)), `beat clock follows rush: ${JSON.stringify(sw.beats)}`);
 
     // 6. tab hide/show suspends and resumes; play() while hidden is ignored
     const vis = await page.evaluate(async () => {
@@ -128,7 +144,7 @@ try {
       await new Promise((r) => setTimeout(r, 400));
       const hidden = audioDebug().state;
       const before = audioDebug().voices;
-      for (let i = 0; i < 20; i++) audio.play('coin');
+      for (let i = 0; i < 20; i++) audio.play('coinCollect');
       const afterPlays = audioDebug().voices;
       setVis('visible');
       await new Promise((r) => setTimeout(r, 600));

@@ -224,13 +224,24 @@ export function tunnelPortal(side: -1 | 1 = -1): string {
     ribs += `<path d="M${cx - ri} ${H} V${spring} A${ri} ${ri} 0 0 1 ${cx + ri} ${spring} V${H}" transform="${t}" fill="none" stroke="${mix(C.iron, C.tunnel, 0.3 + i * 0.1)}" stroke-width="${f(14 / Math.max(0.5, k))}" opacity="${a.toFixed(2)}"/>`;
     ribs += `<path d="M${cx - ri} ${H} V${spring} A${ri} ${ri} 0 0 1 ${cx + ri} ${spring}" transform="${t}" fill="none" stroke="${C.ironLight}" stroke-width="${f(2.5 / Math.max(0.5, k))}" opacity="${(0.16 - i * 0.02).toFixed(2)}"/>`;
   });
-  // rails converging on the vanishing point
-  const rails = [cx - 70, cx + 40]
-    .map(
-      (x0) =>
-        `<path d="M${x0} ${H} L${f(vp.x + (x0 - vp.x) * 0.06)} ${f(vp.y + (H - vp.y) * 0.06)}" stroke="${C.steel}" stroke-width="7" opacity=".5"/><path d="M${x0 - 3} ${H} L${f(vp.x + (x0 - vp.x) * 0.06)} ${f(vp.y + (H - vp.y) * 0.06)}" stroke="${C.steelLight}" stroke-width="2" opacity=".4"/>`,
-    )
+  // trackbed and rails converging on the vanishing point, sleepers closing up with depth
+  const bx0 = cx - ri * 0.62;
+  const bx1 = cx + ri * 0.62;
+  const at = (x: number, d: number) => [vp.x + (x - vp.x) * d, vp.y + (H - vp.y) * d] as const;
+  const bed = `M${bx0} ${H} L${f(at(bx0, 0.04)[0])} ${f(at(bx0, 0.04)[1])} L${f(at(bx1, 0.04)[0])} ${f(at(bx1, 0.04)[1])} L${bx1} ${H} Z`;
+  let sleepers = '';
+  for (const d of [1, 0.72, 0.52, 0.38, 0.28, 0.2, 0.14]) {
+    const [x0, y0] = at(bx0 + 10, d);
+    const [x1] = at(bx1 - 10, d);
+    sleepers += `<path d="M${f(x0)} ${f(y0)} H${f(x1)}" stroke="${mix(C.woodDeep, C.ink, 0.3)}" stroke-width="${f(10 * d)}" opacity="${(0.4 + d * 0.5).toFixed(2)}"/>`;
+  }
+  const rails = [cx - ri * 0.36, cx + ri * 0.36]
+    .map((x0) => {
+      const [x1, y1] = at(x0, 0.04);
+      return `<path d="M${f(x0)} ${H} L${f(x1)} ${f(y1)}" stroke="${C.steelDeep}" stroke-width="8"/><path d="M${f(x0 - 2)} ${H} L${f(x1)} ${f(y1)}" stroke="${C.steelLight}" stroke-width="2.4" opacity=".55"/>`;
+    })
     .join('');
+  const trackbed = `<path d="${bed}" fill="${mix(C.tunnel, C.iron, 0.3)}" opacity=".8"/>${sleepers}${rails}`;
   // voussoirs: wedge stones round the arch, emerald with cream joints
   let vs = '';
   const n = 13;
@@ -264,8 +275,7 @@ export function tunnelPortal(side: -1 | 1 = -1): string {
     `<path d="${outer}" fill="${C.ink}" opacity=".35" transform="translate(8 10)"/>
     <path d="${opening}" fill="url(#${id}in)"/>
     ${ribs}
-    <ellipse cx="${vp.x}" cy="${vp.y}" rx="58" ry="46" fill="${C.ink}" opacity=".7"/>
-    ${rails}
+    ${trackbed}
     <path d="${opening}" fill="url(#${id}sh)"/>
     ${vs}${jamb}
     <path d="${key}" fill="url(#${id}k)"/>${keyDeco}
@@ -744,10 +754,10 @@ export function starGlint(): string {
  * (0, 0, W, H), the symbol grid (T, T, W - 2T, H - 2T); the art's viewBox starts at (vx, vy).
  */
 export const CAR = {
-  vx: -14,
-  vy: -14,
-  vw: 675 + 28,
-  vh: 440 + 28,
+  vx: -20,
+  vy: -20,
+  vw: 675 + 40,
+  vh: 440 + 40,
   W: 675,
   H: 440,
   T: 20,
@@ -786,7 +796,7 @@ export function carFrame(): string {
     // sleepers
     let sl = '';
     for (let x = gx0 + 6; x < gx0 + gw; x += 21) sl += `<rect x="${x}" y="${f(cy - half - 7)}" width="9" height="${f(half * 2 + 14)}" rx="1.5"/>`;
-    board += `<g fill="${mix(C.woodDeep, C.iron, 0.45)}" opacity=".85">${sl}</g>`;
+    board += `<g fill="${mix(C.woodDeep, C.iron, 0.45)}" opacity=".6">${sl}</g>`;
     // two rails with a lit top edge
     for (const ry of [cy - half, cy + half]) {
       board += `<path d="M${gx0} ${f(ry)} H${gx0 + gw}" stroke="${C.ink}" stroke-width="5.4" opacity=".8"/>`;
@@ -809,13 +819,15 @@ export function carFrame(): string {
   // frame ring
   const ro = 22;
   const ri = 9;
-  const ringD = `M${ro} 0 H${W - ro} A${ro} ${ro} 0 0 1 ${W} ${ro} V${H - ro} A${ro} ${ro} 0 0 1 ${W - ro} ${H} H${ro} A${ro} ${ro} 0 0 1 0 ${H - ro} V${ro} A${ro} ${ro} 0 0 1 ${ro} 0 Z
+  // the outer edge stands 6 units proud of the layout frame, so the panel reads heavier than frameT
+  const e = 6;
+  const outerD = `M${ro - e} ${-e} H${W - ro + e} A${ro} ${ro} 0 0 1 ${W + e} ${ro - e} V${H - ro + e} A${ro} ${ro} 0 0 1 ${W - ro + e} ${H + e} H${ro - e} A${ro} ${ro} 0 0 1 ${-e} ${H - ro + e} V${ro - e} A${ro} ${ro} 0 0 1 ${ro - e} ${-e} Z`;
+  const ringD = `${outerD}
     M${T + ri} ${T} A${ri} ${ri} 0 0 0 ${T} ${T + ri} V${H - T - ri} A${ri} ${ri} 0 0 0 ${T + ri} ${H - T} H${W - T - ri} A${ri} ${ri} 0 0 0 ${W - T} ${H - T - ri} V${T + ri} A${ri} ${ri} 0 0 0 ${W - T - ri} ${T} Z`;
-  const outerD = `M${ro} 0 H${W - ro} A${ro} ${ro} 0 0 1 ${W} ${ro} V${H - ro} A${ro} ${ro} 0 0 1 ${W - ro} ${H} H${ro} A${ro} ${ro} 0 0 1 0 ${H - ro} V${ro} A${ro} ${ro} 0 0 1 ${ro} 0 Z`;
   const innerD = `M${T + ri} ${T} H${W - T - ri} A${ri} ${ri} 0 0 1 ${W - T} ${T + ri} V${H - T - ri} A${ri} ${ri} 0 0 1 ${W - T - ri} ${H - T} H${T + ri} A${ri} ${ri} 0 0 1 ${T} ${H - T - ri} V${T + ri} A${ri} ${ri} 0 0 1 ${T + ri} ${T} Z`;
   // rivets along the panels (between the two brass beads)
   let riv = '';
-  const mid = T / 2;
+  const mid = (T - e) / 2;
   for (let x = 46; x < W - 40; x += 26.6) {
     if (Math.abs(x - W / 2) < 52) continue;
     riv += rivet(x, mid, 2.1) + rivet(x, H - mid, 2.1);
@@ -836,7 +848,7 @@ export function carFrame(): string {
       line: `<path d="${arc}"/>`,
     };
   };
-  const fans = [fan(-4, -4, 1, 1), fan(W + 4, -4, -1, 1), fan(-4, H + 4, 1, -1), fan(W + 4, H + 4, -1, -1)];
+  const fans = [fan(-e - 3, -e - 3, 1, 1), fan(W + e + 3, -e - 3, -1, 1), fan(-e - 3, H + e + 3, 1, -1), fan(W + e + 3, H + e + 3, -1, -1)];
   // winged-wheel plaque, top centre
   const pc = W / 2;
   const wing = (s: number) => `M${pc + s * 14} ${T / 2 - 6} C${pc + s * 30} ${T / 2 - 12} ${pc + s * 44} ${T / 2 - 9} ${pc + s * 58} ${T / 2 - 3} L${pc + s * 50} ${T / 2 + 1} L${pc + s * 54} ${T / 2 + 3} L${pc + s * 42} ${T / 2 + 6} L${pc + s * 44} ${T / 2 + 8} L${pc + s * 14} ${T / 2 + 8} Z`;
@@ -858,10 +870,10 @@ export function carFrame(): string {
     <path d="${outerD}" fill="${C.ink}" opacity=".5" transform="translate(3 6)"/>
     ${board}
     <path d="${ringD}" fill-rule="evenodd" fill="url(#${id}mr)"/>
-    <path d="M${ro} 3 H${W - ro}" stroke="${C.maroonLight}" stroke-width="2" opacity=".6"/>
+    <path d="M${ro} ${-e + 3.5} H${W - ro}" stroke="${C.maroonLight}" stroke-width="2" opacity=".45"/>
     <path d="${outerD}" fill="none" stroke="url(#${id}br)" stroke-width="5"/>
     <path d="${innerD}" fill="none" stroke="url(#${id}br)" stroke-width="4"/>
-    <path d="M${ro} 1.6 H${W - ro}" stroke="${C.goldLight}" stroke-width="1.2" opacity=".8"/>
+    <path d="M${ro} ${-e + 1.6} H${W - ro}" stroke="${C.goldLight}" stroke-width="1.2" opacity=".8"/>
     <path d="M${T + ri} ${T - 0.8} H${W - T - ri}" stroke="${C.goldLight}" stroke-width="1" opacity=".5"/>
     ${riv}
     ${fans.map((x) => x.fill).join('')}
@@ -871,7 +883,7 @@ export function carFrame(): string {
     `${lin(`${id}bd`, [[0, mix(C.tunnel, C.voltNight, 0.32)], [0.6, mix(C.tunnel, C.iron, 0.18)], [1, mix(C.tunnel, C.voltNight, 0.2)]])}
      ${radial(`${id}vg`, [[0, C.ink, 0], [0.7, C.ink, 0.08], [1, C.ink, 0.4]], 'cx=".5" cy=".5" r=".72"')}
      ${lin(`${id}vb`, [[0, C.volt, 0], [0.8, C.volt, 0.02], [1, C.volt, 0.08]])}
-     ${lin(`${id}mr`, [[0, C.maroonLight], [0.06, C.maroon], [0.94, C.maroon], [1, C.maroonDeep]], 0, 1, `gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}"`)}
+     ${lin(`${id}mr`, [[0, mix(C.maroon, C.maroonLight, 0.2)], [0.014, mix(C.maroon, C.maroonDeep, 0.38)], [0.95, mix(C.maroon, C.maroonDeep, 0.6)], [1, C.maroonDeep]], 0, 1, `gradientUnits="userSpaceOnUse" x1="0" y1="-6" x2="0" y2="${H + 6}"`)}
      ${lin(`${id}br`, [[0, C.goldLight], [0.4, C.gold], [1, C.goldDeep]], 1, 1)}`,
   );
 }

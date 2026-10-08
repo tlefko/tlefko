@@ -145,6 +145,7 @@ export class Controller {
   refreshHud() {
     this.hud.setBalance(this.balanceApi, false);
     this.hud.setBet(this.betApi);
+    this.presenter.setCoinFormat(this.fmt);
   }
 
   /** Bet multiple -> currency string at the current bet. */
@@ -311,8 +312,9 @@ export class Controller {
     try {
       await this.presenter.round(r, this.ctx(), from);
       if (!bonus && pm > 0 && !r.maxWin) await this.presenter.bigWin(pm, this.ctx());
-    } catch {
+    } catch (e) {
       // a presentation fault must never block settlement; the round still ends below
+      if (env.debug) console.error('presentation fault', e);
     } finally {
       this.presenter.unslam();
     }

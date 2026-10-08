@@ -23,7 +23,7 @@ import {
   type RatPart,
 } from '../../art/rat';
 import { glove, type HandPose } from '../../art/characters';
-import { hoseSection } from '../../art/crew';
+import { hoseSection } from '../../art/hose';
 import { C } from '../../art/kit';
 import { T } from '../timing';
 import { motion } from './motion';
@@ -113,7 +113,7 @@ interface Pose {
 type Hands = { l: HandPose; r: HandPose };
 const POSES: Record<State, Partial<Pose> & { hands: Hands }> = {
   idle: { crouch: 0, lean: 0, tilt: 0, jut: 0, lx: -31, ly: 50, lw: 0.3, rx: 30, ry: 60, rw: 0, capOff: 0, ears: 0, clutch: 0, drape: 0, wave: 0, tremble: 0, hands: { l: 'fist', r: 'flat' } },
-  happy: { crouch: 0, lean: 0, tilt: 0.06, jut: 0.2, lx: -52, ly: -22, lw: -0.2, rx: 46, ry: -62, rw: 0.1, capOff: 1, ears: 0.6, clutch: 0, drape: 0, wave: 1, tremble: 0, hands: { l: 'open', r: 'fist' } },
+  happy: { crouch: 0, lean: 0, tilt: 0.06, jut: 0.2, lx: -50, ly: -20, lw: -0.2, rx: 32, ry: -46, rw: 0.1, capOff: 1, ears: 0.6, clutch: 0, drape: 0, wave: 1, tremble: 0, hands: { l: 'open', r: 'fist' } },
   squeak: { crouch: 0, lean: 0, tilt: -0.08, jut: 1, lx: -38, ly: -30, lw: -0.5, rx: 38, ry: -30, rw: 0.5, capOff: 0, ears: 1, clutch: 0, drape: 0, wave: 0, tremble: 0, hands: { l: 'open', r: 'open' } },
   worried: { crouch: 0.3, lean: 0.03, tilt: 0.08, jut: 0, lx: -9, ly: 36, lw: 0.6, rx: 11, ry: 32, rw: -0.6, capOff: 0, ears: -0.8, clutch: 1, drape: 0, wave: 0, tremble: 1, hands: { l: 'fist', r: 'fist' } },
   duck: { crouch: 1, lean: 0, tilt: 0.1, jut: 0, lx: -22, ly: -92, lw: 1.1, rx: 22, ry: -96, rw: -1.1, capOff: 0, ears: -1, clutch: 0, drape: 1, wave: 0, tremble: 0.5, hands: { l: 'flat', r: 'flat' } },
@@ -123,7 +123,7 @@ const POSES: Record<State, Partial<Pose> & { hands: Hands }> = {
 const NIBBLE = { lx: -11, ly: -12, rx: 11, ry: -12 };
 
 /** Tail control points relative to its root, per shape. */
-const TAIL_CURL: [number, number][] = [[0, 0], [22, 24], [52, 32], [80, 18], [94, -16], [86, -50], [64, -60]];
+const TAIL_CURL: [number, number][] = [[0, 0], [22, 24], [50, 32], [74, 18], [86, -16], [80, -50], [60, -60]];
 const TAIL_DRAPE: [number, number][] = [[0, 0], [20, 20], [44, 30], [70, 40], [86, 64], [90, 96], [82, 118]];
 const TAIL_CLUTCH: [number, number][] = [[0, 0], [30, 12], [32, -12], [12, -28], [-6, -42], [-16, -58], [-10, -78]];
 const TAIL_N = 30;
@@ -317,6 +317,7 @@ export class Rat extends Container {
   private springs = { head: new Spring(220, 14), earL: new Spring(260, 9), earR: new Spring(260, 9), tail: new Spring(60, 5), cap: new Spring(180, 10) };
   private prevFeetY = LID_Y;
   private torsoK = 1;
+  private capK = 1;
   private crumbLeft = 1;
   private noteAcc = 0;
   fx?: Particles;
@@ -338,7 +339,7 @@ export class Rat extends Container {
     // z: the hose arms run behind the head (raised arms tuck behind it), the gloves come in front
     const z: [Container, number][] = [
       [this.luggage, 0], [this.tailHolder, 1], [this.legL, 2], [this.legR, 2], [this.footL, 3], [this.footR, 3], [this.torso, 4],
-      [this.armL, 6], [this.armR, 6], [this.head, 7], [this.cap, 8], [this.headFront, 9], [this.crumb, 10], [this.gloveL, 11], [this.gloveR, 11], [this.squeakL, 13], [this.squeakR, 13],
+      [this.armL, 6], [this.armR, 6], [this.head, 7], [this.cap, 8], [this.headFront, 9], [this.gloveL, 10], [this.gloveR, 10], [this.crumb, 11], [this.squeakL, 13], [this.squeakR, 13],
     ];
     for (const [c, i] of z) {
       c.zIndex = i;
@@ -412,6 +413,7 @@ export class Rat extends Container {
     this.cap.texture = capS.texture;
     this.cap.anchor.copyFrom(capS.anchor);
     this.cap.scale.set(capS.k0);
+    this.capK = capS.k0;
     this.part.delete('cap');
 
     const size = (s: Sprite, t: Texture, u: number) => {
@@ -527,7 +529,7 @@ export class Rat extends Container {
     const tl = gsap.timeline();
     this.poseTl = tl;
     tl.to(this.P, { ...to, duration: T(fast ? 0.12 : state === 'idle' ? 0.3 : 0.22), ease: fast ? 'power3.out' : 'back.out(1.5)' });
-    if (state === 'happy') this.hop(34);
+    if (state === 'happy') this.hop(22);
     if (state === 'squeak') {
       this.springs.earL.v -= 8;
       this.springs.earR.v += 8;
@@ -543,7 +545,7 @@ export class Rat extends Container {
     if (!this.built) return;
     if (kind === 'hop') {
       sound.play('ratHop');
-      this.hop(30);
+      this.hop(this.state === 'happy' ? 14 : 25);
       this.springs.earL.v += 6;
       this.springs.earR.v -= 6;
     } else if (kind === 'squeak') {
@@ -576,7 +578,7 @@ export class Rat extends Container {
       this.hands.r = 'open';
       gsap
         .timeline()
-        .to(this.P, { wave: 1, rx: 52, ry: -70, rw: 0.1, duration: T(0.16), ease: 'back.out(1.8)' })
+        .to(this.P, { wave: 1, rx: 44, ry: -64, rw: 0.1, duration: T(0.16), ease: 'back.out(1.8)' })
         .to(this.P, { wave: 0, ...r0, duration: T(0.3), ease: 'power2.inOut', delay: T(0.9) })
         .call(() => {
           if (this.state !== 'happy') this.hands.r = hand;
@@ -684,7 +686,7 @@ export class Rat extends Container {
     this.idleLife();
     const { phase } = this.getBeat();
     const bob = Math.pow(Math.abs(Math.sin(Math.PI * phase)), 2) * (red ? 0.4 : 1);
-    const beatHop = st === 'happy' && !red ? Math.pow(Math.max(0, Math.sin(Math.PI * 2 * phase)), 2) * 16 : 0;
+    const beatHop = st === 'happy' && !red ? Math.pow(Math.max(0, Math.sin(Math.PI * 2 * phase)), 2) * 9 : 0;
     const lift = P.hop + beatHop;
     const up = Math.max(0, lift);
     const crouch = clamp(P.crouch + Math.max(0, -lift) * 0.03, 0, 1.2);
@@ -747,7 +749,7 @@ export class Rat extends Container {
     const nib = P.nibble;
     const swing = Math.sin(t * 13) * wave;
     const tgtL = handAt(lerp(P.lx, NIBBLE.lx, nib) + Math.sin(t * 11 + 1) * wave * 6, lerp(P.ly, NIBBLE.ly, nib) + tremble);
-    const tgtR = handAt(lerp(P.rx, NIBBLE.rx, nib) + swing * 12, lerp(P.ry, NIBBLE.ry, nib) - Math.abs(swing) * 4 + tremble);
+    const tgtR = handAt(lerp(P.rx, NIBBLE.rx, nib) + swing * 8, lerp(P.ry, NIBBLE.ry, nib) - Math.abs(swing) * 4 + tremble);
     const handL: HandPose = nib > 0.5 ? 'fist' : this.hands.l;
     const handR: HandPose = nib > 0.5 ? 'fist' : this.hands.r;
     const shL = toBody({ x: -SHOULDER.x, y: -SHOULDER.y });
@@ -767,13 +769,14 @@ export class Rat extends Container {
     const capOn = rot({ x: CAP_ON.x * hk, y: CAP_ON.y * hk - F.worry * 4 }, hr);
     const onX = hx + capOn.x;
     const onY = hy + capOn.y;
-    const gup = rot({ x: 0, y: -24 }, gr.rotation);
+    const gup = rot({ x: 0, y: -18 }, gr.rotation);
     const offX = tgtR.x + gup.x;
     const offY = tgtR.y + gup.y;
     const c = P.capOff;
     const capSpring = low ? 0 : this.springs.cap.step(clamp(-vy * 0.0012, -0.25, 0.25), dt);
     this.cap.position.set(lerp(onX, offX, c), lerp(onY, offY, c) - capSpring * 10 * (1 - c));
     this.cap.rotation = lerp(hr + capSpring * 0.3, gr.rotation * 0.6 - 0.2, c);
+    this.cap.scale.set(this.capK * (1 - c * 0.1));
     // over the glove's fingers while held, on the head under them
     this.cap.zIndex = c > 0.5 ? 12 : 8;
 
@@ -792,7 +795,7 @@ export class Rat extends Container {
     for (const [s, sp] of [[-1, this.squeakL], [1, this.squeakR]] as const) {
       sp.visible = sq > 0.05;
       if (!sp.visible) continue;
-      const o = rot({ x: s * 82, y: -86 }, hr);
+      const o = rot({ x: s * 72, y: -86 }, hr);
       const pulse = 0.85 + 0.25 * Math.abs(Math.sin(t * 15 + (s > 0 ? 1 : 0)));
       sp.position.set(hx + o.x, hy + o.y);
       const k0 = 34 / sp.texture.width;
@@ -821,7 +824,7 @@ export class Rat extends Container {
     const spring = motion.low ? 0 : this.springs.tail.step(clamp(vy * 0.004, -1, 1), dt);
     const happy = st === 'happy';
     const rate = happy ? 7.5 : st === 'worried' ? 11 : 2.1;
-    const amp = (happy ? 1.8 : st === 'worried' ? 0.35 : 1) * (red ? 0.4 : 1);
+    const amp = (happy ? 1.1 : st === 'worried' ? 0.35 : 1) * (red ? 0.4 : 1);
     const c: Vec[] = TAIL_CURL.map((p, i) => {
       const k = i / (TAIL_CURL.length - 1);
       const w = Math.sin(t * rate - i * 0.7) * amp * k * 10;
@@ -829,8 +832,8 @@ export class Rat extends Container {
       const y = p[1] * curl + TAIL_DRAPE[i][1] * drape + TAIL_CLUTCH[i][1] * clutch;
       // the curl sways round its hook; the drape swings like a rope; up in a hop it trails
       return {
-        x: root.x + x + w * (curl + drape * 0.6) + (happy ? k * 10 : 0),
-        y: root.y + y + w * 0.5 * curl - (happy ? k * k * 18 : 0) + spring * k * k * 26,
+        x: root.x + x + w * (curl + drape * 0.6) - (happy ? k * 6 : 0),
+        y: root.y + y + w * 0.5 * curl - (happy ? k * k * 22 : 0) + spring * k * k * 26,
       };
     });
     spline(c, this.tailVec);

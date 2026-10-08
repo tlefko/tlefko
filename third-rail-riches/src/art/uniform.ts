@@ -74,10 +74,10 @@ export function conductorTorso(): string {
   const pockets = `<path d="M188 158 Q204 152 216 154" stroke="${C.ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
     <path d="M44 186 Q62 192 80 190" stroke="${C.ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
     <path d="M176 192 Q194 192 212 186" stroke="${C.ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
-  const ticket = 'M64 84 L82 80 L86 98 L68 102 Z';
-  const tk = celForm(ticket, { ...celTones(C.cream, C.tileDeep, '#ffffff'), cut: [-2, -2], seed: 59 });
+  const ticket = 'M60 74 L84 68 L90 96 L66 102 Z';
+  const tk = celForm(ticket, { base: C.cream, shade: C.tileLight, light: '#ffffff', cut: [-1.5, -1.5], seed: 59 });
   const breast = `<path d="M56 98 Q74 92 92 94" stroke="${C.ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-    <circle cx="75" cy="88" r="2.4" fill="${C.ink}" opacity=".8"/>`;
+    <circle cx="80" cy="76" r="2.6" fill="${C.ink}" opacity=".85"/>`;
   return composeSymbol({
     ...paint(13),
     noDrop: true,
@@ -88,7 +88,7 @@ export function conductorTorso(): string {
       { fills: lL.fills + lR.fills, lines: `${lL.line('stroke-width="5.5"')}${lR.line('stroke-width="5.5"')}` },
       { fills: cL.fills + cR.fills, lines: `${cL.line('stroke-width="4.5"')}${cR.line('stroke-width="4.5"')}` },
       { fills: ti.fills, lines: ti.line('stroke-width="4.5"') },
-      { fills: tk.fills, lines: `${tk.line('stroke-width="4"')}<path d="M70 92 L82 89" stroke-width="2.4" opacity=".55"/>` },
+      { fills: tk.fills, lines: `${tk.line('stroke-width="3.5"')}<path d="M67 84 L82 80 M69 91 L80 88" stroke-width="2" opacity=".4"/>` },
     ],
     top: `
       <path d="${knot}" fill="${C.crimsonDeep}" stroke="${C.ink}" stroke-width="3.5" stroke-linejoin="round"/>

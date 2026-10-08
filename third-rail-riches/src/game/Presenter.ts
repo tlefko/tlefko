@@ -115,6 +115,12 @@ export class Presenter {
     this.loopsOff();
   }
 
+  /** Coin faces print values at this formatter (the bet changed, or the game just started). */
+  setCoinFormat(fmt: (v: number) => string) {
+    coinLabel.fmt = fmt;
+    this.scene.grid?.refreshValues();
+  }
+
   constructor(private scene: Scene) {
     scene.overlay.addChild(this.iris);
     scene.symTex.idleGate = () => !scene.busy && !this.inBonus && performance.now() - this.quietSince > 1500;

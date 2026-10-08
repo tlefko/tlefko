@@ -5,24 +5,44 @@
   --paper: #f7ecd6;
   --paper-dim: #b9b1a3;
   --line: rgba(244, 239, 227, 0.12);
-  --accent: #5fd6cc; /* moonlit sea teal */
-  --accent-deep: #1b8f9e;
-  --fire: #ff7a1f;
-  --fire-hot: #ffc233;
-  --crimson: #d42c24;
-  --crimson-light: #ff6f5e;
-  --crimson-deep: #7a1210;
+  /* the subway palette (C in src/art/kit.ts; docs/ART.md) */
+  --cream: #fff1cf;
+  --tile: #efe2c0;
+  --tile-deep: #c9b48a;
+  --maroon-light: #d8505a;
+  --maroon: #9c2232;
+  --maroon-deep: #561019;
+  --emerald-light: #5fd3a1;
+  --emerald: #1f8a63;
+  --emerald-deep: #0f5a40;
+  --iron-light: #5d6f78;
+  --iron: #33424a;
+  --iron-deep: #172126;
+  --tunnel: #0d1418;
+  --volt-core: #f2fdff;
+  --volt-light: #a8f0ff;
+  --volt: #3fc8ff;
+  --volt-deep: #1a5fd6;
+  --volt-night: #0b2a6b;
+  --amber-light: #ffe6a3;
+  --amber: #ffb43c;
+  --amber-deep: #c46a12;
   --gold: #f4b73a;
   --gold-light: #fff0b0;
   --gold-deep: #9c5f10;
-  /* wood and parchment (palette C in src/art/kit.ts) */
-  --wood-light: #d99b5f;
-  --wood: #a8672f;
-  --wood-mid: #7a4520;
-  --wood-dark: #4f2a13;
-  --wood-deep: #2e170a;
-  --parch: #eddcbc;
-  --parch-ink: #3a2418;
+  /* engine names, mapped onto the subway palette */
+  --accent: var(--volt-light);
+  --accent-deep: var(--volt-deep);
+  --fire: var(--amber);
+  --fire-hot: var(--amber-light);
+  --crimson: var(--maroon);
+  --crimson-light: var(--maroon-light);
+  --crimson-deep: var(--maroon-deep);
+  /* text on cream enamel: ink, a muted iron grey (>= 6:1) and the maroon / emerald accents */
+  --parch: #f3e6c8;
+  --parch-ink: #1f1a1c;
+  --muted: #4a5960;
+  --focus: var(--volt-light);
   --ease-ui: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-enter: cubic-bezier(0.165, 0.84, 0.44, 1);
   --ease-swift: cubic-bezier(0.16, 1, 0.3, 1);
@@ -40,7 +60,7 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: #0a0d16;
+  background: #0d1418;
   color: var(--paper);
   font-family: var(--font-ui);
   font-weight: 500;

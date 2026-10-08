@@ -796,7 +796,7 @@ export function bitmapNum(text: string, tone: NumTone, size: number, cartoon = f
 
 const WARM_CHARS = NUMERALS + ' KM';
 /** The cartoon bitmap banners in the player's language, plus digits and signs. */
-const warmCartoon = () => [t('tantrum'), t('hounds', { n: 4 }), t('inferno'), t('plusFreeSpins', { n: 5 }), t('freeSpinsCaps', { n: 10 }), '0123456789x+!'].join(' ');
+const warmCartoon = () => [t('powerLabel'), t('plusFreeSpins', { n: 5 }), t('freeSpinsCaps', { n: 10 }), '0123456789x+!'].join(' ');
 /** Build every glyph atlas up front so no glyph generation happens mid-animation. */
 /**
  * Paint every numeral and cartoon glyph into the bitmap atlases and upload them, a slice at a time:
@@ -827,10 +827,6 @@ export async function warmFonts(renderer: Renderer, pause: () => Promise<void> =
     for (const f of cartoonFonts) f.ensureCharacters(ch);
     await slice();
   }
-  // the Captain's Wheel reveals words in the numeral faces (KEG DROP in sea, BROADSIDE in crimson),
-  // in the player's language: their letters are drawn now, not mid-reveal
-  fontOf(numBaseStyle('sea')).ensureCharacters(t('hounds', { n: 4 }));
-  fontOf(numBaseStyle('crimson')).ensureCharacters(t('inferno'));
   const made: BitmapText[] = [];
   for (const tone of numTones) made.push(new BitmapText({ text: WARM_CHARS, style: numBaseStyle(tone) }));
   for (const tone of cartoonTones) made.push(new BitmapText({ text: cartoon, style: cartoonBaseStyle(tone) }));

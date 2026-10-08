@@ -1,5 +1,8 @@
-/* Control bar (track H): the ship's rail. Art comes from src/ui/art.ts as SVG custom properties
-   (--pk-deck, --pk-rail, --pk-helm, --pk-seal, --pk-knob, --pk-stud, --pk-wood, --pk-parchment). */
+/* Control bar (track H): the dash of a 1930s subway car, maroon enamel panels under a brass rail,
+   iron readout plates with amber-lit labels, brass and emerald controls and a locomotive driving
+   wheel for spin. Art comes from src/ui/art.ts as SVG custom properties (--pk-deck = maroon
+   panels, --pk-rail = brass rail, --pk-helm = driving wheel, --pk-seal = golden ticket, --pk-knob,
+   --pk-stud, --pk-wood = maroon enamel, --pk-parchment = cream enamel). */
 .hud {
   --hud-h: 84px;
   position: absolute;
@@ -27,9 +30,11 @@
   padding: 10px max(16px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(16px, env(safe-area-inset-left));
   background:
     var(--pk-rail) left top / 64px 14px repeat-x,
-    var(--pk-deck) left 14px / 320px 96px repeat,
-    var(--wood-deep);
-  box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.45);
+    var(--pk-deck) left 14px / 480px 72px repeat,
+    var(--maroon-deep);
+  box-shadow:
+    0 -8px 22px rgba(0, 0, 0, 0.5),
+    0 -2px 14px rgba(63, 200, 255, 0.12);
 }
 
 .hud-left,
@@ -48,7 +53,7 @@
 .hud-right {
   flex: 0 0.5 auto;
   justify-content: flex-end;
-  /* full bar height, so the helm can sit on the floor and rise above the rail */
+  /* full bar height, so the wheel can sit on the floor and rise above the rail */
   align-self: stretch;
 }
 
@@ -72,28 +77,33 @@
 }
 
 /* ------------------------------- meters -------------------------------- */
-/* each reading sits in a darker inset, like a plate let into the planks */
+/* each reading is an iron readout plate in a brass bezel, let into the enamel; its label glows
+   like an amber indicator lamp */
 .meter {
   display: grid;
   gap: 2px;
   min-width: 0;
   padding: 4px 12px 5px;
-  border-radius: 10px;
-  background: rgba(20, 10, 4, 0.58);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(13, 20, 24, 0.92), rgba(23, 33, 38, 0.88));
   box-shadow:
-    inset 0 2px 0 rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1.5px rgba(27, 19, 17, 0.9),
-    0 1px 0 rgba(255, 214, 150, 0.18);
+    inset 0 0 0 1.5px var(--ink),
+    inset 0 0 0 3px rgba(196, 140, 40, 0.85),
+    inset 0 0 0 4px var(--ink),
+    inset 0 5px 8px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 214, 150, 0.22);
 }
 
 .meter .lbl {
   font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--parch);
+  color: var(--amber-light);
   line-height: 1.1;
   white-space: nowrap;
-  text-shadow: 0 1.5px 0 var(--ink);
+  text-shadow:
+    0 1.5px 0 var(--ink),
+    0 0 8px rgba(255, 180, 60, 0.35);
 }
 
 .meter .val {
@@ -236,11 +246,11 @@ button:disabled {
 }
 
 button:focus-visible {
-  outline: 3px solid var(--fire-hot);
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 
-/* carved knobs: a wooden disc in a brass bezel */
+/* round controls: emerald enamel buttons in riveted brass bezels (lit: electric blue) */
 .knob {
   width: 48px;
   height: 48px;
@@ -284,14 +294,17 @@ button:focus-visible {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--wood-deep);
+  background: var(--iron-deep);
   box-shadow: 0 0 0 1.5px var(--ink);
-  transition: background 0.2s var(--ease-ui);
+  transition: background 0.2s var(--ease-ui), box-shadow 0.2s var(--ease-ui);
 }
 
 .turbo-btn[data-mode='turbo'] .pips b:first-child,
 .turbo-btn[data-mode='super'] .pips b {
-  background: var(--fire-hot);
+  background: var(--volt-light);
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    0 0 6px var(--volt);
 }
 
 .side-btns {
@@ -331,7 +344,7 @@ button:focus-visible {
   filter: brightness(1.1);
 }
 
-/* bonus buy: a crimson wax seal on ribbon tails */
+/* bonus buy: a Golden Ticket with a maroon enamel label panel */
 .buy-btn {
   position: relative;
   width: 68px;
@@ -356,7 +369,7 @@ button:focus-visible {
   font-size: 12.5px;
   line-height: 0.95;
   letter-spacing: 0.02em;
-  color: var(--paper);
+  color: var(--cream);
   text-align: center;
   white-space: nowrap;
   text-shadow:
@@ -368,7 +381,8 @@ button:focus-visible {
   pointer-events: none;
 }
 
-/* spin: the ship's helm; it turns while a round plays */
+/* spin: a locomotive driving wheel in a brass bezel round an electric-blue dispatch hub; it turns
+   while a round plays, and glows (pulses) while it can be pressed */
 .spin-btn {
   position: relative;
   width: 104px;
@@ -390,12 +404,57 @@ button:focus-visible {
   filter: brightness(1.08);
 }
 
+.spin-btn:active {
+  filter: brightness(0.94);
+}
+
 .spin-helm {
   position: absolute;
   inset: -2px;
   background: var(--pk-helm) center / contain no-repeat;
   will-change: transform;
   pointer-events: none;
+}
+
+/* the dispatch glow round the wheel: it breathes while the button is ready, and sits steady and
+   dim while a round plays */
+.spin-btn::before {
+  content: '';
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  box-shadow:
+    0 0 14px 3px rgba(63, 200, 255, 0.55),
+    0 0 30px 6px rgba(63, 200, 255, 0.25);
+  pointer-events: none;
+  animation: spin-ready 2.2s ease-in-out infinite;
+}
+
+.hud.busy .spin-btn::before,
+.spin-btn:disabled::before {
+  animation: none;
+  opacity: 0.25;
+}
+
+.hud.in-bonus .spin-btn::before {
+  box-shadow:
+    0 0 14px 3px rgba(255, 180, 60, 0.55),
+    0 0 30px 6px rgba(255, 180, 60, 0.25);
+}
+
+@keyframes spin-ready {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pk-low .spin-btn::before {
+  animation: none;
+  opacity: 0.8;
 }
 
 .hud.in-bonus .spin-helm {
@@ -425,7 +484,7 @@ button:focus-visible {
   font-size: 19px;
 }
 
-/* Powder Boost: a keg switch on a wooden plate beside the helm */
+/* Express Pass: a pass switch on an iron plate in a brass bezel beside the wheel */
 .boost-btn {
   position: relative;
   display: flex;
@@ -435,13 +494,14 @@ button:focus-visible {
   padding: 0 12px 0 4px;
   border: 0;
   border-radius: 12px;
-  background: var(--pk-wood) center / 96px auto;
+  background: linear-gradient(180deg, var(--iron) 0%, var(--iron-deep) 100%);
   box-shadow:
     inset 0 0 0 2px var(--ink),
-    inset 0 0 0 4.5px var(--gold-deep),
+    inset 0 0 0 4.5px var(--gold),
     inset 0 0 0 6px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.06),
     0 4px 0 rgba(0, 0, 0, 0.35);
-  color: var(--paper);
+  color: var(--cream);
   flex: none;
   transition: box-shadow 0.25s var(--ease-ui), filter 0.2s var(--ease-ui);
 }
@@ -480,7 +540,7 @@ button:focus-visible {
 .boost-cost {
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--parch);
+  color: var(--amber-light);
   white-space: nowrap;
 }
 
@@ -496,28 +556,29 @@ button:focus-visible {
   height: 12px;
   flex: none;
   border-radius: 50%;
-  background: var(--wood-deep);
+  background: var(--tunnel);
   box-shadow: inset 0 0 0 2px var(--ink);
   transition: background 0.25s var(--ease-ui), box-shadow 0.25s var(--ease-ui);
 }
 
 .hud.boost-on .boost-btn {
+  background: linear-gradient(180deg, var(--volt-night) 0%, #071a45 100%);
   box-shadow:
     inset 0 0 0 2px var(--ink),
-    inset 0 0 0 4.5px var(--fire-hot),
+    inset 0 0 0 4.5px var(--volt-light),
     inset 0 0 0 6px var(--ink),
-    0 0 20px rgba(255, 160, 40, 0.55),
+    0 0 20px rgba(63, 200, 255, 0.6),
     0 4px 0 rgba(0, 0, 0, 0.35);
 }
 
 .hud.boost-on .boost-lamp {
-  background: var(--fire-hot);
+  background: var(--volt-light);
   box-shadow:
     inset 0 0 0 2px var(--ink),
-    0 0 9px var(--fire-hot);
+    0 0 9px var(--volt);
 }
 
-/* a parchment note by the switch: what Powder Boost costs and does */
+/* a cream enamel notice by the switch: what Express Pass costs and does */
 .boost-tip {
   position: absolute;
   right: max(14px, env(safe-area-inset-right));
@@ -526,11 +587,13 @@ button:focus-visible {
   max-width: min(340px, calc(100vw - 28px));
   padding: 10px 14px 11px;
   border-radius: 12px;
-  background: var(--pk-parchment) 0 0 / 256px 256px, var(--paper);
+  background: var(--pk-parchment) 0 0 / 256px 256px, var(--cream);
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4.5px var(--emerald),
+    inset 0 0 0 5.5px var(--ink),
     0 12px 26px rgba(0, 0, 0, 0.5);
-  color: var(--ink);
+  color: var(--parch-ink);
   font-size: 13.5px;
   line-height: 1.4;
   pointer-events: none;
@@ -544,7 +607,7 @@ button:focus-visible {
   font-weight: 400;
   font-size: 16px;
   letter-spacing: 0.03em;
-  color: var(--crimson);
+  color: var(--maroon);
 }
 
 /* ---------------------------- plates & bars ---------------------------- */
@@ -562,7 +625,9 @@ button:focus-visible {
   background: var(--pk-wood) center / 96px auto;
   box-shadow:
     inset 0 0 0 2px var(--ink),
-    inset 0 0 0 4px var(--fire),
+    inset 0 0 0 4px var(--volt),
+    inset 0 0 0 5px var(--ink),
+    0 0 18px rgba(63, 200, 255, 0.35),
     0 12px 30px rgba(0, 0, 0, 0.5);
   font-size: 13.5px;
   white-space: nowrap;
@@ -573,7 +638,7 @@ button:focus-visible {
 }
 
 .fb-text b {
-  color: var(--fire-hot);
+  color: var(--amber-light);
   font-weight: 600;
 }
 
@@ -597,15 +662,17 @@ button:focus-visible {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink);
-  background: var(--pk-parchment) 0 0 / 256px 256px, var(--paper);
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+  background: var(--pk-parchment) 0 0 / 256px 256px, var(--cream);
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink),
+    inset 0 0 0 3px var(--emerald);
   padding: 4px 9px;
   border-radius: 8px;
   pointer-events: none;
 }
 
 /* ------------------------------- replay -------------------------------- */
-/* Stake bet replay: the bar keeps its planks and rail but none of its betting controls; the replay
+/* Stake bet replay: the bar keeps its enamel and rail but none of its betting controls; the replay
    panel lies over it with the REPLAY tag, the round's five results, the win reading and the menu
    (both moved in by Hud.enterReplay), and one Play / Play again control. */
 .hud.replay .hud-bar > * {
@@ -643,7 +710,7 @@ button:focus-visible {
   margin-left: auto;
 }
 
-/* the REPLAY tag: a crimson ribbon, first in the row of results */
+/* the REPLAY tag: a maroon enamel tag, first in the row of results */
 .rp-tag {
   flex: none;
   position: relative;
@@ -656,17 +723,17 @@ button:focus-visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: var(--paper);
-  background: var(--crimson);
+  color: var(--cream);
+  background: var(--maroon);
   box-shadow:
     inset 0 0 0 2px var(--ink),
-    inset 0 2px 0 var(--crimson-light),
-    inset 0 -3px 0 var(--crimson-deep),
+    inset 0 0 0 3.5px var(--gold),
+    inset 0 0 0 4.5px var(--ink),
     0 3px 0 rgba(0, 0, 0, 0.35);
   text-shadow: 0 2px 0 var(--ink);
 }
 
-/* the round's mode (Base game, Powder Boost, a raid) beside the tag */
+/* the round's mode (Base game, Express Pass, a bonus) beside the tag */
 .rp-mode {
   flex: none;
   align-self: center;
@@ -688,7 +755,7 @@ button:focus-visible {
   gap: 6px 10px;
 }
 
-/* one reading per result: label over value, in a plate let into the planks */
+/* one reading per result: label over value, on an iron readout plate */
 .rp-item {
   display: grid;
   justify-items: center;
@@ -696,11 +763,12 @@ button:focus-visible {
   flex: none;
   padding: 3px 10px 4px;
   border-radius: 9px;
-  background: rgba(20, 10, 4, 0.58);
+  background: linear-gradient(180deg, rgba(13, 20, 24, 0.92), rgba(23, 33, 38, 0.88));
   box-shadow:
-    inset 0 2px 0 rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1.5px rgba(27, 19, 17, 0.9),
-    0 1px 0 rgba(255, 214, 150, 0.18);
+    inset 0 0 0 1.5px var(--ink),
+    inset 0 0 0 2.5px rgba(196, 140, 40, 0.8),
+    inset 0 4px 6px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 214, 150, 0.2);
 }
 
 .rp-lbl {
@@ -708,7 +776,7 @@ button:focus-visible {
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
-  color: var(--parch);
+  color: var(--amber-light);
   text-shadow: 0 1.5px 0 var(--ink);
 }
 
@@ -721,7 +789,7 @@ button:focus-visible {
 .rp-info {
   font-size: 14px;
   font-weight: 600;
-  color: var(--parch);
+  color: var(--amber-light);
   text-shadow: 0 1.5px 0 var(--ink);
 }
 
@@ -735,12 +803,13 @@ button:focus-visible {
   font-size: 17px;
   letter-spacing: 0.04em;
   white-space: nowrap;
-  color: var(--paper);
-  background: var(--crimson);
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
-    inset 0 3px 0 var(--crimson-light),
-    inset 0 -4px 0 var(--crimson-deep),
+    inset 0 0 0 4.5px var(--gold),
+    inset 0 0 0 5.5px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.12),
     0 5px 0 rgba(0, 0, 0, 0.4);
   text-shadow: 0 2px 0 var(--ink);
 }
@@ -880,8 +949,8 @@ button:focus-visible {
 }
 .hud.rp-col .hud-bar {
   background:
-    var(--pk-deck) left top / 320px 96px repeat,
-    var(--wood-deep);
+    var(--pk-deck) left top / 480px 72px repeat,
+    var(--maroon-deep);
   box-shadow: -8px 0 22px rgba(0, 0, 0, 0.45);
 }
 .hud.rp-col .replay-bar {
@@ -973,15 +1042,15 @@ button:focus-visible {
  * gets the widest plate (Stake review, "it is possible to overlap the win and play amounts": on a
  * 375px iPhone SE a 70,000.00 GC play amount was squeezed between its studs into ~50px and shrank
  * to ~7px; it now reads at 17px beside a 75.00 GC win and a 575.00 GC balance, all on one line).
- * Below, seven controls, the helm taking eight columns and the others four or six.
+ * Below, seven controls, the wheel taking eight columns and the others four or six.
  */
 .hud.portrait .hud-bar {
   display: grid;
   padding: 13px max(10px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   background:
     var(--pk-rail) left top / 48px 10px repeat-x,
-    var(--pk-deck) left 10px / 320px 96px repeat,
-    var(--wood-deep);
+    var(--pk-deck) left 10px / 480px 72px repeat,
+    var(--maroon-deep);
   grid-template-columns: repeat(28, minmax(0, 1fr));
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
@@ -1052,7 +1121,7 @@ button:focus-visible {
   justify-self: center;
   align-self: center;
   margin: 0;
-  /* never taller than its row: readings that run to more lines take room from the helm, never from
+  /* never taller than its row: readings that run to more lines take room from the wheel, never from
      the readings or the screen */
   width: auto;
   height: min(96px, calc(var(--hud-h) - 64px), 100%);
@@ -1132,7 +1201,7 @@ button:focus-visible {
 /*
  * Two lines in a plate (a two-line label, or an amount wrapped by Hud.fit): the plate closes up its
  * spacing, and in portrait the bar does too (.tall), so the readings' row stays short enough for the
- * helm to keep its size.
+ * wheel to keep its size.
  */
 .hud .meter.tight {
   padding-top: 1px;
@@ -1147,7 +1216,7 @@ button:focus-visible {
   row-gap: 3px;
 }
 
-/* mid-size landscape: the boost switch folds to its keg and cost */
+/* mid-size landscape: the boost switch folds to its pass and cost */
 @media (orientation: landscape) and (max-width: 1199px) and (min-height: 481px) {
   .hud:not(.portrait) .boost-btn {
     flex-direction: column;

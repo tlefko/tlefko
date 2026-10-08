@@ -4,7 +4,7 @@
  * 90 px and has a 4-frame win loop; every frame shares the 256 viewBox and anchor.
  */
 import { C, composeSymbol, nextId, celForm, celTones, GOLD_TONES, shine, mix, scallops } from './kit';
-import { type V, P, add, dir, sample, smooth, lens, sparkle, taper } from './geo';
+import { type V, P, add, dir, sample, smooth, lens, sparkle } from './geo';
 
 /* ------------------------------------------------------------------ */
 /* Shared paint                                                        */
@@ -126,7 +126,7 @@ function pretzelArt(p: PretzelPose): string {
   const grain = (c: V, r: number, rot: number) => {
     const pts = [0, 1, 2, 3].map((k) => add(c, dir(rot + k * 90 + (k % 2 ? 12 : -6)), r * (k % 2 ? 0.8 : 1.05)));
     const d = `M${pts.map(P).join(' L')} Z`;
-    return `<path d="${d}" transform="translate(1.6 2)" fill="${T.hatch}" opacity=".55"/><path d="${d}" fill="${C.white}" stroke="${C.ink}" stroke-width="1.8" stroke-linejoin="round"/><path d="M${P(add(pts[0], pts[1], 0))}" fill="none"/>`;
+    return `<path d="${d}" transform="translate(1.6 2)" fill="${T.hatch}" opacity=".55"/><path d="${d}" fill="${C.white}" stroke="${C.ink}" stroke-width="1.8" stroke-linejoin="round"/>`;
   };
   const SALT: [number, number, number, number][] = [
     [6, 0.2, 4.6, 10], [30, 0.5, 4, 40], [48, 0.1, 5, 20], [62, 0.55, 4.2, 70], [80, 0.2, 4.8, 5], [96, 0.4, 4, 33], [116, -0.35, 4.6, 60],
@@ -225,7 +225,6 @@ function coffeeArt(p: CoffeePose): string {
   const lip = `<g transform="${mt}">
       <ellipse cx="${MX}" cy="92" rx="58" ry="15" fill="${C.cream}" stroke="${C.ink}" stroke-width="6.5"/>
       <ellipse cx="${MX}" cy="93.5" rx="47" ry="10.5" fill="${mix(C.woodDark, C.woodDeep, 0.4)}" stroke="${C.ink}" stroke-width="3.5"/>
-      <path d="M${MX - 44} 96 Q${MX} 106 ${MX + 44} 96 L${MX + 44} 100 Q${MX} 108 ${MX - 44} 100 Z" fill="${C.woodMid}" opacity=".0"/>
       <path d="M${MX - 40} 96 Q${MX - 8} 104 ${MX + 30} 100" stroke="${C.pretzel}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".85"/>
       <path d="${lens([[MX - 28, 90], [MX - 10, 87], [MX + 8, 88]], 2.2)}" fill="${C.cream}" opacity=".8"/>
       <path d="${lens([[MX - 52, 86], [MX - 36, 80], [MX - 12, 78]], 2.4)}" fill="${C.white}"/>
@@ -363,9 +362,7 @@ function paperArt(p: PaperPose): string {
 
   // the front page, with a dog-eared bottom corner, swinging about the fold
   const ear = 22;
-  const coverPts: V[] = [[PX0, PY0], [PX1, PY0], [PX1, PY1 - ear], [PX1 - ear, PY1], [PX0, PY1]];
   const cover = `M${P(pr(PX0, PY0))} L${P(pr(PX1, PY0))} L${P(pr(PX1, PY1 - ear))} L${P(pr(PX1 - ear, PY1))} L${P(pr(PX0, PY1))} Q${P(pr(PX0 - 8, (PY0 + PY1) / 2))} ${P(pr(PX0, PY0))} Z`;
-  void coverPts;
   const earD = poly([[PX1, PY1 - ear], [PX1 - ear, PY1], [PX1 - ear - 1, PY1 - ear - 1]]);
   // the front: masthead bar with double rules, two bold headline bars, a photo of a train, columns
   const front = () => {
@@ -410,17 +407,15 @@ function paperArt(p: PaperPose): string {
   const earF = celForm(earD, { base: C.paperWarm, shade: mix(C.paperWarm, C.tileDeep, 0.6), t: tilt, cut: [-3, -3], seed: 75 });
   // a crease across the middle of the front page
   const crease = `<path d="M${P(pr(PX0 + 4, 124))} L${P(pr(PX1 - 4, 128))}" stroke="${C.tileDeep}" stroke-width="2.4" opacity=".7"/><path d="M${P(pr(PX0 + 4, 126.5))} L${P(pr(PX1 - 4, 130.5))}" stroke="${C.white}" stroke-width="1.6" opacity=".8"/>`;
-  const edge = pr(PX1, (PY0 + PY1) / 2);
+  // whoosh: speed arcs trailing off the page's outer edge
   const whoosh = p.whoosh
-    ? `<g transform="${tilt}">${[-46, 0, 46]
-        .map((oy, i) => {
-          const a = pr(PX1 + 10 * Math.sign(c || 1), (PY0 + PY1) / 2 + oy);
-          const s2 = c >= 0 ? 1 : -1;
-          return `<path d="${lens([[a[0] + s2 * 4, a[1]], [a[0] + s2 * 16, a[1] + 2 - i * 2], [a[0] + s2 * 28, a[1] + 8 - i * 4]], 2.6)}" fill="${C.white}" stroke="${C.ink}" stroke-width="2.2"/>`;
-        })
+    ? `<g transform="${tilt}">${[
+        [[PX1 + 16, PY0 + 18], [PX1 + 26, PY0 + 44], [PX1 + 26, PY0 + 74]],
+        [[PX1 + 18, PY0 + 96], [PX1 + 26, PY0 + 118], [PX1 + 22, PY0 + 140]],
+      ]
+        .map((pts) => `<path d="${lens(pts as V[], 3)}" fill="${C.white}" stroke="${C.ink}" stroke-width="2.4" stroke-linejoin="round"/>`)
         .join('')}</g>`
     : '';
-  void edge;
   const tw = p.twinkle ?? [212, 38];
   return composeSymbol({
     ...PAINT,
@@ -593,5 +588,3 @@ export const umbrellaWinFrames: (() => string)[] = [
   () => brollyArt({ spin: 1, tilt: -6, drops: 'fling', swirl: true, twinkle: [44, 44] }),
 ];
 
-/** Shared for the review sheet: the taper helper is re-exported nowhere; keep the import used. */
-void taper;

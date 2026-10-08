@@ -206,6 +206,7 @@
     "rCoin": "Las Fichas de Viaje caen en los rodillos 2 a 6 y llevan un valor de ficha de {min}x a {maxc}x la {bet}, indicado en la ficha. Las de bronce valen menos de 1x, las de plata de 1x a 5x, las de oro de 10x a 50x y las de platino 100x o más. Una Ficha de Viaje no da nada por sí sola: un tren tiene que recogerla.",
     "rExpress": "Activa el Pase Exprés junto al botón de girar y cada tirada se juega a {x}x la {bet}. Cada tirada con Pase Exprés tiene al menos una Locomotora en el rodillo 1. El RTP es {rtp}, como en todos los modos. Las tiradas gratis ganadas en una tirada con Pase Exprés son tiradas gratis normales de Hora Punta.",
     "rPayTitle": "Ganancias de símbolos",
+    "rGeneral": "Cualquier mal funcionamiento anula todas las ganancias y jugadas. Se requiere una conexión a internet estable. En caso de desconexión, vuelve a cargar el juego para terminar las rondas no completadas. El retorno esperado se calcula sobre un gran número de jugadas. La visualización del juego no representa ningún dispositivo físico y tiene fines meramente ilustrativos. Las ganancias se determinan según el importe recibido del servidor de juego remoto y no según los eventos que ocurran en el navegador web. TM and © 2026 Engine.",
     "splashBoost": "Por {cost}x la jugada, una Locomotora en cada tirada.",
     "coachBoost": "Pase Exprés: una Locomotora en cada tirada, por {cost}x la jugada.",
     "errLimit": "Has alcanzado un límite de juego establecido en tu cuenta.",

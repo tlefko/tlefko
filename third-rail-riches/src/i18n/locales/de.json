@@ -207,6 +207,7 @@
     "rExpress": "Schalte den Express-Pass neben der Dreh-Schaltfläche ein, und jeder Dreh wird mit {x}x {bet} gespielt. Jeder Express-Pass-Dreh hat mindestens eine Lokomotive auf Walze 1. Der RTP beträgt {rtp}, wie in jedem Modus. Freispiele, die bei einem Express-Pass-Dreh gewonnen werden, sind normale Rush-Hour-Freispiele.",
     "rPayTitle": "Symbolgewinne",
     "rModesNote": "Der RTP ist die theoretische Rückgabe über eine sehr große Anzahl von Runden. Maximalgewinne sind Vielfache vom {bet}. Wird der Maximalgewinn erreicht, endet die Runde sofort und alle verbleibenden Freispiele verfallen.",
+    "rGeneral": "Bei Fehlfunktionen werden alle Gewinne und Spiele ungültig. Eine stabile Internetverbindung ist erforderlich. Bei einem Verbindungsabbruch lade das Spiel neu, um unvollendete Runden abzuschließen. Die erwartete Rückgabe wird über viele Spiele berechnet. Die Spieldarstellung entspricht keinem physischen Gerät und dient nur zur Veranschaulichung. Gewinne werden gemäß dem vom Remote-Spielserver empfangenen Betrag abgerechnet und nicht anhand von Ereignissen im Webbrowser. TM and © 2026 Engine.",
     "splashBoost": "Für {cost}x Spielbetrag eine Lokomotive bei jedem Dreh.",
     "coachBoost": "Express-Pass: eine Lokomotive bei jedem Dreh, für {cost}x Spielbetrag.",
     "errLimit": "Du hast ein für dein Konto festgelegtes Spiellimit erreicht.",

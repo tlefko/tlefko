@@ -1,70 +1,82 @@
 /**
- * Per-symbol win accents: short and soft, meant to sit under the main `win` flourish (pitched notes
- * stay on D minor pentatonic so they agree with it).
+ * Per-symbol win accents: short and soft, meant to sit under `win` (once per winning symbol, not per
+ * cell). Pitched parts stay on F major pentatonic like the win sting.
  */
 import { hz } from '../core/notes';
 import { block, kick } from '../instruments/drums';
-import { celesta, glock } from '../instruments/tuned';
-import { parrot } from '../instruments/fx';
-import { creak, flap, ironClank, paperRustle, splinters, squelch, whirr } from '../instruments/foley';
-import type { Dest, Studio } from '../core/studio';
+import { glock } from '../instruments/tuned';
+import { brass } from '../instruments/winds';
+import { boing, whoosh } from '../instruments/fx';
+import { cork, flap, grainRattle, paperRustle, splinters } from '../instruments/foley';
+import { chinaClink } from '../instruments/train';
+import { coo, hoHo, meow, squeak, woof } from '../instruments/voices';
 import type { SfxDef } from '../types';
 import { one, withRoom } from './common';
 
-/** A hard little click: chitin, shell or tooth. */
-function click(s: Studio, d: Dest, t: number, f: number, vel: number) {
-  block(s, d, t, f, vel * 0.6, { decay: 0.012 });
-  const bp = s.filter('bandpass', f * 2, 3, d);
-  const g = s.gain(0, bp);
-  s.perc(g.gain, t, vel * 0.6, 0.0002, 0.006);
-  s.noise('white', t, t + 0.015, g);
-}
-
 export const SYMBOL_SFX: SfxDef[] = [
-  one('symCrab', { kind: 'sfx', seconds: 0.35, level: -24, desc: 'crab win accent: a quick claw snip-snap' }, (s, out) => {
+  one('symPretzel', { kind: 'sfx', seconds: 0.45, level: -24, desc: 'pretzel: a salty crunch and a little pop' }, (s, out) => {
     const d = withRoom(s, out, 0.06);
-    click(s, d, 0, 1650, 0.8);
-    block(s, d, 0.002, 900, 0.25, { decay: 0.02 });
-    click(s, d, 0.07, 1750, 0.65);
-    block(s, d, 0.072, 950, 0.2, { decay: 0.02 });
+    grainRattle(s, d, 0, 0.12, 0.9, { density: 900, center: 2600, decay: 0.25 });
+    splinters(s, d, 0, 0.08, 5, 0.45, { center: 1800 });
+    kick(s, d, 0, 0.2, { tone: 110, decay: 0.05 });
+    cork(s, d, 0.13, 700, 0.6);
   }),
-  one('symOcto', { kind: 'sfx', seconds: 0.5, level: -25, desc: 'octopus win accent: a wet squelch and a bubble' }, (s, out) => {
+  one('symCoffee', { kind: 'sfx', seconds: 0.8, level: -25, desc: 'diner coffee: a short slurp and the cup clinking on its saucer' }, (s, out) => {
     const d = withRoom(s, out, 0.08);
-    squelch(s, d, 0, 0.2, 0.8, { f0: 1300, f1: 360 });
+    // slurp: a sucked band of noise rising, bubbling
+    const bp = s.filter('bandpass', 700, 3, d);
+    bp.frequency.setValueAtTime(600, 0);
+    bp.frequency.exponentialRampToValueAtTime(2400, 0.22);
+    const am = s.gain(0.5, bp);
+    s.osc('square', 34, 0, 0.3, s.filter('lowpass', 120, 0.7, s.gain(0.45, am.gain)));
+    const g = s.gain(0, am);
+    g.gain.setValueAtTime(0, 0);
+    g.gain.linearRampToValueAtTime(0.9, 0.05);
+    g.gain.linearRampToValueAtTime(0.6, 0.18);
+    g.gain.linearRampToValueAtTime(0, 0.26);
+    s.noise('pink', 0, 0.3, g);
+    chinaClink(s, d, 0.3, 2350, 0.7);
+    chinaClink(s, d, 0.34, 3020, 0.35);
   }),
-  one('symShark', { kind: 'sfx', seconds: 0.4, level: -24, desc: 'shark win accent: a snapping chomp' }, (s, out) => {
+  one('symNewspaper', { kind: 'sfx', seconds: 0.6, level: -24, desc: 'newspaper: a quick rustle and a crisp flap as it snaps open' }, (s, out) => {
+    const d = withRoom(s, out, 0.08);
+    paperRustle(s, d, 0, 0.16, 0.6);
+    whoosh(s, d, 0.12, 0.14, 0.3, { f0: 900, f1: 3500, q: 0.9, peakAt: 0.8, color: 'white' });
+    flap(s, d, 0.24, 0.9, { f: 1500 });
+    paperRustle(s, d, 0.25, 0.06, 0.5);
+  }),
+  one('symUmbrella', { kind: 'sfx', seconds: 0.7, level: -24, desc: 'umbrella pops open: catch click, a whoosh and the canopy snapping taut with a little boing' }, (s, out) => {
+    const d = withRoom(s, out, 0.08);
+    block(s, d, 0, 2200, 0.4, { decay: 0.01 });
+    whoosh(s, d, 0.01, 0.12, 0.45, { f0: 500, f1: 2600, q: 1, peakAt: 0.85 });
+    flap(s, d, 0.12, 1.0, { f: 700 });
+    kick(s, d, 0.12, 0.3, { tone: 120, decay: 0.05 });
+    boing(s, d, 0.125, 0.25, { f0: 300, f1: 520, decay: 0.35 });
+  }),
+  one('symPigeon', { kind: 'sfx', seconds: 1.1, level: -24, desc: 'pigeon: a soft "croo-ROO-coo" and a wing flutter' }, (s, out) => {
+    const d = withRoom(s, out, 0.08);
+    coo(s, d, 0, 0.9);
+    flap(s, d, 0.62, 0.35, { f: 1100 });
+    flap(s, d, 0.69, 0.3, { f: 1200 });
+  }),
+  one('symCat', { kind: 'sfx', seconds: 0.7, level: -24, desc: 'alley cat: a sly "mee-ow"' }, (s, out) => {
+    const d = withRoom(s, out, 0.08);
+    meow(s, d, 0, 0.9);
+  }),
+  one('symBulldog', { kind: 'sfx', seconds: 0.65, level: -24, desc: 'Officer Bulldog: a gruff "WOOF-woof"' }, (s, out) => {
+    const d = withRoom(s, out, 0.08);
+    woof(s, d, 0, 0.9);
+  }),
+  one('symRat', { kind: 'sfx', seconds: 0.55, level: -25, desc: 'Rivets the rat: a cheeky "squeak-squeak" and a tiny tail flick' }, (s, out) => {
     const d = withRoom(s, out, 0.06);
-    kick(s, d, 0, 0.5, { tone: 95, decay: 0.07 });
-    click(s, d, 0.004, 2300, 0.7);
-    click(s, d, 0.007, 2750, 0.5);
-    splinters(s, d, 0.012, 0.05, 3, 0.35, { center: 1600 });
+    squeak(s, d, 0, 0.9);
+    whoosh(s, d, 0.24, 0.08, 0.15, { f0: 2500, f1: 5000, q: 1.5, peakAt: 0.5, color: 'white' });
   }),
-  one('symParrot', { kind: 'sfx', seconds: 0.6, level: -24, desc: 'parrot win accent: a tiny squawk and a flap' }, (s, out) => {
-    const d = withRoom(s, out, 0.08);
-    parrot(s, d, 0, 0.5, { pitch: 1.35, len: 0.14, whistle: false });
-    flap(s, d, 0.12, 0.45);
-    flap(s, d, 0.21, 0.32);
-  }),
-  one('symAnchor', { kind: 'sfx', seconds: 0.8, level: -24, desc: 'anchor win accent: a slow swinging chain creak and a soft iron clink' }, (s, out) => {
+  one('symConductor', { kind: 'sfx', seconds: 0.85, level: -23, desc: 'Conductor Casey: a jolly "HO-ho!" on a trombone blat' }, (s, out) => {
     const d = withRoom(s, out, 0.1);
-    creak(s, d, 0, 0.45, 0.7, { rate: [[0, 20], [0.5, 42], [1, 24]], body: [[330, 7, 1], [760, 9, 0.6], [1600, 10, 0.3]], jitter: 0.2 });
-    ironClank(s, d, 0.42, 0.3, { f: 1300, decay: 0.12 });
-  }),
-  one('symShell', { kind: 'sfx', seconds: 0.8, level: -24, desc: 'shell win accent: a clam snaps shut and a pearl twinkles' }, (s, out) => {
-    const d = withRoom(s, out, 0.12);
-    click(s, d, 0, 2100, 0.7);
-    click(s, d, 0.012, 2600, 0.5);
-    glock(s, d, 0.08, hz('A6'), 0.25, { decay: 0.6 });
-    glock(s, d, 0.15, hz('D7'), 0.2, { decay: 0.7 });
-    celesta(s, d, 0.15, hz('D6'), 0.15, { decay: 0.6 });
-  }),
-  one('symMap', { kind: 'sfx', seconds: 0.8, level: -24, desc: 'map win accent: a crinkle of paper and a small ding' }, (s, out) => {
-    const d = withRoom(s, out, 0.1);
-    paperRustle(s, d, 0, 0.18, 0.6);
-    glock(s, d, 0.16, hz('D6'), 0.4, { decay: 0.8 });
-  }),
-  one('symCompass', { kind: 'sfx', seconds: 0.6, level: -25, desc: 'compass win accent: the needle whirrs and settles with a tick' }, (s, out) => {
-    const d = withRoom(s, out, 0.08);
-    whirr(s, d, 0, 0.4, 0.7);
+    hoHo(s, d, 0, 0.8);
+    brass(s, d, 0.03, hz('F3'), 0.16, 0.55, { bright: 0.85, vib: false });
+    brass(s, d, 0.25, hz('C3'), 0.24, 0.5, { bright: 0.75, vib: false });
+    glock(s, d, 0.27, hz('C6'), 0.12, { decay: 0.6 });
   }),
 ];

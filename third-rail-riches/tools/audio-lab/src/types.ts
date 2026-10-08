@@ -6,7 +6,7 @@ export type Bank = 'core' | 'extra';
 export interface SfxDef {
   /** Unique asset id, e.g. "reelDrop_2". */
   id: string;
-  /** Runtime name (SfxName) or loop name ("anticipation", "wheelSpin"). */
+  /** Runtime name (SfxName) or loop name ("anticipation", "trainRun"). */
   name: string;
   /** Variation / step index for the runtime `index` option. */
   variant: number;
@@ -34,7 +34,7 @@ export interface StemDef {
 }
 
 export interface TrackDef {
-  id: 'base' | 'tantrum' | 'witching' | 'limbo' | 'bigwin';
+  id: 'base' | 'rush' | 'last' | 'bigwin' | 'surge';
   title: string;
   desc: string;
   bpm: number;

@@ -1,5 +1,7 @@
-/* Panels (track H): parchment sheets in dark wooden frames with brass corners. Text is ink on
-   parchment (high contrast); the art is SVG from src/ui/art.ts (--pk-parchment, --pk-wood, ...). */
+/* Panels (track H): station signage. A cream enamel sheet in a maroon enamel frame with a brass
+   pinstripe and art-deco brass corners, under an emerald enamel header band. Text is ink on cream
+   (high contrast); the art is SVG from src/ui/art.ts (--pk-parchment = cream enamel, --pk-wood =
+   maroon enamel, --pk-corner, ...). */
 .modal {
   position: fixed;
   inset: 0;
@@ -15,7 +17,7 @@
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(8, 5, 3, 0.66);
+  background: rgba(6, 10, 14, 0.68);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }
@@ -35,16 +37,28 @@
   background:
     var(--pk-parchment) 0 0 / 256px 256px padding-box,
     var(--pk-wood) 0 0 / 192px 192px border-box;
-  background-color: var(--paper);
+  background-color: var(--cream);
   box-shadow:
     0 0 0 2.5px var(--ink),
     inset 0 0 0 2.5px var(--ink),
-    inset 0 0 26px rgba(122, 69, 32, 0.28),
+    inset 0 0 0 4.5px var(--gold),
+    inset 0 0 0 5.5px var(--ink),
+    inset 0 0 22px rgba(156, 34, 50, 0.16),
     0 26px 60px rgba(0, 0, 0, 0.62);
   color: var(--parch-ink);
 }
 
-/* brass corner brackets */
+/* a brass pinstripe round the maroon frame */
+.modal-sheet::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 13px;
+  box-shadow: inset 0 0 0 1.5px rgba(244, 183, 58, 0.75);
+  pointer-events: none;
+}
+
+/* art-deco brass corners */
 .mc {
   position: absolute;
   width: 34px;
@@ -87,18 +101,23 @@
   width: min(860px, 100%);
 }
 
-/* the title burned into a wooden header band */
+/* the title on an emerald enamel sign band, ruled in brass */
 .modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px 10px 22px;
-  background: var(--pk-wood) 0 0 / 192px 192px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0, rgba(255, 255, 255, 0) 45%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0) 0 22px, rgba(0, 0, 0, 0.06) 22px 24px),
+    linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
   box-shadow:
-    inset 0 -2.5px 0 var(--ink),
-    inset 0 2px 0 rgba(217, 155, 95, 0.35),
-    0 3px 0 rgba(46, 23, 10, 0.25);
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 -5.5px 0 var(--gold),
+    inset 0 -7px 0 var(--ink),
+    inset 0 4.5px 0 rgba(95, 211, 161, 0.45),
+    0 3px 0 rgba(23, 33, 38, 0.18);
   border-radius: 6px 6px 0 0;
 }
 
@@ -110,7 +129,7 @@
   font-size: 26px;
   line-height: 1.15;
   letter-spacing: 0.03em;
-  color: var(--gold);
+  color: var(--amber-light);
   overflow-wrap: anywhere;
   text-shadow:
     0 3px 0 var(--ink),
@@ -139,7 +158,7 @@
 }
 
 .muted {
-  color: var(--wood-mid);
+  color: var(--muted);
   font-size: 13.5px;
 }
 
@@ -152,12 +171,14 @@
   font-weight: 400;
   font-size: 17px;
   letter-spacing: 0.04em;
-  color: var(--paper);
+  color: var(--cream);
   background: var(--pk-wood) center / 96px auto;
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
-    inset 0 2px 0 rgba(217, 155, 95, 0.4),
-    0 4px 0 rgba(46, 23, 10, 0.45);
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink),
+    inset 0 7px 0 rgba(255, 255, 255, 0.08),
+    0 4px 0 rgba(23, 33, 38, 0.45);
   text-shadow: 0 2px 0 var(--ink);
   transition: filter 0.2s var(--ease-ui), transform 0.2s var(--ease-ui);
 }
@@ -174,14 +195,15 @@
   opacity: 0.55;
 }
 
-/* the main action: a crimson wax button */
+/* the main action: an emerald "go" signal button */
 .btn.primary {
-  background: var(--crimson);
+  background: linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
-    inset 0 3px 0 var(--crimson-light),
-    inset 0 -5px 0 var(--crimson-deep),
-    0 4px 0 rgba(46, 23, 10, 0.45);
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.12),
+    0 4px 0 rgba(23, 33, 38, 0.45);
 }
 
 .btn.wide {
@@ -203,7 +225,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--wood-mid);
+  color: var(--muted);
 }
 
 .bet-line .val {
@@ -226,26 +248,29 @@
   min-width: 0;
   padding: 14px;
   border-radius: 14px;
-  color: var(--paper);
+  color: var(--cream);
   background: var(--pk-wood) 0 0 / 192px 192px;
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
     inset 0 0 0 5px var(--o-trim),
     inset 0 0 0 7px var(--ink),
-    0 6px 0 rgba(46, 23, 10, 0.35);
+    0 0 16px var(--o-glow),
+    0 6px 0 rgba(23, 33, 38, 0.35);
 }
 
 .o-witching {
-  /* Moonlight Raid: moonlit sea trim */
-  --o-trim: var(--accent);
-  --o-accent: #5fd6cc;
-  --o-well: #0d2a44;
+  /* Rush Hour: electric blue trim, a tunnel-blue window */
+  --o-trim: var(--volt);
+  --o-glow: rgba(63, 200, 255, 0.28);
+  --o-accent: var(--volt-light);
+  --o-well: radial-gradient(ellipse at 50% 40%, #1a3f86 0%, var(--volt-night) 55%, #06173d 100%);
 }
 .o-tantrum {
-  /* Blackpowder Raid: powder fire trim */
-  --o-trim: var(--fire);
-  --o-accent: #ff9a3c;
-  --o-well: #3b1508;
+  /* Last Train: gold trim, an amber-lit window */
+  --o-trim: var(--gold);
+  --o-glow: rgba(255, 180, 60, 0.28);
+  --o-accent: var(--amber-light);
+  --o-well: radial-gradient(ellipse at 50% 40%, #5a3510 0%, #2e1a08 60%, #1a0f06 100%);
 }
 
 .offer-art {
@@ -257,6 +282,8 @@
   background: var(--o-well);
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4px var(--gold-deep),
+    inset 0 0 0 5px var(--ink),
     inset 0 6px 16px rgba(0, 0, 0, 0.45);
 }
 
@@ -294,7 +321,7 @@
   margin: 0 0 12px;
   font-size: 13.5px;
   line-height: 1.45;
-  color: var(--parch);
+  color: var(--cream);
   flex: 1;
 }
 
@@ -306,8 +333,7 @@
 
 .vol {
   font-size: 12.5px;
-  color: var(--parch);
-  opacity: 0.85;
+  color: var(--amber-light);
 }
 
 .price {
@@ -322,12 +348,13 @@
   font-family: var(--font-cartoon);
   font-size: 18px;
   letter-spacing: 0.04em;
-  color: var(--paper);
-  background: var(--crimson);
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
-    inset 0 3px 0 var(--crimson-light),
-    inset 0 -5px 0 var(--crimson-deep),
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.12),
     0 4px 0 rgba(0, 0, 0, 0.35);
   text-shadow: 0 2px 0 var(--ink);
   transition: filter 0.2s var(--ease-ui), transform 0.2s var(--ease-ui);
@@ -369,12 +396,12 @@
 }
 
 .confirm-q b {
-  color: var(--crimson);
+  color: var(--maroon);
 }
 
 .confirm-note {
   font-size: 13.5px;
-  color: var(--wood-mid);
+  color: var(--muted);
   margin: 0 0 18px;
 }
 
@@ -398,10 +425,10 @@
 .field-lbl {
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--wood-mid);
+  color: var(--muted);
 }
 
-/* segmented choices: wooden tabs, the chosen one brass */
+/* segmented choices: iron keys, the chosen one brass */
 .seg {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
@@ -418,12 +445,12 @@
   padding: 8px 12px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--paper);
-  background: var(--wood-mid);
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--iron-light) -40%, var(--iron) 60%, var(--iron-deep) 140%);
   box-shadow:
     inset 0 0 0 2px var(--ink),
-    inset 0 2px 0 rgba(217, 155, 95, 0.45),
-    0 3px 0 rgba(46, 23, 10, 0.35);
+    inset 0 2.5px 0 rgba(255, 255, 255, 0.18),
+    0 3px 0 rgba(23, 33, 38, 0.35);
   font-variant-numeric: tabular-nums;
   transition: background 0.2s var(--ease-ui), color 0.2s var(--ease-ui), transform 0.15s var(--ease-ui);
 }
@@ -439,7 +466,7 @@
     inset 0 0 0 2px var(--ink),
     inset 0 2px 0 var(--gold-light),
     inset 0 -3px 0 var(--gold-deep),
-    0 1px 0 rgba(46, 23, 10, 0.35);
+    0 1px 0 rgba(23, 33, 38, 0.35);
   transform: translateY(2px);
 }
 
@@ -453,7 +480,7 @@
   font-size: 13px;
 }
 
-/* checkbox as a brass-rimmed tick box */
+/* checkbox: a brass-rimmed cream tick box, ticked in emerald */
 .check {
   display: flex;
   align-items: center;
@@ -476,7 +503,7 @@
   height: 24px;
   flex: none;
   border-radius: 6px;
-  background: var(--paper);
+  background: var(--cream);
   box-shadow:
     inset 0 0 0 2px var(--ink),
     inset 0 0 0 4px var(--gold);
@@ -489,13 +516,13 @@
   top: 3px;
   width: 7px;
   height: 12px;
-  border: solid var(--crimson);
+  border: solid var(--emerald);
   border-width: 0 4px 4px 0;
   transform: rotate(40deg);
 }
 
 .check input:focus-visible + i {
-  outline: 3px solid var(--fire);
+  outline: 3px solid var(--volt-deep);
   outline-offset: 2px;
 }
 
@@ -543,7 +570,7 @@
   margin-top: 2px;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--wood-mid);
+  color: var(--muted);
   line-height: 1.35;
 }
 
@@ -563,14 +590,14 @@
 
 .row.link:hover:not(:disabled),
 .row.switch:hover {
-  background: rgba(122, 69, 32, 0.12);
+  background: rgba(31, 138, 99, 0.12);
 }
 
 .row + .row {
-  box-shadow: 0 -1px 0 rgba(122, 69, 32, 0.22);
+  box-shadow: 0 -1px 0 rgba(156, 34, 50, 0.2);
 }
 
-/* on/off: a brass lever in a wooden slot */
+/* on/off: a brass knob in an iron slot that lights electric blue */
 .switch {
   cursor: pointer;
   position: relative;
@@ -586,7 +613,7 @@
   width: 52px;
   height: 28px;
   border-radius: 28px;
-  background: var(--wood-deep);
+  background: var(--iron);
   box-shadow:
     inset 0 0 0 2px var(--ink),
     inset 0 3px 4px rgba(0, 0, 0, 0.5);
@@ -612,7 +639,11 @@
 }
 
 .switch input:checked + i {
-  background: var(--fire);
+  background: var(--volt-deep);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 3px 4px rgba(0, 0, 0, 0.35),
+    0 0 10px rgba(63, 200, 255, 0.55);
 }
 
 .switch input:checked + i::after {
@@ -620,7 +651,7 @@
 }
 
 .switch input:focus-visible + i {
-  outline: 3px solid var(--fire);
+  outline: 3px solid var(--volt-deep);
   outline-offset: 2px;
 }
 
@@ -628,13 +659,13 @@
   margin: 14px 4px 0;
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--wood-mid);
+  color: var(--muted);
 }
 
 /* ------------------------------ rules ---------------------------- */
 .rules section {
   padding: 16px 0;
-  border-top: 2px dashed rgba(122, 69, 32, 0.35);
+  border-top: 2px solid rgba(31, 138, 99, 0.35);
 }
 
 .rules section:first-child {
@@ -648,15 +679,15 @@
   font-weight: 400;
   font-size: 20px;
   letter-spacing: 0.03em;
-  color: var(--crimson);
-  text-shadow: 0 1.5px 0 rgba(46, 23, 10, 0.25);
+  color: var(--maroon);
+  text-shadow: 0 1.5px 0 rgba(86, 16, 25, 0.2);
 }
 
 .rules h4 {
   margin: 14px 0 6px;
   font-size: 14.5px;
   font-weight: 700;
-  color: var(--wood-dark);
+  color: var(--emerald-deep);
 }
 
 .rules p {
@@ -690,7 +721,7 @@ table.pay {
 
 table.pay th {
   font-weight: 700;
-  color: var(--wood-mid);
+  color: var(--muted);
   padding: 6px 6px;
   text-align: right;
   font-size: 12.5px;
@@ -699,7 +730,7 @@ table.pay th {
 table.pay td {
   padding: 4px 6px;
   text-align: right;
-  border-top: 1px solid rgba(122, 69, 32, 0.25);
+  border-top: 1px solid rgba(156, 34, 50, 0.2);
   white-space: nowrap;
   font-weight: 600;
 }
@@ -724,12 +755,12 @@ table.kv {
 
 table.kv td {
   padding: 8px 6px;
-  border-top: 1px solid rgba(122, 69, 32, 0.25);
+  border-top: 1px solid rgba(156, 34, 50, 0.2);
 }
 
 table.kv td:not(:first-child) {
   text-align: right;
-  color: var(--wood-dark);
+  color: var(--emerald-deep);
 }
 
 kbd {
@@ -746,7 +777,7 @@ kbd {
   box-shadow:
     inset 0 0 0 1.5px var(--ink),
     inset 0 -2px 0 var(--gold-deep),
-    0 2px 0 rgba(46, 23, 10, 0.35);
+    0 2px 0 rgba(23, 33, 38, 0.35);
   white-space: nowrap;
 }
 
@@ -771,23 +802,23 @@ table.hist th {
   text-align: left;
   font-weight: 700;
   font-size: 12.5px;
-  color: var(--wood-mid);
+  color: var(--muted);
   padding: 6px;
 }
 
 table.hist td {
   padding: 9px 6px;
-  border-top: 1px solid rgba(122, 69, 32, 0.25);
+  border-top: 1px solid rgba(156, 34, 50, 0.2);
 }
 
 table.hist td small {
   display: block;
-  color: var(--wood-mid);
+  color: var(--muted);
   font-size: 12.5px;
 }
 
 table.hist td.won {
-  color: var(--crimson);
+  color: var(--emerald-deep);
   font-weight: 700;
 }
 
@@ -812,8 +843,10 @@ table.hist td.won {
   align-items: center;
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(237, 220, 188, 0.7);
-  box-shadow: inset 0 0 0 1.5px rgba(122, 69, 32, 0.35);
+  background: rgba(239, 226, 192, 0.85);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(31, 138, 99, 0.45),
+    inset 4px 0 0 var(--emerald);
 }
 
 .pc-art {
@@ -852,7 +885,7 @@ table.hist td.won {
 }
 
 .pay-card dt {
-  color: var(--wood-mid);
+  color: var(--muted);
   white-space: nowrap;
 }
 
@@ -897,9 +930,11 @@ table.hist td.won {
 .toast {
   padding: 11px 16px;
   border-radius: 12px;
-  background: var(--pk-parchment) 0 0 / 256px 256px, var(--paper);
+  background: var(--pk-parchment) 0 0 / 256px 256px, var(--cream);
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 5px var(--maroon),
+    inset 0 0 0 6px var(--ink),
     0 14px 34px rgba(0, 0, 0, 0.5);
   color: var(--parch-ink);
   font-size: 14px;
@@ -1033,10 +1068,11 @@ table.hist td.won {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--wood-mid);
+  background: radial-gradient(circle at 38% 32%, var(--emerald-light) -20%, var(--emerald) 45%, var(--emerald-deep) 100%);
   box-shadow:
     inset 0 0 0 2px var(--ink),
-    inset 0 0 0 4px var(--gold);
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink);
 }
 .g-ic svg {
   width: 24px;
@@ -1044,7 +1080,7 @@ table.hist td.won {
 }
 .g-row b {
   font-size: 14px;
-  color: var(--wood-dark);
+  color: var(--emerald-deep);
 }
 .g-row p {
   margin: 2px 0 0;
@@ -1061,7 +1097,7 @@ table.kv.desc td:first-child {
   width: 34%;
   font-weight: 700;
   padding-right: 12px;
-  color: var(--wood-dark);
+  color: var(--emerald-deep);
 }
 table.kv.desc td:nth-child(2) {
   white-space: normal;
@@ -1097,19 +1133,21 @@ table.kv.desc td:nth-child(2) {
 .rule-row.special {
   padding: 8px 10px;
   border-radius: 12px;
-  background: rgba(237, 220, 188, 0.7);
-  box-shadow: inset 0 0 0 1.5px rgba(122, 69, 32, 0.35);
+  background: rgba(239, 226, 192, 0.85);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(31, 138, 99, 0.45),
+    inset 4px 0 0 var(--emerald);
 }
 .rule-row.special p {
   margin: 0;
 }
 
-/* ------------------------- blast chain diagrams ------------------------- */
+/* ------------------------- route diagrams ------------------------- */
 .rule-key {
   padding: 8px 12px;
   border-radius: 10px;
-  background: rgba(212, 44, 36, 0.08);
-  box-shadow: inset 3px 0 0 var(--crimson);
+  background: rgba(156, 34, 50, 0.08);
+  box-shadow: inset 4px 0 0 var(--maroon);
   font-weight: 600;
 }
 
@@ -1135,10 +1173,10 @@ table.kv.desc td:nth-child(2) {
   aspect-ratio: 4 / 3;
   padding: 0;
   border-radius: 10px;
-  background: var(--night, #0f2447);
+  background: linear-gradient(180deg, #1d2a3a 0%, #121b28 100%);
   box-shadow:
     inset 0 0 0 2.5px var(--ink),
-    inset 0 0 0 5px var(--wood-mid),
+    inset 0 0 0 5px var(--maroon),
     inset 0 0 0 6.5px var(--ink);
   overflow: visible;
 }
@@ -1246,8 +1284,8 @@ table.kv.desc td:nth-child(2) {
   font-family: var(--font-cartoon);
   font-weight: 400;
   font-size: 14px;
-  color: var(--paper);
-  background: var(--crimson);
+  color: var(--cream);
+  background: var(--maroon);
   box-shadow: inset 0 0 0 2px var(--ink);
   vertical-align: 1px;
 }
@@ -1268,5 +1306,14 @@ table.kv.desc td:nth-child(2) {
 .pk-low .modal-backdrop {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background: rgba(8, 5, 3, 0.8);
+  background: rgba(6, 10, 14, 0.82);
+}
+
+/* focus on cream enamel: a deep electric blue ring (the light one is for dark plates) */
+.modal-body button:focus-visible,
+.modal-body [tabindex]:focus-visible {
+  outline-color: var(--volt-deep);
+}
+.modal-body .offer button:focus-visible {
+  outline-color: var(--volt-light);
 }

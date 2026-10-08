@@ -235,6 +235,13 @@ function build(catalog) {
     path.join(ROOT, 'tools', 'audio-lab', 'sounds.json'),
     JSON.stringify({ version, sfx: catalog.sfx.map(({ id, name, variant, desc, kind, bank }) => ({ id, name, variant, desc, kind, bank })), tracks: catalog.tracks }, null, 1),
   );
+  // drop MP3s no longer in the build (renamed or removed tracks/banks)
+  for (const f of fs.readdirSync(PUBLIC_AUDIO)) {
+    if (f.endsWith('.mp3') && !report.files[f]) {
+      fs.rmSync(path.join(PUBLIC_AUDIO, f));
+      console.log(`removed stale ${f}`);
+    }
+  }
   const totalBytes = fs.readdirSync(PUBLIC_AUDIO).reduce((a, f) => a + fs.statSync(path.join(PUBLIC_AUDIO, f)).size, 0);
   console.log(`public/audio total: ${(totalBytes / 1024 / 1024).toFixed(2)} MB, version ${version}`);
 }

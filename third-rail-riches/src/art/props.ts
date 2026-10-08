@@ -630,75 +630,32 @@ export function winBarWindow(aspect = 5): { cx: number; cy: number; w: number; h
   return { cx: 0.5, cy: (b.py0 + b.py1) / 2 / b.H, w: (b.px1 - b.px0 - 2 * b.rimW) / b.W, h: (b.py1 - b.py0 - 2 * b.rimW) / b.H };
 }
 
-/** Archimedean spiral groove for a carved volute. */
-function spiralD(cx: number, cy: number, r: number, turns = 1.6, dir = 1): string {
-  const pts: Pt[] = [];
-  const n = 24;
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const a = dir * t * turns * Math.PI * 2;
-    pts.push([cx + Math.cos(a) * r * (0.12 + 0.88 * t), cy + Math.sin(a) * r * (0.12 + 0.88 * t)]);
-  }
-  return smooth(pts, false);
-}
-
-/** Hemp rope lashed round a board end: three slanted turns, centred on x. */
-function lashing(x: number, y0: number, y1: number, g: string): string {
-  return [-11, 0, 11]
-    .map((dx) => {
-      const cx = x + dx;
-      const w = 10.5;
-      const strand = `M${f(cx - w / 2 + 3)} ${y0} L${f(cx + w / 2 + 3)} ${y0} Q${f(cx + w / 2 + 5)} ${y0 + 4} ${f(cx + w / 2 + 3)} ${y0 + 8} L${f(cx + w / 2 - 3)} ${y1 - 8} Q${f(cx + w / 2 - 5)} ${y1 - 4} ${f(cx + w / 2 - 3)} ${y1} L${f(cx - w / 2 - 3)} ${y1} Q${f(cx - w / 2 - 1)} ${y1 - 4} ${f(cx - w / 2 - 3)} ${y1 - 8} L${f(cx - w / 2 + 3)} ${y0 + 8} Q${f(cx - w / 2 + 1)} ${y0 + 4} ${f(cx - w / 2 + 3)} ${y0} Z`;
-      let ticks = '';
-      for (let y = y0 + 6; y < y1 - 4; y += 7.5) {
-        const k = (y - y0) / (y1 - y0);
-        const xx = cx + 3 - 6 * k;
-        ticks += `M${f(xx - 4.4)} ${f(y)} Q${f(xx)} ${f(y + 1)} ${f(xx + 4.4)} ${f(y + 5)} `;
-      }
-      return `<path d="${strand}" fill="url(#${g}rp)" stroke="${C.ink}" stroke-width="3.2" stroke-linejoin="round"/><path d="${ticks}" stroke="${C.woodMid}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-    })
-    .join('');
-}
-
 /**
- * Win plaque: a ship's carved oak nameboard with gilded volute ends, hemp lashings, brass nails,
- * a moon crest, and one long brass-rimmed display window for the total. viewBox height 200,
- * width 200 * aspect (pass the on-screen aspect so the art is never stretched).
+ * Win board: an art-deco station indicator board. A maroon enamel board ruled in brass, with brass
+ * speed-fins and an amber signal lamp at each end, an emerald enamel lozenge either side of the
+ * window, a winged roundel with a lightning bolt on top, and one long brass-rimmed indicator window
+ * (dark tunnel blue) for the total. viewBox height 200, width 200 * aspect (pass the on-screen
+ * aspect so the art is never stretched).
  */
 export function winBarFrame(aspect = 5): string {
   const b = boardGeom(aspect);
   const { W, H } = b;
   const g = nextId('wb');
-  const spine = 'M44 48 C30 66 14 84 14 100 C14 116 30 134 44 152';
-  const end = `<path d="${spine}" stroke="${C.ink}" stroke-width="27" fill="none" stroke-linecap="round"/>
-      <path d="${spine}" stroke="url(#${g}gb)" stroke-width="17" fill="none" stroke-linecap="round"/>
-      <path d="M38 56 C28 70 20 84 19 96" stroke="${C.goldLight}" stroke-width="3.4" fill="none" stroke-linecap="round" opacity=".85"/>
-      ${[
-        [44, 36, -1],
-        [44, 164, 1],
-      ]
-        .map(
-          ([x, y, d]) => `<circle cx="${x}" cy="${y}" r="21" fill="url(#${g}gk)" stroke="${C.ink}" stroke-width="5"/>
-        <path d="${spiralD(x, y, 16, 1.55, d)}" stroke="${C.goldDeep}" stroke-width="3.4" fill="none" stroke-linecap="round"/>
-        <path d="${spiralD(x, y, 16, 1.55, d)}" stroke="${C.ink}" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".6"/>
-        <path d="M${x - 14} ${y - 8} Q${x - 10} ${y - 16} ${x - 2} ${y - 18}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>`,
-        )
-        .join('')}
-      <circle cx="13" cy="100" r="12" fill="url(#${g}gk)" stroke="${C.ink}" stroke-width="4.5"/>
-      <circle cx="9.5" cy="96" r="3.4" fill="#fff" opacity=".75"/>`;
-  const nailXs = [0.05, 0.36, 0.64, 0.95].map((t) => b.px0 + (b.px1 - b.px0) * t);
-  const nail = (x: number, y: number) =>
-    `<circle cx="${f(x)}" cy="${y}" r="5.4" fill="url(#${g}nl)" stroke="${C.ink}" stroke-width="2.4"/><circle cx="${f(x - 1.6)}" cy="${y - 1.8}" r="1.6" fill="#fff" opacity=".75"/>`;
-  const grain = [
-    `M${b.bx0 + 18} 29 C${W * 0.3} 26 ${W * 0.55} 34 ${b.bx1 - 22} 29`,
-    `M${b.bx0 + 30} 171 C${W * 0.35} 175 ${W * 0.62} 167 ${b.bx1 - 26} 172`,
-    `M${b.bx0 + 8} 62 C${b.bx0 + 30} 58 ${b.bx0 + 46} 68 ${b.px0 - 4} 64`,
-    `M${b.bx0 + 12} 132 C${b.bx0 + 30} 136 ${b.bx0 + 50} 128 ${b.px0 - 4} 134`,
-    `M${b.bx1 - 8} 140 C${b.bx1 - 30} 142 ${b.bx1 - 46} 134 ${b.px1 + 4} 138`,
-    `M${b.bx1 - 12} 70 C${b.bx1 - 30} 66 ${b.bx1 - 50} 74 ${b.px1 + 4} 70`,
-  ].join(' ');
   const rr = (x0: number, y0: number, x1: number, y1: number, r: number) =>
     `M${x0 + r} ${y0} L${x1 - r} ${y0} Q${x1} ${y0} ${x1} ${y0 + r} L${x1} ${y1 - r} Q${x1} ${y1} ${x1 - r} ${y1} L${x0 + r} ${y1} Q${x0} ${y1} ${x0} ${y1 - r} L${x0} ${y0 + r} Q${x0} ${y0} ${x0 + r} ${y0} Z`;
+  const rivet = (x: number, y: number, r = 4.6) =>
+    `<circle cx="${f(x)}" cy="${f(y)}" r="${r}" fill="url(#${g}nl)" stroke="${C.ink}" stroke-width="2.2"/><circle cx="${f(x - r * 0.32)}" cy="${f(y - r * 0.36)}" r="${f(r * 0.34)}" fill="#fff" opacity=".8"/>`;
+  // one end: three brass speed-fins behind a round amber signal lamp
+  const fin = (x0: number, y: number, h: number) =>
+    `<path d="${rr(x0, y - h / 2, b.bx0 + 12, y + h / 2, h / 2)}" fill="url(#${g}gb)" stroke="${C.ink}" stroke-width="4"/><path d="M${x0 + h / 2} ${f(y - h / 2 + 3.2)} L${b.bx0} ${f(y - h / 2 + 3.2)}" stroke="${C.goldLight}" stroke-width="2.2" stroke-linecap="round" opacity=".9"/>`;
+  const end = `${fin(22, 58, 15)}${fin(22, 142, 15)}${fin(6, 100, 17)}
+      <circle cx="34" cy="100" r="34" fill="url(#${g}lg)"/>
+      <circle cx="34" cy="100" r="23" fill="${C.ink}"/>
+      <circle cx="34" cy="100" r="20" fill="url(#${g}gk)"/>
+      <circle cx="34" cy="100" r="14" fill="${C.ink}"/>
+      <circle cx="34" cy="100" r="11.8" fill="url(#${g}am)"/>
+      <path d="M27 95 Q29 90 35 89" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".85"/>`;
+  const nailXs = [0.06, 0.36, 0.64, 0.94].map((t) => b.px0 + (b.px1 - b.px0) * t);
   const i0 = b.px0 + b.rimW;
   const i1 = b.px1 - b.rimW;
   const j0 = b.py0 + b.rimW;
@@ -711,49 +668,55 @@ export function winBarFrame(aspect = 5): string {
   ]
     .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.4" fill="${C.goldDeep}" stroke="${C.ink}" stroke-width="1.6"/>`)
     .join('');
+  // emerald enamel lozenge between the board's end and the window
+  const lozenge = (x: number) =>
+    `<path d="M${x} 72 L${x + 15} 100 L${x} 128 L${x - 15} 100 Z" fill="url(#${g}em)" stroke="${C.ink}" stroke-width="3.6" stroke-linejoin="round"/>
+    <path d="M${x} 80 L${x + 10} 100 L${x} 120 L${x - 10} 100 Z" fill="none" stroke="${C.gold}" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M${x - 6} 88 L${x} 78" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+    ${rivet(x, 54, 3.8)}${rivet(x, 146, 3.8)}`;
   const cx = W / 2;
   const wing = (d: number) =>
-    `<path d="M${cx + d * 14} 24 C${cx + d * 28} 8 ${cx + d * 52} 8 ${cx + d * 64} 22 C${cx + d * 50} 18 ${cx + d * 36} 22 ${cx + d * 24} 32 Z" fill="url(#${g}gb)" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M${cx + d * 24} 22 C${cx + d * 34} 15 ${cx + d * 46} 14 ${cx + d * 56} 18" stroke="${C.goldLight}" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".85"/>`;
+    `<path d="M${cx + d * 14} 26 L${cx + d * 66} 14 L${cx + d * 62} 21 L${cx + d * 50} 24 L${cx + d * 56} 26 L${cx + d * 44} 30 L${cx + d * 24} 34 Z" fill="url(#${g}gb)" stroke="${C.ink}" stroke-width="3.6" stroke-linejoin="round"/>
+    <path d="M${cx + d * 22} 26 L${cx + d * 58} 17.5" stroke="${C.goldLight}" stroke-width="2" fill="none" stroke-linecap="round" opacity=".9"/>`;
+  const bolt = `M${cx + 3} 10 L${cx - 6} 24 H${cx} L${cx - 3} 34 L${cx + 7} 19 H${cx + 1} L${cx + 5} 10 Z`;
   const crest = `${wing(-1)}${wing(1)}
+    <circle cx="${cx}" cy="22" r="27" fill="url(#${g}vg)"/>
     <circle cx="${cx}" cy="22" r="19" fill="url(#${g}gk)" stroke="${C.ink}" stroke-width="4.5"/>
-    <circle cx="${cx}" cy="22" r="12.5" fill="${C.night}" stroke="${C.ink}" stroke-width="3"/>
-    <path d="${crescent(cx - 2, 22, 8.5)}" fill="${C.tealLight}"/>
-    <path d="${glint(cx + 5, 17, 3.6)}" fill="${C.moon}"/>
+    <circle cx="${cx}" cy="22" r="12.5" fill="${C.voltNight}" stroke="${C.ink}" stroke-width="3"/>
+    <path d="${bolt}" fill="${C.voltLight}" stroke="${C.ink}" stroke-width="1.6" stroke-linejoin="round"/>
     <path d="M${cx - 12} 12 Q${cx - 6} 6 ${cx + 2} 5.5" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".7"/>`;
   return svgDoc(
     W,
     H,
     `<defs>
-      ${lin(`${g}wd`, [[0, C.woodLight], [0.16, C.wood], [0.6, C.woodMid], [1, C.woodDark]])}
+      ${lin(`${g}wd`, [[0, mix(C.maroon, C.maroonLight, 0.3)], [0.14, C.maroon], [0.62, mix(C.maroon, C.maroonDeep, 0.35)], [1, C.maroonDeep]])}
       ${lin(`${g}gb`, [[0, C.goldLight], [0.45, C.gold], [1, C.goldDeep]], 0, 0, 1, 1)}
       ${rad(`${g}gk`, [[0, C.goldLight], [0.55, C.gold], [1, C.goldDeep]], 0.36, 0.32, 0.72)}
       ${rad(`${g}nl`, [[0, C.goldLight], [0.5, C.gold], [1, C.goldDeep]], 0.36, 0.32, 0.72)}
+      ${rad(`${g}am`, [[0, C.fireCore], [0.4, C.amberLight], [0.75, C.amber], [1, C.amberDeep]], 0.4, 0.36, 0.7)}
+      ${rad(`${g}lg`, [[0.3, C.amber, 0.45], [1, C.amber, 0]])}
+      ${rad(`${g}vg`, [[0.4, C.volt, 0.45], [1, C.volt, 0]])}
+      ${lin(`${g}em`, [[0, C.emeraldLight], [0.35, C.emerald], [1, C.emeraldDeep]], 0, 0, 1, 1)}
       ${lin(`${g}br`, [[0, C.goldLight], [0.3, C.gold], [0.7, C.goldDeep], [1, mix(C.goldDeep, C.ink, 0.3)]])}
-      ${lin(`${g}pn`, [[0, C.nightDeep], [0.55, C.night], [1, mix(C.night, C.seaDeep, 0.35)]])}
+      ${lin(`${g}pn`, [[0, mix(C.voltNight, C.tunnel, 0.55)], [0.55, mix(C.voltNight, C.tunnel, 0.25)], [1, C.voltNight]])}
       ${lin(`${g}sh`, [[0, C.ink, 0.75], [1, C.ink, 0]])}
-      ${lin(`${g}rp`, [[0, C.wood], [0.3, C.woodLight], [0.55, C.paperWarm], [1, C.wood]], 0, 0, 1, 0)}
       <filter id="${g}ds" x="-5%" y="-20%" width="110%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="7"/><feOffset dy="8"/><feComponentTransfer><feFuncA type="linear" slope=".6"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
     <g filter="url(#${g}ds)">
       ${end}
       <g transform="translate(${W} 0) scale(-1 1)">${end}</g>
-      <path d="${rr(b.bx0, b.by0, b.bx1, b.by1, 16)}" fill="url(#${g}wd)" stroke="${C.ink}" stroke-width="6.5"/>
-      <path d="${grain}" stroke="${C.woodDark}" stroke-width="2.4" fill="none" opacity=".5" stroke-linecap="round"/>
-      <ellipse cx="${b.bx0 + 50}" cy="98" rx="8" ry="4" fill="none" stroke="${C.woodDark}" stroke-width="2.2" opacity=".55"/>
-      <ellipse cx="${b.bx1 - 52}" cy="104" rx="7" ry="3.5" fill="none" stroke="${C.woodDark}" stroke-width="2.2" opacity=".55"/>
-      <path d="${rr(b.bx0 + 8, b.by0 + 8, b.bx1 - 8, b.by1 - 8, 9)}" fill="none" stroke="${C.goldDeep}" stroke-width="5.5"/>
-      <path d="${rr(b.bx0 + 8, b.by0 + 8, b.bx1 - 8, b.by1 - 8, 9)}" fill="none" stroke="${C.gold}" stroke-width="2.4"/>
-      <path d="M${b.bx0 + 16} ${b.by0 + 3.5} L${b.bx1 - 16} ${b.by0 + 3.5}" stroke="${C.seaFoam}" stroke-width="2.6" opacity=".45" stroke-linecap="round"/>
-      ${lashing(b.bx0 + 30, b.by0 - 6, b.by1 + 6, g)}
-      ${lashing(b.bx1 - 30, b.by0 - 6, b.by1 + 6, g)}
-      ${nailXs.map((x) => nail(x, 30) + nail(x, 170)).join('')}
+      <path d="${rr(b.bx0, b.by0, b.bx1, b.by1, 14)}" fill="url(#${g}wd)" stroke="${C.ink}" stroke-width="6.5"/>
+      <path d="M${b.bx0 + 16} ${b.by0 + 4} L${b.bx1 - 16} ${b.by0 + 4}" stroke="${C.maroonLight}" stroke-width="3" opacity=".6" stroke-linecap="round"/>
+      <path d="${rr(b.bx0 + 8, b.by0 + 8, b.bx1 - 8, b.by1 - 8, 8)}" fill="none" stroke="${C.goldDeep}" stroke-width="5"/>
+      <path d="${rr(b.bx0 + 8, b.by0 + 8, b.bx1 - 8, b.by1 - 8, 8)}" fill="none" stroke="${C.gold}" stroke-width="2.2"/>
+      ${lozenge(b.bx0 + 37)}${lozenge(b.bx1 - 37)}
+      ${nailXs.map((x) => rivet(x, 30) + rivet(x, 170)).join('')}
       <path d="${rr(b.px0, b.py0, b.px1, b.py1, 16)}" fill="url(#${g}br)" stroke="${C.ink}" stroke-width="5"/>
       <path d="M${b.px0 + 16} ${b.py0 + 3.5} L${b.px1 - 16} ${b.py0 + 3.5}" stroke="${C.goldLight}" stroke-width="2.6" opacity=".9" stroke-linecap="round"/>
       ${rimRivets}
       <path d="${rr(i0, j0, i1, j1, 9)}" fill="url(#${g}pn)" stroke="${C.ink}" stroke-width="4"/>
       <path d="M${i0 + 6} ${j0 + 2} L${i1 - 6} ${j0 + 2} L${i1 - 6} ${j0 + 20} L${i0 + 6} ${j0 + 20} Z" fill="url(#${g}sh)" opacity=".7"/>
-      <path d="M${i0 + 22} ${j1 - 8} L${i1 - 22} ${j1 - 8}" stroke="${C.seaLight}" stroke-width="2" opacity=".18" stroke-linecap="round"/>
+      <path d="M${i0 + 22} ${j1 - 7} L${i1 - 22} ${j1 - 7}" stroke="${C.volt}" stroke-width="2.4" opacity=".35" stroke-linecap="round"/>
       ${crest}
     </g>`,
   );
@@ -925,38 +888,32 @@ export function fuseFlame(pal: [string, string, string]): string {
 
 /* --------------------------------- logo ---------------------------------- */
 /**
- * Pirate scroll banner behind the logo's top word: an arched, sun-aged parchment band whose ends
- * roll up into scrolls, with notched tails folding away behind. viewBox `width` x 120.
+ * Title banner: an art-deco enamel station sign. A maroon enamel band ruled in brass between two
+ * fluted brass end caps, with emerald enamel swallowtail pennants folding away behind and a pair
+ * of amber marker lamps. The band runs straight between the caps (centre y 54). viewBox `width` x 120.
  */
 export function ribbon(width = 520): string {
   const g = nextId('rb');
   const w = width;
   const m = w / 2;
-  const tail = 'M64 44 L4 54 L26 76 L2 102 L64 98 Z';
-  const fold = 'M64 44 L46 50 L46 96 L64 98 Z';
-  const band = `M50 26 Q${m} 2 ${w - 50} 26 L${w - 50} 94 Q${m} 70 50 94 Z`;
-  const edge = `M58 31 Q${m} 9 ${w - 58} 31 M58 89 Q${m} 66 ${w - 58} 89`;
-  const roll = (x: number) => `M${x - 13} 24 Q${x - 13} 16 ${x} 16 Q${x + 13} 16 ${x + 13} 24 L${x + 13} 96 Q${x + 13} 104 ${x} 104 Q${x - 13} 104 ${x - 13} 96 Z`;
-  const blot = (cx: number, cy: number, r: number, seed: number) =>
-    `<path d="${smooth(Array.from({ length: 9 }, (_, i) => pol(cx, cy, r * (0.72 + 0.28 * Math.abs(Math.sin(i * 1.7 + seed))), i * 40)))}" transform="translate(${f(cx)} ${f(cy)}) scale(1 .42) translate(${f(-cx)} ${f(-cy)})"/>`;
-  const stains = [
-    [m - 0.23 * w, 46, 30, 1],
-    [m + 0.18 * w, 70, 34, 2],
-    [m + 0.33 * w, 42, 18, 3],
-    [m - 0.38 * w, 72, 20, 4],
-    [m + 0.02 * w, 36, 14, 5],
-  ]
-    .filter(([x]) => x > 72 && x < w - 72)
-    .map(([x, y, r, sd]) => blot(x, y, r, sd))
-    .join('');
+  const y0 = 21;
+  const y1 = 87;
+  const tail = 'M66 40 L2 46 L22 74 L0 104 L66 100 Z';
+  const fold = 'M66 40 L50 45 L50 98 L66 100 Z';
+  const band = `M60 ${y0} H${w - 60} Q${w - 50} ${y0} ${w - 50} ${y0 + 10} V${y1 - 10} Q${w - 50} ${y1} ${w - 60} ${y1} H60 Q50 ${y1} 50 ${y1 - 10} V${y0 + 10} Q50 ${y0} 60 ${y0} Z`;
+  // a fluted brass end cap with a stepped deco crown and foot
+  const cap = (x: number) =>
+    `M${x - 15} 22 V14 H${x - 9} V8 H${x - 4} V3 H${x + 4} V8 H${x + 9} V14 H${x + 15} V94 H${x + 9} V100 H${x + 4} V105 H${x - 4} V100 H${x - 9} V94 H${x - 15} Z`;
+  const chevrons = (cx: number, dir: number) =>
+    [0, 1].map((k) => `M${f(cx + dir * (k * 9))} 44 L${f(cx + dir * (k * 9 + 8))} 54 L${f(cx + dir * (k * 9))} 64`).join(' ');
   return svgDoc(
     w,
     120,
     `<defs>
-      ${lin(`${g}b`, [[0, C.paper], [0.5, C.paperWarm], [1, mix(C.paperWarm, C.woodLight, 0.6)]])}
-      ${lin(`${g}t`, [[0, mix(C.paperWarm, C.woodLight, 0.55)], [1, mix(C.wood, C.woodLight, 0.4)]])}
-      ${lin(`${g}r`, [[0, C.woodLight], [0.3, C.paper], [0.62, C.paperWarm], [1, C.wood]], 0, 0, 1, 0)}
-      ${blur(`${g}s`, 2.4, 30)}
+      ${lin(`${g}b`, [[0, mix(C.maroon, C.maroonLight, 0.35)], [0.16, C.maroon], [0.7, mix(C.maroon, C.maroonDeep, 0.4)], [1, C.maroonDeep]])}
+      ${lin(`${g}t`, [[0, C.emeraldLight], [0.3, C.emerald], [1, C.emeraldDeep]])}
+      ${lin(`${g}r`, [[0, C.goldDeep], [0.25, C.gold], [0.45, C.goldLight], [0.7, C.gold], [1, C.goldDeep]], 0, 0, 1, 0)}
+      ${rad(`${g}am`, [[0, C.fireCore], [0.45, C.amberLight], [0.8, C.amber], [1, C.amberDeep]], 0.4, 0.36, 0.7)}
       <filter id="${g}ds" x="-5%" y="-20%" width="110%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dy="5"/><feComponentTransfer><feFuncA type="linear" slope=".5"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
     <g filter="url(#${g}ds)" stroke="${C.ink}" stroke-linejoin="round">
@@ -964,22 +921,23 @@ export function ribbon(width = 520): string {
         .map(
           (flip) => `<g ${flip ? `transform="translate(${w} 0) scale(-1 1)"` : ''}>
         <path d="${tail}" fill="url(#${g}t)" stroke-width="5.5"/>
-        <path d="${fold}" fill="${C.woodMid}" opacity=".45" stroke="none"/>
-        <path d="M60 50 L30 60 M60 92 L28 88" stroke="${C.woodMid}" stroke-width="2.2" opacity=".55" fill="none"/></g>`,
+        <path d="${fold}" fill="${C.emeraldDeep}" opacity=".7" stroke="none"/>
+        <path d="M54 52 L18 55 M54 92 L18 96" stroke="${C.gold}" stroke-width="2.4" opacity=".9" fill="none"/></g>`,
         )
         .join('')}
       <path d="${band}" fill="url(#${g}b)" stroke-width="6"/>
-      <g fill="${C.woodLight}" opacity=".26" stroke="none" filter="url(#${g}s)">${stains}</g>
-      <path d="${edge}" stroke="${C.woodLight}" stroke-width="5" fill="none" opacity=".45"/>
-      <path d="M64 30 Q${m} 8 ${w - 64} 30" stroke="#fff" stroke-width="3" fill="none" opacity=".65" stroke-linecap="round"/>
-      <path d="${roll(46)}" fill="url(#${g}r)" stroke-width="5.5"/>
-      <path d="${roll(w - 46)}" fill="url(#${g}r)" stroke-width="5.5"/>
+      <path d="M64 ${y0 + 4} H${w - 64}" stroke="${C.maroonLight}" stroke-width="3" opacity=".6" stroke-linecap="round" fill="none"/>
+      <path d="M66 ${y0 + 9} H${w - 66} M66 ${y1 - 9} H${w - 66}" stroke="${C.gold}" stroke-width="2.8" fill="none"/>
+      <path d="M66 ${y0 + 13} H${w - 66}" stroke="${C.goldDeep}" stroke-width="1.2" opacity=".7" fill="none"/>
+      <path d="M${m - 0.4 * (w - 160)} ${y1 - 4} H${m + 0.4 * (w - 160)}" stroke="${C.ink}" stroke-width="2" opacity=".25" fill="none"/>
+      <path d="${chevrons(63, 1)} ${chevrons(w - 63, -1)}" stroke="${C.gold}" stroke-width="3" stroke-linecap="round" fill="none" opacity=".55"/>
       ${[46, w - 46]
         .map(
-          (x) => `<ellipse cx="${x}" cy="23" rx="11" ry="5.4" fill="${mix(C.paperWarm, C.woodLight, 0.5)}" stroke-width="3"/>
-            <path d="${spiralD(x, 23, 7.5, 1.3)}" transform="translate(${x} 23) scale(1 .5) translate(${-x} -23)" fill="none" stroke="${C.woodMid}" stroke-width="2.4"/>
-            <path d="M${x - 6} 36 L${x - 6} 90" stroke="#fff" stroke-width="3" opacity=".5" stroke-linecap="round"/>
-            <path d="M${x + 7} 32 L${x + 7} 94" stroke="${C.woodMid}" stroke-width="2.2" opacity=".35" stroke-linecap="round"/>`,
+          (x) => `<path d="${cap(x)}" fill="url(#${g}r)" stroke-width="4.5"/>
+            <path d="M${x - 6} 24 V84 M${x + 6} 24 V84" stroke="${C.goldDeep}" stroke-width="2.4" fill="none"/>
+            <path d="M${x - 10} 19 H${x + 8}" stroke="#fff" stroke-width="2.2" opacity=".65" stroke-linecap="round" fill="none"/>
+            <circle cx="${x}" cy="54" r="7.5" fill="url(#${g}am)" stroke-width="3"/>
+            <circle cx="${x - 2.2}" cy="51.8" r="1.9" fill="#fff" stroke="none" opacity=".85"/>`,
         )
         .join('')}
     </g>`,

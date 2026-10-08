@@ -1,7 +1,6 @@
 import { t, num, cjkScript, rtl } from '../../i18n';
 import { BitmapText, CanvasTextMetrics, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture, type FederatedPointerEvent, type Renderer } from 'pixi.js';
 import gsap from 'gsap';
-import { Wheel, type WheelTextures } from '../wheel/Wheel';
 import { Logo } from '../Logo';
 import { bitmapNum, displayText, FONT_UI, type DisplayText, type NumTone } from '../text';
 import type { SymbolTextures } from '../grid/SymbolView';
@@ -10,15 +9,14 @@ import { Particles } from '../fx/Particles';
 import { quality } from '../quality';
 import { speed } from '../timing';
 import { svgTexture, softDotTexture, canvasTexture, freeTexture } from '../textures';
-import { MAX_WIN, CHARGE_MAX, CHARGE_MAX_BOOST, BOOST_COST, BOMB_FUSE } from '../../math/types';
-import { C, composeSymbol, nextId, spikeRing } from '../../art/kit';
-import { SYMBOL_ART } from '../../art/symbols';
-import { chestRays, WHEEL_SEGMENTS, mix, type SegKind } from '../../art/props';
-import { skullAndBones } from '../../art/captain';
+import { MAX_WIN, BOOST_COST, POWER_STEPS, POWER_MULTS } from '../../math/types';
+import { C, nextId } from '../../art/kit';
+import { ART } from '../../art/symbols';
 import { spark as sparkArt } from '../../art/fx';
+import { locoSide } from '../../art/train';
 import stats from '../../stake/stats.json';
-import type { Captain } from '../characters/Captain';
-import type { Parrot } from '../characters/Parrot';
+import type { Conductor } from '../characters/Conductor';
+import type { Rat } from '../characters/Rat';
 
 /* ============================================================================================
  * Opening sequence (track S): the logo drops in and bounces, a light sweep runs across it, Cap'n
@@ -30,7 +28,7 @@ import type { Parrot } from '../characters/Parrot';
  * ========================================================================================== */
 
 /** "Don't show again", stored per game. */
-const SKIP_KEY = 'powder-keg-cove.intro.skip';
+const SKIP_KEY = 'third-rail-riches.intro.skip';
 
 /** True when the player asked not to see the intro again. */
 export function introSkipped(): boolean {
@@ -146,8 +144,9 @@ function seeded(seed: number) {
 }
 
 /**
- * Feature card: a mitred oak frame with brass corner plates round a night-blue panel. The short
- * side is 300 units (`aspect` = h / w), so the frame keeps its weight on wide, short cards.
+ * Feature card: a maroon enamel frame ruled in brass, with art-deco brass corner plates and rivets,
+ * round a dark station-tile panel. The short side is 300 units (`aspect` = h / w), so the frame
+ * keeps its weight on wide, short cards.
  */
 function boardSvg(aspect: number): string {
   const W = aspect >= 1 ? 300 : Math.round(300 / aspect);
@@ -158,87 +157,83 @@ function boardSvg(aspect: number): string {
   const i = { x0: o.x0 + b, y0: o.y0 + b, x1: o.x1 - b, y1: o.y1 - b };
   const outer = roundRect(o.x0, o.y0, o.x1, o.y1, 20);
   const inner = roundRect(i.x0, i.y0, i.x1, i.y1, 10);
-  const grain: string[] = [];
-  const vn = Math.max(4, Math.round((o.y1 - o.y0) / 38));
-  const knots = [
-    [o.x0 + b * 0.52, o.y0 + (o.y1 - o.y0) * 0.4, 2.6, 5.4],
-    [o.x1 - b * 0.48, o.y0 + (o.y1 - o.y0) * 0.68, 2.4, 4.8],
-    [o.x0 + (o.x1 - o.x0) * 0.63, o.y0 + b * 0.5, 5.6, 2.5],
-    [o.x0 + (o.x1 - o.x0) * 0.31, o.y1 - b * 0.52, 5, 2.3],
-  ]
-    .map(([x, y, rx, ry]) => `<ellipse cx="${F(x)}" cy="${F(y)}" rx="${F(rx)}" ry="${F(ry)}"/>`)
-    .join('');
-  const hn = Math.max(7, Math.round((o.x1 - o.x0) / 40));
-  [0.3, 0.64].forEach((k, j) => {
-    grain.push(wobble(o.x0 + 24, o.y0 + b * k, o.x1 - 24, o.y0 + b * k + 1, 1.3, hn, j + 1));
-    grain.push(wobble(o.x0 + 24, o.y1 - b * k, o.x1 - 24, o.y1 - b * k - 1, 1.3, hn, j + 4));
-    grain.push(wobble(o.x0 + b * k, o.y0 + 24, o.x0 + b * k + 1, o.y1 - 24, 1.3, vn, j + 7));
-    grain.push(wobble(o.x1 - b * k, o.y0 + 24, o.x1 - b * k - 1, o.y1 - 24, 1.3, vn, j + 9));
-  });
-  const miter = (
-    [
-      [o.x0, o.y0, i.x0, i.y0],
-      [o.x1, o.y0, i.x1, i.y0],
-      [o.x0, o.y1, i.x0, i.y1],
-      [o.x1, o.y1, i.x1, i.y1],
-    ] as const
-  )
-    .map(([ax, ay, bx, by]) => `M${F(ax + (bx - ax) * 0.3)} ${F(ay + (by - ay) * 0.3)} L${F(bx)} ${F(by)}`)
-    .join(' ');
   const q = 2.5;
-  const PL = 42;
-  const PT = 14;
-  const PR = 16;
+  const PL = 44;
+  const PT = 13;
   const corners = [
     [o.x0, o.y0, 1, 1],
     [o.x1, o.y0, -1, 1],
     [o.x0, o.y1, 1, -1],
     [o.x1, o.y1, -1, -1],
   ] as const;
+  // stepped (ziggurat) deco corner plates
   const plates = corners
     .map(([cx, cy, sx, sy]) => {
       const p = (u: number, v: number) => `${F(cx + sx * u)} ${F(cy + sy * v)}`;
-      return `M${p(q, q + PR)} Q${p(q, q)} ${p(q + PR, q)} L${p(q + PL, q)} L${p(q + PL, q + PT)} L${p(q + PT, q + PT)} L${p(q + PT, q + PL)} L${p(q, q + PL)} Z`;
+      return `M${p(q, q + 12)} Q${p(q, q)} ${p(q + 12, q)} L${p(q + PL, q)} L${p(q + PL, q + PT)} L${p(q + PT + 12, q + PT)} L${p(q + PT + 12, q + PT + 7)} L${p(q + PT + 7, q + PT + 7)} L${p(q + PT + 7, q + PT + 12)} L${p(q + PT, q + PT + 12)} L${p(q + PT, q + PL)} L${p(q, q + PL)} Z`;
+    })
+    .join(' ');
+  const inlays = corners
+    .map(([cx, cy, sx, sy]) => {
+      const p = (u: number, v: number) => `${F(cx + sx * u)} ${F(cy + sy * v)}`;
+      return `M${p(q + 5, q + 5)} L${p(q + 13, q + 5)} L${p(q + 5, q + 13)} Z`;
     })
     .join(' ');
   const rivetAt = corners.flatMap(([cx, cy, sx, sy]) =>
     [
-      [q + PL - 8, q + PT / 2],
-      [q + PT / 2, q + PL - 8],
-      [q + 9, q + 9],
+      [q + PL - 7, q + PT / 2],
+      [q + PT / 2, q + PL - 7],
     ].map(([u, v]) => [cx + sx * u, cy + sy * v]),
   );
+  // rivets along the frame's long sides
+  const sideN = Math.max(2, Math.round((o.y1 - o.y0 - 120) / 70));
+  for (let k = 1; k <= sideN; k++) {
+    const y = o.y0 + 60 + ((o.y1 - o.y0 - 120) * (k - 0.5)) / sideN;
+    rivetAt.push([o.x0 + b / 2, y], [o.x1 - b / 2, y]);
+  }
+  const topN = Math.max(1, Math.round((o.x1 - o.x0 - 120) / 70));
+  for (let k = 1; k <= topN; k++) {
+    const x = o.x0 + 60 + ((o.x1 - o.x0 - 120) * (k - 0.5)) / topN;
+    rivetAt.push([x, o.y0 + b / 2], [x, o.y1 - b / 2]);
+  }
   const rivets = rivetAt.map(([x, y]) => `<circle cx="${F(x)}" cy="${F(y)}" r="3.4"/>`).join('');
   const glints = rivetAt.map(([x, y]) => `<circle cx="${F(x - 1)}" cy="${F(y - 1.1)}" r="1.2"/>`).join('');
   const panel = roundRect(i.x0 + 2, i.y0 + 2, i.x1 - 2, i.y1 - 2, 9);
+  // faint glazed wall tiles in the panel (brick bond)
+  let tiles = '';
+  const tw = 34;
+  const th = 17;
   const rnd = seeded(H * 7 + 3);
-  let stars = '';
-  const nStars = Math.round(((i.x1 - i.x0) * (i.y1 - i.y0)) / 1500);
-  for (let k = 0; k < nStars; k++) stars += `<circle cx="${F(i.x0 + 8 + rnd() * (i.x1 - i.x0 - 16))}" cy="${F(i.y0 + 8 + rnd() * (i.y1 - i.y0 - 16))}" r="${F(0.6 + rnd() * 1)}"/>`;
+  for (let r = 0, y = i.y0 + 2; y < i.y1; r++, y += th) {
+    for (let x = i.x0 + 2 - (r % 2 ? tw / 2 : 0); x < i.x1; x += tw) tiles += `<rect x="${F(x + 1)}" y="${F(y + 1)}" width="${tw - 2}" height="${th - 2}" rx="3" opacity="${F(0.6 + rnd() * 0.4)}"/>`;
+  }
+  // a hand-inked lit edge along the frame's top
+  const lit = wobble(o.x0 + 22, o.y0 + 3.5, o.x1 - 22, o.y0 + 3.5, 0.6, Math.max(4, Math.round((o.x1 - o.x0) / 50)), 2);
   return svgDoc(
     W,
     H,
-    `${celDefs(id, 0.8)}<clipPath id="${id}clip"><path d="${panel}"/></clipPath>`,
+    `${celDefs(id, 0.8)}<clipPath id="${id}clip"><path d="${panel}"/></clipPath>
+    <linearGradient id="${id}pn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.uniformDeep}"/><stop offset="1" stop-color="${C.tunnel}"/></linearGradient>
+    <linearGradient id="${id}br" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${C.goldLight}"/><stop offset=".45" stop-color="${C.gold}"/><stop offset="1" stop-color="${C.goldDeep}"/></linearGradient>`,
     `<g filter="url(#${id}drop)">
-    <path d="${outer} ${inner}" fill="${C.wood}" fill-rule="evenodd" filter="url(#${id}cel)"/>
-    <g fill="none" stroke="${C.woodMid}" stroke-width="2" stroke-linecap="round" opacity=".75">${grain.map((d) => `<path d="${d}"/>`).join('')}</g>
-    <g fill="${C.woodMid}" stroke="${C.woodDark}" stroke-width="1.5">${knots}</g>
-    <path d="${roundRect(o.x0 + 4.5, o.y0 + 4.5, o.x1 - 4.5, o.y1 - 4.5, 16)}" fill="none" stroke="${C.woodLight}" stroke-width="2" opacity=".5"/>
-    <path d="${miter}" stroke="${C.ink}" stroke-width="2.6" stroke-linecap="round" opacity=".8"/>
-    <path d="${panel}" fill="${C.nightDeep}"/>
-    <g fill="${C.moonGlow}" opacity=".22">${stars}</g>
-    <g clip-path="url(#${id}clip)"><path d="${panel}" fill="none" stroke="#000" stroke-width="16" opacity=".55" filter="url(#${id}soft)"/></g>
-    <path d="${panel}" fill="none" stroke="${C.woodDeep}" stroke-width="3"/>
+    <path d="${outer} ${inner}" fill="${C.maroon}" fill-rule="evenodd" filter="url(#${id}cel)"/>
+    <path d="${roundRect(o.x0 + 4.5, o.y0 + 4.5, o.x1 - 4.5, o.y1 - 4.5, 16)}" fill="none" stroke="${C.maroonLight}" stroke-width="2" opacity=".45"/>
+    <path d="${lit}" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".35"/>
+    <path d="${roundRect(o.x0 + b / 2 + 4, o.y0 + b / 2 + 4, o.x1 - b / 2 - 4, o.y1 - b / 2 - 4, 13)}" fill="none" stroke="${C.gold}" stroke-width="1.8" opacity=".7"/>
+    <path d="${panel}" fill="url(#${id}pn)"/>
+    <g clip-path="url(#${id}clip)"><g fill="none" stroke="${C.uniformLight}" stroke-width="1.2" opacity=".14">${tiles}</g><path d="${panel}" fill="none" stroke="#000" stroke-width="16" opacity=".55" filter="url(#${id}soft)"/></g>
+    <path d="${panel}" fill="none" stroke="${C.goldDeep}" stroke-width="3"/>
     <path d="${outer} ${inner}" fill="none" stroke="${C.ink}" stroke-width="5.5" stroke-linejoin="round"/>
-    <path d="${plates}" fill="${C.gold}" filter="url(#${id}cel)"/>
+    <path d="${plates}" fill="url(#${id}br)" filter="url(#${id}cel)"/>
     <path d="${plates}" fill="none" stroke="${C.ink}" stroke-width="3" stroke-linejoin="round"/>
-    <g fill="${C.goldLight}" stroke="${C.ink}" stroke-width="1.8">${rivets}</g>
+    <path d="${inlays}" fill="${C.emerald}" stroke="${C.ink}" stroke-width="1.6" stroke-linejoin="round"/>
+    <g fill="${C.gold}" stroke="${C.ink}" stroke-width="1.8">${rivets}</g>
     <g fill="#fff" opacity=".8">${glints}</g>
   </g>`,
   );
 }
 
-/** PLAY plaque, the part that presses: a riveted gold rim round a crimson lacquer face. */
+/** PLAY plaque, the part that presses: a riveted brass rim round an emerald enamel "go" face, with an amber signal lamp at each end. */
 function playTopSvg(): string {
   const id = nextId('pt');
   const rim = pill(12, 8, 376, 118);
@@ -246,29 +241,32 @@ function playTopSvg(): string {
   const studs: [number, number][] = [];
   for (let k = 0; k < 6; k++) studs.push([110 + k * 36, 16.5], [110 + k * 36, 117.5]);
   const rivets = studs.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.2"/>`).join('');
-  const bolt = (x: number) => `<circle cx="${x}" cy="67" r="9.5" fill="${C.gold}" stroke="${C.ink}" stroke-width="3.5"/><path d="M${x - 5} ${67 - 5} L${x + 5} ${67 + 5}" stroke="${C.goldDeep}" stroke-width="2.6" stroke-linecap="round"/><circle cx="${x - 3}" cy="63.5" r="2" fill="#fff" opacity=".85"/>`;
+  const lamp = (x: number) =>
+    `<circle cx="${x}" cy="67" r="13" fill="${C.ink}"/><circle cx="${x}" cy="67" r="10.5" fill="url(#${id}am)"/><circle cx="${x - 3.5}" cy="63" r="2.6" fill="#fff" opacity=".9"/>`;
   return svgDoc(
     PLAY_W,
     PLAY_H,
-    celDefs(id, 1, 0.34, 0.5),
-    `<path d="${rim}" fill="${C.gold}" filter="url(#${id}cel)"/>
+    `${celDefs(id, 1, 0.34, 0.5)}
+    <linearGradient id="${id}br" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.goldLight}"/><stop offset=".4" stop-color="${C.gold}"/><stop offset="1" stop-color="${C.goldDeep}"/></linearGradient>
+    <linearGradient id="${id}em" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.emeraldLight}"/><stop offset=".35" stop-color="${C.emerald}"/><stop offset="1" stop-color="${C.emeraldDeep}"/></linearGradient>
+    <radialGradient id="${id}am" cx=".4" cy=".36" r=".7"><stop offset="0" stop-color="${C.fireCore}"/><stop offset=".45" stop-color="${C.amberLight}"/><stop offset=".8" stop-color="${C.amber}"/><stop offset="1" stop-color="${C.amberDeep}"/></radialGradient>`,
+    `<path d="${rim}" fill="url(#${id}br)" filter="url(#${id}cel)"/>
     <path d="${pill(19, 13, 362, 108)}" fill="none" stroke="${C.goldLight}" stroke-width="3" opacity=".55"/>
-    <g fill="${C.goldLight}" stroke="${C.ink}" stroke-width="2.4">${rivets}</g>
-    <path d="${face}" fill="${C.crimson}" filter="url(#${id}cel)"/>
-    <path d="M73 27 H327 Q352 28 364 45 Q340 36 200 36 Q60 36 36 45 Q48 28 73 27 Z" fill="${C.crimsonDeep}" opacity=".65"/>
-    <path d="M82 40 Q200 31 318 40 Q308 50 200 50 Q92 50 82 40 Z" fill="#fff" opacity=".3"/>
-    <path d="M292 101 Q330 99 352 82" stroke="${C.crimsonLight}" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>
+    <g fill="${C.gold}" stroke="${C.ink}" stroke-width="2.4">${rivets}</g>
+    <path d="${face}" fill="url(#${id}em)" filter="url(#${id}cel)"/>
+    <path d="${pill(40, 32, 320, 70)}" fill="none" stroke="${C.gold}" stroke-width="2.4" opacity=".8"/>
+    <path d="M82 40 Q200 31 318 40 Q308 50 200 50 Q92 50 82 40 Z" fill="#fff" opacity=".22"/>
     <path d="${rim}" fill="none" stroke="${C.ink}" stroke-width="7"/>
     <path d="${face}" fill="none" stroke="${C.ink}" stroke-width="5"/>
-    ${bolt(52)}${bolt(348)}`,
+    ${lamp(52)}${lamp(348)}`,
   );
 }
 
-/** The plaque's lacquered edge below the face (it shows when the face is up) and its cast shadow. */
+/** The plaque's enamel edge below the face (it shows when the face is up) and its cast shadow. */
 function playBaseSvg(): string {
   const id = nextId('pb');
   const body = pill(12, 20, 376, 118);
-  return svgDoc(PLAY_W, PLAY_H, celDefs(id, 1), `<g filter="url(#${id}drop)"><path d="${body}" fill="${C.crimsonDeep}"/><path d="M40 118 Q200 136 360 118" stroke="${C.ember}" stroke-width="6" fill="none" opacity=".6"/><path d="${body}" fill="none" stroke="${C.ink}" stroke-width="7"/></g>`);
+  return svgDoc(PLAY_W, PLAY_H, celDefs(id, 1), `<g filter="url(#${id}drop)"><path d="${body}" fill="${C.goldDeep}"/><path d="M40 118 Q200 136 360 118" stroke="${C.ink}" stroke-width="6" fill="none" opacity=".3"/><path d="${body}" fill="none" stroke="${C.ink}" stroke-width="7"/></g>`);
 }
 
 function checkBoxSvg(): string {
@@ -278,7 +276,7 @@ function checkBoxSvg(): string {
     64,
     64,
     celDefs(id, 0.35, 0.3, 0.6),
-    `<g filter="url(#${id}drop)"><path d="${box}" fill="${C.paperWarm}" filter="url(#${id}cel)"/><path d="${roundRect(13, 12, 51, 50, 7)}" fill="none" stroke="${C.g2}" stroke-width="2" opacity=".7"/><path d="${box}" fill="none" stroke="${C.ink}" stroke-width="4.5"/></g>`,
+    `<g filter="url(#${id}drop)"><path d="${box}" fill="${C.cream}" filter="url(#${id}cel)"/><path d="${roundRect(13, 12, 51, 50, 7)}" fill="none" stroke="${C.gold}" stroke-width="2.4"/><path d="${box}" fill="none" stroke="${C.ink}" stroke-width="4.5"/></g>`,
   );
 }
 
@@ -289,25 +287,31 @@ function checkMarkSvg(): string {
     64,
     64,
     '',
-    `<path d="${d}" fill="none" stroke="${C.ink}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${C.fireDeep}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 32 L28 41" stroke="${C.fire}" stroke-width="2.6" stroke-linecap="round"/>`,
+    `<path d="${d}" fill="none" stroke="${C.ink}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${C.emerald}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 32 L28 41" stroke="${C.emeraldLight}" stroke-width="2.6" stroke-linecap="round"/>`,
   );
 }
 
-/** Carousel arrow: a brass-rimmed oak knob with a paper chevron (points right; mirrored for left). */
+/** Carousel arrow: a riveted brass bezel round an emerald enamel button with a cream chevron (points right; mirrored for left). */
 function arrowSvg(): string {
   const id = nextId('ar');
+  const rv = [0, 60, 120, 180, 240, 300]
+    .map((d) => {
+      const a = ((d + 30) * Math.PI) / 180;
+      return `<circle cx="${F(48 + Math.sin(a) * 32.5)}" cy="${F(45 - Math.cos(a) * 32.5)}" r="2.2"/>`;
+    })
+    .join('');
   return svgDoc(
     96,
     96,
-    celDefs(id, 0.5),
+    `${celDefs(id, 0.5)}<radialGradient id="${id}em" cx=".38" cy=".32" r=".72"><stop offset="0" stop-color="${C.emeraldLight}"/><stop offset=".45" stop-color="${C.emerald}"/><stop offset="1" stop-color="${C.emeraldDeep}"/></radialGradient>`,
     `<g filter="url(#${id}drop)">
     <circle cx="48" cy="45" r="37" fill="${C.gold}" filter="url(#${id}cel)"/>
-    <circle cx="48" cy="45" r="28" fill="${C.woodMid}" filter="url(#${id}cel)"/>
-    <path d="${wobble(30, 38, 66, 37, 1.2, 4, 3)} ${wobble(28, 50, 68, 51, 1.2, 4, 5)}" stroke="${C.woodDark}" stroke-width="2" fill="none" opacity=".6"/>
+    <g fill="${C.goldDeep}" stroke="${C.ink}" stroke-width="1">${rv}</g>
+    <circle cx="48" cy="45" r="28" fill="url(#${id}em)"/>
     <circle cx="48" cy="45" r="37" fill="none" stroke="${C.ink}" stroke-width="5"/>
     <circle cx="48" cy="45" r="28" fill="none" stroke="${C.ink}" stroke-width="3.5"/>
     <path d="M42 30 L57 45 L42 60" fill="none" stroke="${C.ink}" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M42 30 L57 45 L42 60" fill="none" stroke="${C.paper}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M42 30 L57 45 L42 60" fill="none" stroke="${C.cream}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M24 32 Q32 17 48 14" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".6"/>
   </g>`,
   );
@@ -319,59 +323,36 @@ function dotSvg(on: boolean): string {
     32,
     '',
     on
-      ? `<circle cx="16" cy="16" r="10.5" fill="${C.fireHot}" stroke="${C.ink}" stroke-width="3.2"/><circle cx="16" cy="16" r="5.5" fill="${C.fireCore}"/><circle cx="12.8" cy="12.4" r="2" fill="#fff"/>`
+      ? `<circle cx="16" cy="16" r="14" fill="${C.volt}" opacity=".35"/><circle cx="16" cy="16" r="10.5" fill="${C.voltLight}" stroke="${C.ink}" stroke-width="3.2"/><circle cx="16" cy="16" r="5.5" fill="${C.voltCore}"/><circle cx="12.8" cy="12.4" r="2" fill="#fff"/>`
       : `<circle cx="16" cy="16" r="8.5" fill="${C.goldDeep}" stroke="${C.ink}" stroke-width="3.2"/><circle cx="13.8" cy="13.4" r="2.2" fill="${C.gold}" opacity=".85"/>`,
   );
 }
 
-/** Small dark-oak badge plaque (volatility, max win). `aspect` = w / h. */
+/** Small enamel badge plaque (volatility, max win): maroon enamel ruled in brass, rivets at the ends. `aspect` = w / h. */
 function plaqueSvg(aspect: number): string {
   const H = 100;
   const W = Math.round(H * aspect);
   const id = nextId('pq');
-  const body = roundRect(5, 4, W - 5, H - 11, 24);
+  const body = roundRect(5, 4, W - 5, H - 11, 20);
   return svgDoc(
     W,
     H,
     celDefs(id, 0.6),
     `<g filter="url(#${id}drop)">
-    <path d="${body}" fill="${C.woodDark}" filter="url(#${id}cel)"/>
-    <path d="${wobble(28, 30, W - 28, 31, 1.2, 6, 2)} ${wobble(24, 62, W - 24, 61, 1.2, 6, 6)}" stroke="${C.woodMid}" stroke-width="2.2" fill="none" opacity=".55"/>
-    <path d="${roundRect(13, 12, W - 13, H - 19, 16)}" fill="none" stroke="${C.gold}" stroke-width="2.4" opacity=".75"/>
+    <path d="${body}" fill="${C.maroon}" filter="url(#${id}cel)"/>
+    <path d="${roundRect(13, 12, W - 13, H - 19, 13)}" fill="none" stroke="${C.gold}" stroke-width="2.6"/>
+    <circle cx="22" cy="${(H - 7) / 2}" r="4" fill="${C.gold}" stroke="${C.ink}" stroke-width="1.8"/>
+    <circle cx="${W - 22}" cy="${(H - 7) / 2}" r="4" fill="${C.gold}" stroke="${C.ink}" stroke-width="1.8"/>
     <path d="${body}" fill="none" stroke="${C.ink}" stroke-width="5"/>
   </g>`,
   );
 }
 
 function skullPipSvg(lit: boolean): string {
-  return svgDoc(64, 64, '', skullAndBones(32, 30, 50, lit ? C.paper : C.g4, false));
+  // a little lightning-bolt pip (volatility)
+  return svgDoc(64, 64, '', `<path d="M36 4 L14 36 H30 L24 60 L50 26 H34 L42 4 Z" fill="${lit ? C.voltLight : C.g4}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>`);
 }
 
-/** Kaboom Bomb stand-in until track D's SYMBOL_ART[11] lands: an iron shell, brass collar, lit fuse. */
-function bombStandInSvg(hot: boolean): string {
-  const g = nextId('bm');
-  const iron = hot ? mix(C.inkSoft, C.crimsonDeep, 0.6) : C.inkSoft;
-  const fuse = 'M128 66 C126 48 138 36 154 36 C166 36 172 30 172 24';
-  const cracks = hot ? `<path d="M100 130 L114 146 L106 162 M150 170 L162 158 L176 166 M126 196 L134 184" stroke="${C.fireHot}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : '';
-  return composeSymbol({
-    shade: 0.36,
-    light: 0.35,
-    defs: `<radialGradient id="${g}" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${C.fireHot}" stop-opacity=".9"/><stop offset="1" stop-color="${C.fire}" stop-opacity="0"/></radialGradient>`,
-    under: hot ? `<circle cx="128" cy="150" r="120" fill="url(#${g})" opacity=".6"/>` : '',
-    layers: [
-      { fills: `<circle cx="128" cy="150" r="80" fill="${iron}"/>`, lines: `<circle cx="128" cy="150" r="80"/>` },
-      { fills: `<rect x="104" y="60" width="48" height="26" rx="7" fill="${C.gold}"/>`, lines: `<rect x="104" y="60" width="48" height="26" rx="7"/>` },
-    ],
-    top: `<path d="${fuse}" fill="none" stroke="${C.ink}" stroke-width="13" stroke-linecap="round"/>
-      <path d="${fuse}" fill="none" stroke="${C.paperWarm}" stroke-width="6" stroke-linecap="round" stroke-dasharray="7 5"/>
-      <path d="M76 124 Q88 96 118 86" stroke="${hot ? C.fireHot : C.steelLight}" stroke-width="10" fill="none" stroke-linecap="round" opacity=".5"/>
-      ${cracks}
-      <path d="${spikeRing(172, 24, 6, 19, 8, 10)}" fill="${C.fireHot}" stroke="${C.ink}" stroke-width="2.6" stroke-linejoin="round"/>
-      <circle cx="172" cy="24" r="6" fill="${C.fireCore}"/>`,
-  });
-}
-
-/** Powder Boost lever plate; the slot glows when it is on. 160 x 100. */
 function leverBaseSvg(on: boolean): string {
   const id = nextId('lv');
   const plate = pill(8, 44, 144, 44);
@@ -382,9 +363,11 @@ function leverBaseSvg(on: boolean): string {
     100,
     celDefs(id, 0.6),
     `<g filter="url(#${id}drop)">
-    <path d="${plate}" fill="${C.bronze}" filter="url(#${id}cel)"/>
-    <path d="${slot}" fill="${on ? C.fireHot : C.woodDeep}"/>
-    ${on ? `<path d="${pill(40, 61.5, 80, 9)}" fill="${C.fireCore}"/>` : ''}
+    ${on ? `<path d="${pill(0, 36, 160, 60)}" fill="${C.volt}" opacity=".3"/>` : ''}
+    <path d="${plate}" fill="${C.iron}" filter="url(#${id}cel)"/>
+    <path d="${pill(13, 48, 134, 36)}" fill="none" stroke="${C.gold}" stroke-width="2" opacity=".8"/>
+    <path d="${slot}" fill="${on ? C.volt : C.tunnel}"/>
+    ${on ? `<path d="${pill(40, 61.5, 80, 9)}" fill="${C.voltCore}"/>` : ''}
     <path d="${slot}" fill="none" stroke="${C.ink}" stroke-width="3"/>
     ${screw(22)}${screw(138)}
     <path d="${plate}" fill="none" stroke="${C.ink}" stroke-width="4.5"/>
@@ -392,7 +375,7 @@ function leverBaseSvg(on: boolean): string {
   );
 }
 
-/** Lever handle: steel rod and red knob; pivot at (32, 116). 64 x 128. */
+/** Lever handle: steel rod and maroon knob; pivot at (32, 116). 64 x 128. */
 function leverHandleSvg(): string {
   const id = nextId('lh');
   return svgDoc(
@@ -402,7 +385,7 @@ function leverHandleSvg(): string {
     `<path d="M32 116 L32 34" stroke="${C.ink}" stroke-width="13" stroke-linecap="round"/>
     <path d="M32 116 L32 34" stroke="${C.steel}" stroke-width="7" stroke-linecap="round"/>
     <path d="M30 108 L30 40" stroke="${C.steelLight}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
-    <circle cx="32" cy="26" r="19" fill="${C.crimson}" filter="url(#${id}cel)"/>
+    <circle cx="32" cy="26" r="19" fill="${C.maroon}" filter="url(#${id}cel)"/>
     <circle cx="32" cy="26" r="19" fill="none" stroke="${C.ink}" stroke-width="4.5"/>
     <path d="M21 21 Q25 12 34 11" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>
     <circle cx="32" cy="116" r="8" fill="${C.gold}" stroke="${C.ink}" stroke-width="3.5"/>`,
@@ -443,7 +426,7 @@ function bodyStyle(size: number, width: number, align: 'left' | 'center' | 'righ
  * Cards and their live demos
  * ---------------------------------------------------------------------------------------- */
 
-type DemoKind = 'bomb' | 'kegs' | 'wheel' | 'boost' | 'max';
+type DemoKind = 'train' | 'junction' | 'power' | 'boost' | 'max';
 
 interface CardSpec {
   kind: DemoKind;
@@ -472,8 +455,7 @@ interface Art {
   dotOff: Texture;
   pipOn: Texture;
   pipOff: Texture;
-  bomb: Texture;
-  bombHot: Texture;
+  train: Texture;
   leverOff: Texture;
   leverOn: Texture;
   handle: Texture;
@@ -487,18 +469,11 @@ interface DemoKit {
   sym: SymbolTextures;
   art: Art;
   fx: Particles;
-  wheelTex: WheelTextures;
   /** A demo hit a big beat: the characters may react (the splash rate-limits it). */
-  react(kind: 'blast' | 'loot' | 'boost' | 'wheel'): void;
-  /**
-   * Cap'n Kaboom throws a bomb at a global point: null when he can't right now (the demo drops its
-   * own), else a promise that resolves true once it has landed there (false if the throw failed).
-   */
-  throwBomb?(target: { x: number; y: number }): Promise<boolean> | null;
+  react(kind: 'train' | 'loot' | 'boost' | 'power'): void;
 }
 
 const setSize = (s: Sprite, px: number) => s.scale.set(px / Math.max(1, s.texture.width));
-const PAYING = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
 abstract class Demo {
   /** The demo's art. */
@@ -571,8 +546,8 @@ abstract class Demo {
   }
 }
 
-/** A 3x3 patch of the board, for the bomb and keg demos. */
-class Patch {
+/** A strip of board cells for the demos: `cols` x `rows`, cell pitch p, sprites with art keys. */
+class Strip {
   cells: Sprite[] = [];
   home: { x: number; y: number }[] = [];
   readonly p: number;
@@ -581,562 +556,454 @@ class Patch {
     parent: Container,
     private sym: SymbolTextures,
     D: number,
+    readonly cols: number,
+    readonly rows: number,
   ) {
-    this.p = D / 3.08;
+    this.p = D / (Math.max(cols, rows) + 0.15);
     this.size = this.p * 0.94;
-    for (let c = 0; c < 3; c++)
-      for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < cols; c++)
+      for (let r = 0; r < rows; r++) {
         const s = new Sprite(Texture.EMPTY);
         s.anchor.set(0.5);
-        const h = { x: (c - 1) * this.p, y: (r - 1) * this.p };
+        const h = { x: (c - (cols - 1) / 2) * this.p, y: (r - (rows - 1) / 2) * this.p };
         s.position.set(h.x, h.y);
         this.cells.push(s);
         this.home.push(h);
         parent.addChild(s);
       }
   }
-  /** Cell index for column c, row r. */
-  static i(c: number, r: number) {
-    return c * 3 + r;
+  i(c: number, r: number) {
+    return c * this.rows + r;
   }
-  set(i: number, sym: number, pose: 'idle' | 'win' = 'idle') {
-    const set = this.sym.sets.get(sym);
+  set(i: number, key: number, pose: 'idle' | 'win' = 'idle') {
+    const set = this.sym.sets.get(key);
     if (!set) return;
     const s = this.cells[i];
-    s.texture = pose === 'win' ? set.win ?? set.idle : set.idle;
+    s.texture = pose === 'win' ? (set.win ?? set.idle) : set.idle;
     setSize(s, this.size);
+    s.alpha = 1;
   }
   scaleOf(i: number) {
-    const s = this.cells[i];
-    return this.size / Math.max(1, s.texture.width);
+    return this.size / Math.max(1, this.cells[i].texture.width);
+  }
+  reset() {
+    this.cells.forEach((c, i) => {
+      c.position.set(this.home[i].x, this.home[i].y);
+      c.alpha = 1;
+      c.rotation = 0;
+      c.scale.set(this.scaleOf(i));
+    });
   }
 }
 
-/** Kaboom Bomb: the fuse counts down, a keg blast grows it, then it clears its square and adds to the multiplier. */
-class BombDemo extends Demo {
-  private patch: Patch;
-  private bomb: Sprite;
-  private halo = new Sprite(softDotTexture());
-  private fuseBadge = new Container();
-  private fuseNum: BitmapText;
-  private sizeNum: BitmapText;
-  private plus: BitmapText;
-  private ring = new Graphics();
-  private flash = new Sprite(softDotTexture());
-  private bk = 1;
-  private hot = false;
-  private tremble = 0;
-  constructor(k: DemoKit, D: number) {
-    super(k, D);
-    this.patch = new Patch(this.view, k.sym, D);
-    const p = this.patch.p;
-    this.halo.anchor.set(0.5);
-    this.halo.blendMode = 'add';
-    this.halo.tint = hex(C.fire);
-    this.halo.alpha = 0;
-    this.halo.width = this.halo.height = p * 2.2;
-    this.view.addChildAt(this.halo, 0);
-    this.bomb = new Sprite(k.art.bomb);
-    this.bomb.anchor.set(0.5);
-    setSize(this.bomb, p * 1.06);
-    this.bk = this.bomb.scale.x;
-    this.view.addChild(this.bomb);
-    const disc = new Graphics().circle(0, 0, p * 0.2).fill({ color: hex(C.ink) }).stroke({ width: Math.max(1.5, p * 0.045), color: hex(C.gold) });
-    this.fuseNum = bitmapNum(String(BOMB_FUSE), 'white', p * 0.26);
-    this.fuseBadge.addChild(disc, this.fuseNum);
-    this.fuseBadge.position.set(p * 0.33, -p * 0.33);
-    this.sizeNum = bitmapNum('x1', 'fire', p * 0.3);
-    this.sizeNum.position.set(-p * 0.28, p * 0.34);
-    this.labels.addChild(this.fuseBadge, this.sizeNum);
-    this.ring.circle(0, 0, p * 0.5).stroke({ width: Math.max(2, p * 0.1), color: hex(C.fireCore) });
-    this.ring.alpha = 0;
-    this.flash.anchor.set(0.5);
-    this.flash.blendMode = 'add';
-    this.flash.tint = hex(C.fireCore);
-    this.flash.alpha = 0;
-    this.plus = bitmapNum('+2x', 'fire', p * 0.46);
-    this.plus.alpha = 0;
-    this.view.addChild(this.ring, this.flash);
-    this.labels.addChild(this.plus);
-    this.fill();
-    this.timeline();
-  }
-
-  private kegAt = Patch.i(0, 2);
-
-  private fill() {
-    for (let i = 0; i < 9; i++) {
-      if (i === 4) continue;
-      if (i === this.kegAt) this.patch.set(i, 9, 'win');
-      else this.patch.set(i, PAYING[(Math.random() * PAYING.length) | 0]);
-      this.patch.cells[i].scale.set(this.patch.scaleOf(i));
-    }
-    this.patch.cells[4].visible = false;
-  }
-
-  private setHot(on: boolean) {
-    this.hot = on;
-    this.bomb.texture = on ? this.k.art.bombHot : this.k.art.bomb;
-  }
-
-  private timeline() {
-    const { p } = this.patch;
-    const bk = this.bk;
-    const keg = this.patch.cells[this.kegAt];
-    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    tl.call(() => {
-      this.fuseNum.text = String(BOMB_FUSE);
-      this.sizeNum.text = 'x1';
-      this.setHot(false);
-    }, [], 0);
-    tl.call(() => (this.fuseNum.text = String(BOMB_FUSE - 1)), [], 0.6);
-    tl.fromTo(this.fuseBadge.scale, { x: 1.6, y: 1.6 }, { x: 1, y: 1, duration: 0.35, ease: 'back.out(3)' }, 0.6);
-    // a keg blows next to it: the bomb grows (size 1 -> 2)
-    tl.call(() => {
-      const g = this.at(keg);
-      this.k.fx.burst(g.x, g.y, 10, 'fire', 0.8);
-      this.k.fx.poof(g.x, g.y);
-    }, [], 1.15);
-    tl.to(keg.scale, { x: () => this.patch.scaleOf(this.kegAt) * 1.3, y: () => this.patch.scaleOf(this.kegAt) * 1.3, duration: 0.08, ease: 'power2.out' }, 1.15);
-    tl.to(keg.scale, { x: 0, y: 0, duration: 0.18, ease: 'back.in(2)' }, 1.23);
-    tl.call(() => {
-      this.sizeNum.text = 'x2';
-      const g = this.at(this.bomb);
-      this.k.fx.sparks(g.x, g.y, 8, 0.7);
-    }, [], 1.4);
-    tl.fromTo(this.bomb.scale, { x: bk * 1.34, y: bk * 1.34 }, { x: bk * 1.12, y: bk * 1.12, duration: 0.4, ease: 'back.out(2.6)' }, 1.4);
-    tl.fromTo(this.sizeNum.scale, { x: 0, y: 0 }, { x: this.sizeNum.scale.x, y: this.sizeNum.scale.y, duration: 0.35, ease: 'back.out(3)' }, 1.4);
-    // last tick: hot, trembling
-    tl.call(() => {
-      this.fuseNum.text = '1';
-      this.setHot(true);
-    }, [], 1.95);
-    tl.fromTo(this.fuseBadge.scale, { x: 1.6, y: 1.6 }, { x: 1, y: 1, duration: 0.35, ease: 'back.out(3)' }, 1.95);
-    tl.to(this, { tremble: 1, duration: 0.6, ease: 'power1.in' }, 1.95);
-    tl.to(this.halo, { alpha: 0.75, duration: 0.6, ease: 'power1.in' }, 1.95);
-    // KABOOM
-    tl.call(() => {
-      const g = this.at(this.bomb);
-      this.k.fx.burst(g.x, g.y, 18, 'fire', 1.3);
-      this.k.fx.sparks(g.x, g.y, 12, 1.2);
-      this.k.fx.smoke(g.x, g.y, 5, 1.2);
-      if (this.featured) this.k.react('blast');
-    }, [], 2.6);
-    tl.set(this, { tremble: 0 }, 2.6);
-    tl.set([this.fuseBadge, this.sizeNum], { visible: false }, 2.6);
-    tl.to(this.bomb.scale, { x: bk * 1.7, y: bk * 1.7, duration: 0.07, ease: 'power2.out' }, 2.6);
-    tl.to(this.bomb.scale, { x: 0, y: 0, duration: 0.1, ease: 'power2.in' }, 2.67);
-    tl.to(this.halo, { alpha: 0, duration: 0.3 }, 2.62);
-    tl.fromTo(this.flash, { alpha: 1, width: p * 1.2, height: p * 1.2 }, { alpha: 0, width: p * 4.4, height: p * 4.4, duration: 0.5, ease: 'power2.out' }, 2.6);
-    tl.fromTo(this.ring.scale, { x: 0.3, y: 0.3 }, { x: 3.3, y: 3.3, duration: 0.5, ease: 'power2.out' }, 2.6);
-    tl.fromTo(this.ring, { alpha: 1 }, { alpha: 0, duration: 0.5, ease: 'power1.in' }, 2.6);
-    for (let i = 0; i < 9; i++) {
-      if (i === 4 || i === this.kegAt) continue;
-      const c = this.patch.cells[i];
-      const d = Math.hypot(this.patch.home[i].x, this.patch.home[i].y) / p;
-      tl.to(c.scale, { x: 0, y: 0, duration: 0.22, ease: 'back.in(2.2)' }, 2.62 + d * 0.035);
-      tl.call(() => {
-        const g = this.at(c);
-        this.k.fx.poof(g.x, g.y);
-      }, [], 2.8 + d * 0.035);
-    }
-    tl.fromTo(this.plus, { alpha: 0, y: 0 }, { alpha: 1, y: -p * 0.35, duration: 0.3, ease: 'back.out(2)' }, 2.68);
-    const pk = this.plus.scale.x;
-    tl.fromTo(this.plus.scale, { x: pk * 0.3, y: pk * 0.3 }, { x: pk, y: pk, duration: 0.35, ease: 'back.out(3)' }, 2.68);
-    tl.to(this.plus, { alpha: 0, y: -p * 0.9, duration: 0.35, ease: 'power1.in' }, 3.1);
-    // the captain throws the next one in (when this card is centre stage), else it drops in; the
-    // bomb flies once the "+2x" has gone, and the badges wait for it to land
-    tl.call(() => this.requestThrow(), [], 3.2);
-    // refill: fresh symbols tumble in, a new bomb lands in the middle
-    tl.call(() => {
-      this.fill();
-      this.setHot(false);
-      this.fuseNum.text = String(BOMB_FUSE);
-      this.sizeNum.text = 'x1';
-    }, [], 3.45);
-    tl.set(this.bomb, { alpha: 0 }, 3.45);
-    for (let i = 0; i < 9; i++) {
-      if (i === 4) continue;
-      const c = this.patch.cells[i];
-      const h = this.patch.home[i];
-      const col = Math.floor(i / 3);
-      tl.fromTo(c, { y: h.y - this.D * 0.55, alpha: 0 }, { y: h.y, alpha: 1, duration: 0.42, ease: 'land', immediateRender: false }, 3.45 + col * 0.06 + (2 - (i % 3)) * 0.03);
-    }
-    tl.set(this.bomb.scale, { x: bk, y: bk }, 3.5);
-    tl.call(() => {
-      if (!this.thrown) this.dropBomb();
-    }, [], 3.55);
-    tl.call(() => {
-      if (!this.flying) this.showBadges();
-    }, [], 3.95);
-    // a slow throw holds the loop until it lands
-    tl.call(() => {
-      if (this.flying) this.tl?.pause();
-    }, [], 4.5);
-    tl.to({}, { duration: 0.01 }, 4.9);
-    // a new loop always starts with the bomb in place (a late throw just lands on it again)
-    tl.set(this.bomb, { alpha: 1, y: 0 }, 0);
-    this.tl = tl;
-  }
-
-  private thrown = false;
-  private flying = false;
-
-  private showBadges() {
-    if (this.fuseBadge.visible) return;
-    this.fuseBadge.visible = this.sizeNum.visible = true;
-    gsap.fromTo(this.fuseBadge.scale, { x: 0, y: 0 }, { x: 1, y: 1, duration: 0.3, ease: 'back.out(3)' });
-  }
-
-  protected override settle() {
-    gsap.killTweensOf([this.bomb, this.bomb.scale]);
-    this.fill();
-    this.patch.cells.forEach((c, i) => {
-      c.position.set(this.patch.home[i].x, this.patch.home[i].y);
-      c.alpha = 1;
-      c.scale.set(this.patch.scaleOf(i));
-    });
-    this.patch.cells[4].visible = false;
-    this.setHot(false);
-    this.tremble = 0;
-    this.thrown = false;
-    this.flying = false;
-    this.bomb.alpha = 1;
-    this.bomb.position.set(0, 0);
-    this.bomb.rotation = 0;
-    this.bomb.scale.set(this.bk);
-    this.fuseNum.text = String(BOMB_FUSE);
-    this.sizeNum.text = 'x1';
-    this.fuseBadge.visible = this.sizeNum.visible = true;
-    this.fuseBadge.scale.set(1);
-    this.halo.alpha = this.flash.alpha = this.ring.alpha = this.plus.alpha = 0;
-  }
-
-  private requestThrow() {
-    this.thrown = false;
-    this.flying = false;
-    if (!this.featured || !this.k.throwBomb) return;
-    const flight = this.k.throwBomb(this.at(this.view));
-    if (!flight) return;
-    this.thrown = true;
-    this.flying = true;
-    void flight.then((ok) => {
-      if (this.view.destroyed) return;
-      this.flying = false;
-      if (ok) this.landBomb();
-      else this.dropBomb();
-      if (this.tl && this.tl.time() >= 3.95) this.showBadges();
-      if (this.on && this.tl?.paused()) this.tl.resume();
-    });
-  }
-
-  /** The new bomb tumbles in from above. */
-  private dropBomb() {
-    const b = this.bomb;
-    gsap.killTweensOf(b);
-    gsap.fromTo(b, { y: -this.D * 0.6, alpha: 0 }, { y: 0, alpha: 1, duration: 0.5, ease: 'land', onComplete: () => this.thud() });
-  }
-
-  /** The thrown bomb hits its cell: squash, dust, fizz. */
-  private landBomb() {
-    const b = this.bomb;
-    gsap.killTweensOf([b, b.scale]);
-    b.alpha = 1;
-    b.y = 0;
-    gsap.fromTo(b.scale, { x: this.bk * 1.3, y: this.bk * 0.72 }, { x: this.bk, y: this.bk, duration: 0.45, ease: 'elastic.out(1, .4)' });
-    this.thud();
-  }
-
-  private thud() {
-    if (this.view.destroyed) return;
-    const g = this.at(this.bomb, 0, this.patch.p * 0.4);
-    this.k.fx.dust(g.x, g.y, true);
-  }
-
-  override update(dtMs: number) {
-    if (!this.on) return;
-    const k = this.tremble;
-    this.bomb.rotation = k ? Math.sin(performance.now() / 22) * 0.09 * k : 0;
-    this.bomb.x = k ? Math.sin(performance.now() / 17) * this.patch.p * 0.03 * k : 0;
-    if (this.hot && Math.random() < dtMs / 160) {
-      const g = this.at(this.bomb, this.patch.p * 0.2, -this.patch.p * 0.42);
-      this.k.fx.embers(g.x, g.y, 1);
-    }
-  }
+/** A coin value label that rides on a demo coin. */
+function coinTag(v: number, p: number): BitmapText {
+  const b = bitmapNum(`${v}x`, 'white', p * 0.3);
+  return b;
 }
 
-/** Powder Kegs: a cluster lights the keg (x2), then it blows its 3x3 square. */
-class KegDemo extends Demo {
-  private patch: Patch;
-  private aura = new Sprite(softDotTexture());
-  private badge: BitmapText;
-  private ring = new Graphics();
-  private flash = new Sprite(softDotTexture());
-  private crabs = [Patch.i(0, 0), Patch.i(0, 1), Patch.i(0, 2), Patch.i(1, 0)];
+/**
+ * All aboard: a Locomotive on reel 1 lights its headlamp, a train pulls out along the row and each
+ * Fare Coin hops into it while the tally above the cab counts up.
+ */
+class TrainDemo extends Demo {
+  private s: Strip;
+  private train = new Sprite();
+  private beam = new Sprite(softDotTexture());
+  private tally: BitmapText;
+  private tags: BitmapText[] = [];
+  private coins: { c: number; v: number; key: number }[] = [
+    { c: 1, v: 2, key: ART.COIN_SILVER },
+    { c: 3, v: 0.5, key: ART.COIN_BRONZE },
+    { c: 4, v: 10, key: ART.COIN_GOLD },
+  ];
   constructor(k: DemoKit, D: number) {
     super(k, D);
-    this.patch = new Patch(this.view, k.sym, D);
-    const p = this.patch.p;
-    this.aura.anchor.set(0.5);
-    this.aura.blendMode = 'add';
-    this.aura.width = this.aura.height = p * 1.6;
-    this.view.addChildAt(this.aura, 0);
-    this.aura.position.set(0, 0);
-    this.badge = bitmapNum('x2', 'fire', p * 0.34);
-    this.badge.position.set(p * 0.3, -p * 0.32);
-    this.ring.circle(0, 0, p * 0.5).stroke({ width: Math.max(2, p * 0.1), color: hex(C.fireHot) });
-    this.ring.alpha = 0;
-    this.flash.anchor.set(0.5);
-    this.flash.blendMode = 'add';
-    this.flash.tint = hex(C.fireCore);
-    this.flash.alpha = 0;
-    this.view.addChild(this.ring, this.flash);
-    this.labels.addChild(this.badge);
+    this.s = new Strip(this.view, k.sym, D, 5, 1);
+    const p = this.s.p;
+    this.train.texture = k.art.train;
+    this.train.anchor.set(1, 0.6);
+    this.train.height = p * 0.72;
+    this.train.scale.x = this.train.scale.y;
+    this.beam.anchor.set(0, 0.5);
+    this.beam.blendMode = 'add';
+    this.beam.tint = hex(C.amberLight);
+    this.beam.width = p * 1.4;
+    this.beam.height = p * 0.5;
+    this.view.addChild(this.beam, this.train);
+    this.tally = bitmapNum('0x', 'gold', p * 0.42);
+    this.tally.position.set(0, -p * 1.05);
+    this.labels.addChild(this.tally);
+    for (const c of this.coins) {
+      const t = coinTag(c.v, p);
+      t.position.set(this.s.home[this.s.i(c.c, 0)].x, 0);
+      this.tags.push(t);
+      this.labels.addChild(t);
+    }
     this.fill();
     this.timeline();
   }
-
   private fill() {
-    const others = PAYING.filter((s) => s !== 4);
-    for (let i = 0; i < 9; i++) {
-      if (i === 4) this.patch.set(i, 9);
-      else if (this.crabs.includes(i)) this.patch.set(i, 4);
-      else this.patch.set(i, others[(Math.random() * others.length) | 0]);
-    }
-    this.aura.tint = hex(C.gold);
-    this.aura.alpha = 0.35;
-    this.badge.visible = false;
+    const s = this.s;
+    s.set(s.i(0, 0), ART.LOCO);
+    s.set(s.i(2, 0), 5);
+    for (const c of this.coins) s.set(s.i(c.c, 0), c.key);
+    s.reset();
+    this.tags.forEach((t) => (t.visible = true));
+    this.train.visible = false;
+    this.beam.visible = false;
+    this.tally.alpha = 0;
+    this.tally.text = '0x';
   }
-
   protected override settle() {
     this.fill();
-    this.patch.cells.forEach((c, i) => {
-      c.position.set(this.patch.home[i].x, this.patch.home[i].y);
-      c.alpha = 1;
-      c.scale.set(this.patch.scaleOf(i));
-    });
-    this.ring.alpha = this.flash.alpha = 0;
   }
-
   private timeline() {
-    const { p } = this.patch;
-    const keg = this.patch.cells[4];
+    const s = this.s;
+    const p = s.p;
+    const x0 = s.home[0].x;
+    const xEnd = s.home[s.home.length - 1].x + p * 2.4;
+    const beat = 0.34;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    // the cluster lands a win: crabs cheer, the keg joins
-    tl.call(() => this.crabs.forEach((i) => this.patch.set(i, 4, 'win')), [], 0.5);
-    for (const i of [...this.crabs, 4]) {
-      const c = this.patch.cells[i];
-      tl.to(c.scale, { x: () => this.patch.scaleOf(i) * 1.14, y: () => this.patch.scaleOf(i) * 1.14, duration: 0.14, yoyo: true, repeat: 3, ease: 'sine.inOut' }, 0.5);
-    }
-    // it lights: x2
+    tl.call(() => this.fill(), [], 0);
     tl.call(() => {
-      this.patch.set(4, 9, 'win');
-      this.aura.tint = hex(C.fire);
-      this.badge.visible = true;
-      const g = this.at(keg);
-      this.k.fx.burst(g.x, g.y, 10, 'fire', 0.7);
-    }, [], 0.95);
-    tl.fromTo(this.aura, { alpha: 1 }, { alpha: 0.55, duration: 0.5, ease: 'power2.out' }, 0.95);
-    const bs = this.badge.scale.x;
-    tl.fromTo(this.badge.scale, { x: 0, y: 0 }, { x: bs, y: bs, duration: 0.3, ease: 'back.out(3)', immediateRender: false }, 0.95);
-    // the winners pop
-    this.crabs.forEach((i, j) => {
-      const c = this.patch.cells[i];
-      tl.to(c.scale, { x: 0, y: 0, duration: 0.2, ease: 'back.in(2)' }, 1.45 + j * 0.05);
+      s.set(0, ART.LOCO, 'win');
+      const g = this.at(s.cells[0]);
+      this.k.fx.glint(g.x, g.y, 0.5);
+    }, [], 0.5);
+    tl.call(() => {
+      this.train.visible = true;
+      this.beam.visible = !quality.low;
+      this.train.position.set(x0 - p * 0.2, p * 0.1);
+      if (this.featured) this.k.react('train');
+    }, [], 0.85);
+    tl.to(s.cells[0], { alpha: 0.3, duration: 0.2 }, 0.85);
+    tl.to(this.tally, { alpha: 1, duration: 0.2 }, 0.9);
+    const move = { x: x0 - p * 0.2 };
+    tl.to(move, {
+      x: xEnd,
+      duration: beat * 6.5,
+      ease: 'power1.in',
+      onUpdate: () => {
+        this.train.x = move.x;
+        this.beam.position.set(move.x - p * 0.05, p * 0.02);
+      },
+    }, 0.85);
+    let sum = 0;
+    this.coins.forEach((c, j) => {
+      const cell = s.cells[s.i(c.c, 0)];
+      const at = 0.85 + (c.c + 0.15) * beat * 1.05;
       tl.call(() => {
-        const g = this.at(c);
-        this.k.fx.poof(g.x, g.y);
-      }, [], 1.6 + j * 0.05);
+        sum = Math.round((sum + c.v) * 100) / 100;
+        this.tally.text = `${sum}x`;
+        const tk = this.tally.scale.x;
+        gsap.fromTo(this.tally.scale, { x: tk * 1.4, y: tk * 1.4 }, { x: tk, y: tk, duration: 0.3, ease: 'back.out(3)' });
+        this.tags[j].visible = false;
+        const g = this.at(cell);
+        this.k.fx.coins(g.x, g.y, 3, 2, 0.5);
+      }, [], at);
+      tl.to(cell, { y: -p * 0.5, alpha: 0, duration: 0.25, ease: 'power2.out' }, at);
+      tl.to(cell.scale, { x: () => s.scaleOf(s.i(c.c, 0)) * 0.4, y: () => s.scaleOf(s.i(c.c, 0)) * 0.4, duration: 0.25 }, at);
     });
-    // next cascade: the lit keg explodes and clears its square
-    tl.to(keg.scale, { x: () => this.patch.scaleOf(4) * 1.28, y: () => this.patch.scaleOf(4) * 1.28, duration: 0.2, ease: 'power1.in' }, 1.95);
-    tl.call(() => {
-      const g = this.at(keg);
-      this.k.fx.burst(g.x, g.y, 16, 'fire', 1.2);
-      this.k.fx.debris(g.x, g.y, 6, 0.7);
-      this.k.fx.smoke(g.x, g.y, 4, 1);
-      if (this.featured) this.k.react('blast');
-    }, [], 2.15);
-    tl.set(this.badge, { visible: false }, 2.15);
-    tl.to(keg.scale, { x: 0, y: 0, duration: 0.1 }, 2.15);
-    tl.to(this.aura, { alpha: 0, duration: 0.2 }, 2.15);
-    tl.fromTo(this.flash, { alpha: 1, width: p, height: p }, { alpha: 0, width: p * 4.2, height: p * 4.2, duration: 0.45, ease: 'power2.out' }, 2.15);
-    tl.fromTo(this.ring.scale, { x: 0.3, y: 0.3 }, { x: 3.2, y: 3.2, duration: 0.45, ease: 'power2.out' }, 2.15);
-    tl.fromTo(this.ring, { alpha: 1 }, { alpha: 0, duration: 0.45, ease: 'power1.in' }, 2.15);
-    for (let i = 0; i < 9; i++) {
-      if (i === 4 || this.crabs.includes(i)) continue;
-      const c = this.patch.cells[i];
-      tl.to(c.scale, { x: 0, y: 0, duration: 0.2, ease: 'back.in(2)' }, 2.2);
-      tl.call(() => {
-        const g = this.at(c);
-        this.k.fx.poof(g.x, g.y);
-      }, [], 2.35);
-    }
-    // refill
-    tl.call(() => this.fill(), [], 2.9);
-    for (let i = 0; i < 9; i++) {
-      const c = this.patch.cells[i];
-      const h = this.patch.home[i];
-      tl.set(c.scale, { x: () => this.patch.scaleOf(i), y: () => this.patch.scaleOf(i) }, 2.9);
-      tl.fromTo(c, { y: h.y - this.D * 0.55, alpha: 0 }, { y: h.y, alpha: 1, duration: 0.42, ease: 'land', immediateRender: false }, 2.9 + Math.floor(i / 3) * 0.06 + (2 - (i % 3)) * 0.03);
-    }
-    tl.to({}, { duration: 0.01 }, 4.3);
+    const tk = this.tally.scale.x;
+    tl.to(this.tally.scale, { x: tk * 1.15, y: tk * 1.15, duration: 0.3, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 3.4);
+    tl.to(this.tally, { alpha: 0, duration: 0.3 }, 4.2);
+    tl.to({}, { duration: 0.01 }, 4.6);
     this.tl = tl;
   }
 }
 
-/** Captain's Wheel: the helm spins and lands, over and over, while on screen. */
-class WheelDemo extends Demo {
-  private wheel: Wheel;
-  private wait = 0.5;
-  private spinning = false;
-  private kinds: SegKind[];
-  private i = 0;
+/**
+ * Junctions: the train reaches a Junction, the lever throws and two branch trains switch across
+ * into the rows above and below; the route lights up behind them.
+ */
+class JunctionDemo extends Demo {
+  private s: Strip;
+  private route = new Graphics();
+  private trains: Sprite[] = [];
+  private prog = { a: 0, b: 0 };
   constructor(k: DemoKit, D: number) {
     super(k, D);
-    this.wheel = new Wheel(k.wheelTex, D * 0.94);
-    this.view.addChild(this.wheel);
-    const seen = new Set<SegKind>();
-    for (const s of WHEEL_SEGMENTS) seen.add(s);
-    // lead with the bomb wedge when the wheel has one
-    this.kinds = ['bomb', 'cash', 'boost', 'hounds', 'inferno'].filter((s) => seen.has(s as SegKind)) as SegKind[];
+    this.s = new Strip(this.view, k.sym, D, 4, 3);
+    this.view.addChildAt(this.route, 0);
+    for (let i = 0; i < 3; i++) {
+      const t = new Sprite(k.art.train);
+      t.anchor.set(1, 0.6);
+      t.height = this.s.p * 0.55;
+      t.scale.x = t.scale.y;
+      t.visible = false;
+      this.trains.push(t);
+      this.view.addChild(t);
+    }
+    this.fill();
+    this.timeline();
   }
-  override update(dtMs: number) {
-    if (this.wheel.destroyed) return;
-    this.wheel.update(dtMs);
-    if (!this.on || this.spinning) return;
-    this.wait -= dtMs / 1000;
-    if (this.wait > 0 || !this.kinds.length) return;
-    this.spinning = true;
-    void this.wheel.spin(this.kinds[this.i++ % this.kinds.length]).then(() => {
-      this.spinning = false;
-      this.wait = 1.5;
-      if (this.featured && !this.view.destroyed) this.k.react('wheel');
+  private fill() {
+    const s = this.s;
+    const board = [
+      [1, ART.LOCO, 2],
+      [ART.COIN_SILVER, 6, 3],
+      [7, ART.SWITCH, 0],
+      [ART.COIN_GOLD, ART.COIN_SILVER, ART.COIN_BRONZE],
+    ];
+    board.forEach((col, c) => col.forEach((key, r) => s.set(s.i(c, r), key)));
+    s.reset();
+    this.route.clear();
+    this.prog.a = this.prog.b = 0;
+    for (const t of this.trains) t.visible = false;
+  }
+  protected override settle() {
+    this.fill();
+  }
+  private draw() {
+    const s = this.s;
+    const p = s.p;
+    const g = this.route;
+    g.clear();
+    const y = (r: number) => s.home[s.i(0, r)].y;
+    const x = (c: number) => s.home[s.i(c, 0)].x;
+    const w = Math.max(2, p * 0.08);
+    const col = hex(C.volt);
+    const a = this.prog.a;
+    if (a > 0) {
+      g.moveTo(x(0), y(1)).lineTo(x(0) + (x(3) + p * 0.5 - x(0)) * a, y(1)).stroke({ width: w, color: col, alpha: 0.9 });
+    }
+    const b = this.prog.b;
+    if (b > 0) {
+      for (const r of [0, 2]) {
+        const yy = y(1) + (y(r) - y(1)) * Math.min(1, b * 3);
+        g.moveTo(x(2), y(1)).lineTo(x(2), yy).stroke({ width: w, color: col, alpha: 0.9 });
+        if (b > 0.34) g.moveTo(x(2), y(r)).lineTo(x(2) + (x(3) + p * 0.5 - x(2)) * ((b - 0.34) / 0.66), y(r)).stroke({ width: w, color: col, alpha: 0.9 });
+      }
+    }
+  }
+  private timeline() {
+    const s = this.s;
+    const p = s.p;
+    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
+    const x = (c: number) => s.home[s.i(c, 0)].x;
+    const y = (r: number) => s.home[s.i(0, r)].y;
+    tl.call(() => this.fill(), [], 0);
+    tl.call(() => {
+      s.set(s.i(0, 1), ART.LOCO, 'win');
+      const t = this.trains[0];
+      t.visible = true;
+      t.position.set(x(0), y(1) + p * 0.1);
+      if (this.featured) this.k.react('train');
+    }, [], 0.4);
+    tl.to(this.prog, { a: 1, duration: 1.4, ease: 'none', onUpdate: () => this.draw() }, 0.6);
+    tl.to(this.trains[0], { x: x(3) + p * 1.6, duration: 1.6, ease: 'none' }, 0.6);
+    // the junction (column 2) throws
+    tl.call(() => {
+      s.set(s.i(2, 1), ART.SWITCH, 'win');
+      const g = this.at(s.cells[s.i(2, 1)]);
+      this.k.fx.sparks(g.x, g.y, 10, 0.7);
+      [1, 2].forEach((j) => {
+        const t = this.trains[j];
+        t.visible = true;
+        t.position.set(x(2), y(1) + p * 0.1);
+      });
+    }, [], 1.35);
+    tl.to(this.prog, { b: 1, duration: 1.1, ease: 'none', onUpdate: () => this.draw() }, 1.35);
+    [0, 2].forEach((r, j) => {
+      const t = this.trains[j + 1];
+      tl.to(t, { y: y(r) + p * 0.1, duration: 0.3, ease: 'power2.inOut' }, 1.35);
+      tl.to(t, { x: x(3) + p * 1.6, duration: 0.9, ease: 'power1.in' }, 1.65);
     });
+    // coins collected: (1,0) by the main train, (3,0) (3,1) (3,2) by all three
+    const pop = (c: number, r: number, at: number) => {
+      const cell = s.cells[s.i(c, r)];
+      tl.call(() => {
+        const g = this.at(cell);
+        this.k.fx.coins(g.x, g.y, 3, 2, 0.5);
+      }, [], at);
+      tl.to(cell, { alpha: 0, y: s.home[s.i(c, r)].y - p * 0.4, duration: 0.25 }, at);
+    };
+    pop(1, 0, 0.95);
+    pop(3, 1, 1.95);
+    pop(3, 0, 2.1);
+    pop(3, 2, 2.1);
+    tl.to({}, { duration: 0.01 }, 3.8);
+    this.tl = tl;
   }
 }
 
-/** Powder Boost: the lever goes on, the captain's charge needs one keg blast less, a bomb flies. */
+/**
+ * Rush Hour: passengers board and the POWER train runs along the ladder; each stop it reaches lights
+ * and the multiplier steps up x2, x3, x5, x10.
+ */
+class PowerDemo extends Demo {
+  private track = new Graphics();
+  private stops: { x: number; g: Graphics; t: BitmapText }[] = [];
+  private train = new Sprite();
+  private big: BitmapText;
+  private pos = { p: 0 };
+  private x0: number;
+  private x1: number;
+  constructor(k: DemoKit, D: number) {
+    super(k, D);
+    this.x0 = -D * 0.42;
+    this.x1 = D * 0.42;
+    this.view.addChild(this.track);
+    const ty = D * 0.18;
+    POWER_STEPS.forEach((need, i) => {
+      const x = this.x0 + (this.x1 - this.x0) * (need / POWER_STEPS[POWER_STEPS.length - 1]);
+      const g = new Graphics();
+      g.position.set(x, ty - D * 0.12);
+      this.view.addChild(g);
+      const t = bitmapNum(`x${POWER_MULTS[i + 1]}`, 'white', D * 0.085);
+      t.position.set(x, ty - D * 0.12);
+      this.labels.addChild(t);
+      this.stops.push({ x, g, t });
+    });
+    this.train.texture = k.art.train;
+    this.train.anchor.set(0.9, 0.85);
+    this.train.height = D * 0.11;
+    this.train.scale.x = this.train.scale.y;
+    this.view.addChild(this.train);
+    this.big = bitmapNum('x1', 'gold', D * 0.28);
+    this.big.position.set(0, -D * 0.2);
+    this.labels.addChild(this.big);
+    this.reset();
+    this.timeline();
+  }
+  private drawTrack(lit: number) {
+    const D = this.D;
+    const g = this.track;
+    const y = D * 0.18;
+    g.clear();
+    g.roundRect(this.x0 - D * 0.04, y - D * 0.03, this.x1 - this.x0 + D * 0.08, D * 0.06, D * 0.02).fill({ color: hex(C.ironDeep) });
+    g.rect(this.x0, y - D * 0.012, this.x1 - this.x0, D * 0.008).fill({ color: hex(C.steel) });
+    g.rect(this.x0, y + D * 0.006, this.x1 - this.x0, D * 0.008).fill({ color: hex(C.steel) });
+    if (lit > this.x0) g.rect(this.x0, y - D * 0.016, lit - this.x0, D * 0.032).fill({ color: hex(C.volt), alpha: 0.85 });
+  }
+  private drawStop(i: number, on: boolean) {
+    const s = this.stops[i];
+    const r = this.D * 0.075;
+    s.g.clear();
+    s.g.circle(0, 0, r).fill({ color: hex(on ? C.gold : C.steelDeep) }).stroke({ width: 3, color: hex(C.ink) });
+    s.g.circle(0, 0, r * 0.78).fill({ color: hex(on ? C.emerald : C.iron) });
+  }
+  private reset() {
+    this.pos.p = 0;
+    this.place();
+    this.stops.forEach((_, i) => this.drawStop(i, false));
+    this.big.text = 'x1';
+  }
+  private place() {
+    const x = this.x0 + (this.x1 - this.x0) * this.pos.p;
+    this.train.position.set(x, this.D * 0.18);
+    this.drawTrack(x);
+  }
+  protected override settle() {
+    this.reset();
+  }
+  private timeline() {
+    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
+    tl.call(() => this.reset(), [], 0);
+    const full = POWER_STEPS[POWER_STEPS.length - 1];
+    let at = 0.4;
+    let prev = 0;
+    POWER_STEPS.forEach((need, i) => {
+      const dur = 0.25 + ((need - prev) / full) * 1.6;
+      tl.to(this.pos, { p: need / full, duration: dur, ease: 'power1.inOut', onUpdate: () => this.place() }, at);
+      at += dur;
+      tl.call(() => {
+        this.drawStop(i, true);
+        this.big.text = `x${POWER_MULTS[i + 1]}`;
+        const k = this.big.scale.x;
+        gsap.fromTo(this.big.scale, { x: k * 1.5, y: k * 1.5 }, { x: k, y: k, duration: 0.4, ease: 'back.out(3)' });
+        const g = this.at(this.stops[i].g);
+        this.k.fx.sparks(g.x, g.y, 8, 0.6);
+        if (i === POWER_STEPS.length - 1 && this.featured) this.k.react('power');
+      }, [], at);
+      at += 0.25;
+      prev = need;
+    });
+    tl.to({}, { duration: 0.01 }, at + 1.2);
+    this.tl = tl;
+  }
+}
+
+/** Express Pass: the lever goes on and every spin reel 1 brings a Locomotive. */
 class BoostDemo extends Demo {
   private base: Sprite;
   private handle: Sprite;
   private cost: BitmapText;
-  private pips: Sprite[] = [];
-  private flyer: Sprite;
-  private pipK = 1;
-  private slots3: number[];
-  private slots2: number[];
+  private s: Strip;
   constructor(k: DemoKit, D: number) {
     super(k, D);
-    const leverW = D * 0.66;
+    const leverW = D * 0.5;
     this.base = new Sprite(k.art.leverOff);
     this.base.anchor.set(0.5, 0.66);
     setSize(this.base, leverW);
-    this.base.position.set(0, -D * 0.02);
+    this.base.position.set(-D * 0.22, D * 0.05);
     this.handle = new Sprite(k.art.handle);
     this.handle.anchor.set(0.5, 116 / 128);
     this.handle.scale.set(this.base.scale.x * 1.05);
-    this.handle.position.set(0, -D * 0.02);
+    this.handle.position.set(-D * 0.22, D * 0.05);
     this.handle.rotation = -0.62;
-    this.cost = bitmapNum(`${BOOST_COST}x`, 'gold', D * 0.2);
-    this.cost.position.set(0, -D * 0.4);
-    const pip = D * 0.2;
-    const gap = D * 0.25;
-    // charge pips: CHARGE_MAX in a normal spin, CHARGE_MAX_BOOST with the boost on (centred rows)
-    this.slots2 = Array.from({ length: CHARGE_MAX_BOOST }, (_, i) => (i - (CHARGE_MAX_BOOST - 1) / 2) * gap);
-    for (let i = 0; i < CHARGE_MAX; i++) {
-      const s = new Sprite(k.art.bomb);
-      s.anchor.set(0.5);
-      setSize(s, pip);
-      this.pipK = s.scale.x;
-      s.position.set((i - (CHARGE_MAX - 1) / 2) * gap, D * 0.33);
-      this.pips.push(s);
-    }
-    this.slots3 = this.pips.map((s) => s.x);
-    this.flyer = new Sprite(k.art.bomb);
-    this.flyer.anchor.set(0.5);
-    setSize(this.flyer, pip * 1.1);
-    this.flyer.alpha = 0;
-    this.view.addChild(this.base, this.handle, ...this.pips, this.flyer);
+    this.cost = bitmapNum(`${BOOST_COST}x`, 'gold', D * 0.18);
+    this.cost.position.set(-D * 0.22, -D * 0.38);
+    const col = new Container();
+    col.position.set(D * 0.26, 0);
+    this.view.addChild(this.base, this.handle, col);
+    this.s = new Strip(col, k.sym, D * 0.85, 1, 4);
     this.labels.addChild(this.cost);
     this.reset();
     this.timeline();
   }
-
-  protected override settle() {
-    this.reset();
-    this.flyer.alpha = 0;
-  }
-
   private reset() {
     this.base.texture = this.k.art.leverOff;
     this.handle.rotation = -0.62;
     this.cost.alpha = 0.4;
-    this.pips.forEach((s, i) => {
-      s.visible = true;
-      s.tint = 0x5a5a66;
-      s.alpha = 0.8;
-      s.scale.set(this.pipK);
-      s.x = this.slots3[i];
-    });
+    [0, 4, 2, 7].forEach((k, r) => this.s.set(r, k));
+    this.s.reset();
   }
-
+  protected override settle() {
+    this.reset();
+  }
   private timeline() {
     const D = this.D;
+    const s = this.s;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
     tl.call(() => this.reset(), [], 0);
-    tl.to(this.handle, { rotation: 0.62, duration: 0.3, ease: 'back.out(3)' }, 0.6);
+    tl.to(this.handle, { rotation: 0.62, duration: 0.3, ease: 'back.out(3)' }, 0.5);
     tl.call(() => {
       this.base.texture = this.k.art.leverOn;
       const g = this.at(this.handle);
       this.k.fx.sparks(g.x, g.y - D * 0.05, 8, 0.6);
       if (this.featured) this.k.react('boost');
-    }, [], 0.75);
+    }, [], 0.65);
     const ck = this.cost.scale.x;
-    tl.to(this.cost, { alpha: 1, duration: 0.2 }, 0.75);
-    tl.fromTo(this.cost.scale, { x: ck * 1.35, y: ck * 1.35 }, { x: ck, y: ck, duration: 0.4, ease: 'back.out(3)', immediateRender: false }, 0.75);
-    // one charge pip less: the captain throws sooner
-    const extra = this.pips.slice(CHARGE_MAX_BOOST);
-    extra.forEach((s) => {
-      tl.to(s.scale, { x: 0, y: 0, duration: 0.22, ease: 'back.in(2)' }, 1.0);
+    tl.to(this.cost, { alpha: 1, duration: 0.2 }, 0.65);
+    tl.fromTo(this.cost.scale, { x: ck * 1.35, y: ck * 1.35 }, { x: ck, y: ck, duration: 0.4, ease: 'back.out(3)', immediateRender: false }, 0.65);
+    // three spins: the column drops in, always with a Locomotive
+    const rows = [1, 3, 0];
+    rows.forEach((lr, k) => {
+      const at = 1.1 + k * 0.9;
       tl.call(() => {
-        const g = this.at(s);
-        this.k.fx.poof(g.x, g.y);
-      }, [], 1.15);
-    });
-    this.pips.slice(0, CHARGE_MAX_BOOST).forEach((s, i) => tl.to(s, { x: this.slots2[i], duration: 0.35, ease: 'power2.inOut' }, 1.1));
-    // keg blasts fill the charge
-    this.pips.slice(0, CHARGE_MAX_BOOST).forEach((s, i) => {
-      const at = 1.6 + i * 0.45;
-      tl.set(s, { tint: 0xffffff, alpha: 1 }, at);
-      tl.fromTo(s.scale, { x: this.pipK * 1.5, y: this.pipK * 1.5 }, { x: this.pipK, y: this.pipK, duration: 0.3, ease: 'back.out(3)', immediateRender: false }, at);
-      tl.call(() => {
-        const g = this.at(s, 0, -s.height * 0.4);
-        this.k.fx.sparks(g.x, g.y, 5, 0.5);
+        for (let r = 0; r < 4; r++) s.set(r, r === lr ? ART.LOCO : [0, 1, 3, 5, 6, 4][(r + k * 2) % 6]);
       }, [], at);
+      for (let r = 0; r < 4; r++) {
+        const c = s.cells[r];
+        tl.fromTo(c, { y: s.home[r].y - D * 0.5, alpha: 0 }, { y: s.home[r].y, alpha: 1, duration: 0.32, ease: 'land', immediateRender: false }, at + (3 - r) * 0.04);
+      }
+      tl.call(() => {
+        s.set(lr, ART.LOCO, 'win');
+        const g = this.at(s.cells[lr]);
+        this.k.fx.glint(g.x, g.y, 0.45);
+      }, [], at + 0.45);
     });
-    // full: a bomb is thrown
-    const throwAt = 1.6 + CHARGE_MAX_BOOST * 0.45 + 0.2;
-    tl.fromTo(this.flyer, { x: 0, y: D * 0.3, alpha: 1, rotation: 0 }, { x: D * 0.34, y: -D * 0.46, rotation: 4, duration: 0.55, ease: 'power1.out', immediateRender: false }, throwAt);
-    tl.to(this.flyer, { alpha: 0, duration: 0.15 }, throwAt + 0.45);
-    tl.call(() => {
-      const g = this.at(this.flyer);
-      this.k.fx.burst(g.x, g.y, 10, 'fire', 0.8);
-    }, [], throwAt + 0.55);
-    this.pips.slice(0, CHARGE_MAX_BOOST).forEach((s) => tl.to(s, { alpha: 0.8, duration: 0.2, onStart: () => void (s.tint = 0x5a5a66) }, throwAt + 0.1));
-    // back off, the third pip returns
-    const offAt = throwAt + 0.9;
-    tl.to(this.handle, { rotation: -0.62, duration: 0.3, ease: 'back.out(2.5)' }, offAt);
-    tl.call(() => void (this.base.texture = this.k.art.leverOff), [], offAt + 0.1);
-    tl.to(this.cost, { alpha: 0.4, duration: 0.3 }, offAt);
-    this.pips.forEach((s, i) => tl.to(s, { x: this.slots3[i], duration: 0.3, ease: 'power2.inOut' }, offAt));
-    extra.forEach((s) => tl.to(s.scale, { x: this.pipK, y: this.pipK, duration: 0.3, ease: 'back.out(2.5)' }, offAt + 0.15));
-    tl.to({}, { duration: 0.01 }, offAt + 1.0);
+    tl.to(this.handle, { rotation: -0.62, duration: 0.3, ease: 'back.out(2.5)' }, 4.0);
+    tl.call(() => void (this.base.texture = this.k.art.leverOff), [], 4.1);
+    tl.to(this.cost, { alpha: 0.4, duration: 0.3 }, 4.0);
+    tl.to({}, { duration: 0.01 }, 4.6);
     this.tl = tl;
   }
 }
 
-/** Max win: the chest shakes, bursts open in a gold fountain and the 50,000x pops. */
+/** Max win: the Golden Ticket flips in a burst of gold and the max win pops. */
 class MaxDemo extends Demo {
   private rays: Sprite;
   private chest = new Sprite(Texture.EMPTY);
@@ -1145,12 +1012,12 @@ class MaxDemo extends Demo {
   constructor(k: DemoKit, D: number) {
     super(k, D);
     this.rays = new Sprite(k.art.rays);
-    this.rays.anchor.set(0.5, 200 / 256);
+    this.rays.anchor.set(0.5);
     setSize(this.rays, D * 1.1);
     this.rays.blendMode = 'add';
-    this.rays.position.set(0, D * 0.06);
+    this.rays.position.set(0, -D * 0.08);
     this.rays.alpha = 0.15;
-    const set = k.sym.sets.get(10);
+    const set = k.sym.sets.get(ART.LOCO_GOLD);
     this.chest.texture = set?.idle ?? Texture.EMPTY;
     this.chest.anchor.set(0.5);
     setSize(this.chest, D * 0.66);
@@ -1166,7 +1033,7 @@ class MaxDemo extends Demo {
   }
   private timeline() {
     const D = this.D;
-    const set = this.k.sym.sets.get(10);
+    const set = this.k.sym.sets.get(ART.LOCO_GOLD);
     const bk = this.big.scale.x;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
     tl.call(() => {
@@ -1174,7 +1041,7 @@ class MaxDemo extends Demo {
     }, [], 0);
     tl.set(this.big, { alpha: 0.55 }, 0);
     tl.set(this.big.scale, { x: bk * 0.86, y: bk * 0.86 }, 0);
-    tl.to(this.chest, { rotation: 0.07, duration: 0.06, yoyo: true, repeat: 7, ease: 'sine.inOut' }, 0.45);
+    tl.to(this.chest, { rotation: 0.05, duration: 0.06, yoyo: true, repeat: 7, ease: 'sine.inOut' }, 0.45);
     tl.call(() => {
       if (set?.win) this.chest.texture = set.win;
       const g = this.at(this.chest, 0, -D * 0.12);
@@ -1192,23 +1059,32 @@ class MaxDemo extends Demo {
     tl.call(() => {
       if (set) this.chest.texture = set.idle;
     }, [], 3.05);
-    tl.fromTo(this.chest.scale, { x: this.ck * 0.94, y: this.ck * 1.06 }, { x: this.ck, y: this.ck, duration: 0.3, ease: 'back.out(3)', immediateRender: false }, 3.05);
     tl.to(this.big, { alpha: 0.55, duration: 0.3 }, 3.05);
     tl.to({}, { duration: 0.01 }, 3.7);
     this.tl = tl;
   }
   protected override settle() {
-    const set = this.k.sym.sets.get(10);
+    const set = this.k.sym.sets.get(ART.LOCO_GOLD);
     if (set) this.chest.texture = set.idle;
     this.chest.rotation = 0;
     this.chest.scale.set(this.ck);
     this.rays.alpha = 0.15;
     this.big.alpha = 0.55;
   }
-
   override update(dtMs: number) {
     if (this.on) this.rays.rotation += dtMs * 0.00018;
   }
+}
+
+/** Sunburst rays behind the max-win demo. */
+function raysSvg(): string {
+  let rays = '';
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const b = a + Math.PI / 32;
+    rays += `<path d="M128 128 L${F(128 + Math.cos(a) * 128)} ${F(128 + Math.sin(a) * 128)} L${F(128 + Math.cos(b) * 128)} ${F(128 + Math.sin(b) * 128)} Z" fill="${C.goldLight}" opacity="${i % 2 ? 0.55 : 0.85}"/>`;
+  }
+  return svgDoc(256, 256, '', rays);
 }
 
 /** Optional rig extras (track C): a glance toward a global point, null to look ahead again. */
@@ -1233,7 +1109,6 @@ interface Card {
 
 export interface SplashOptions {
   L: Layout;
-  wheelTex: WheelTextures;
   symTex: SymbolTextures;
   renderer: Renderer;
   /** "Don't show again" is set: only the PLAY tap (it unlocks audio), over the game. */
@@ -1245,7 +1120,7 @@ export interface SplashOptions {
   /** Play the entrance (first build only; rebuilds appear settled). */
   intro?: boolean;
   /** The scene's Cap'n Kaboom and Sparks: presented above the shade while the intro shows. */
-  cast?: { captain: Captain; parrot: Parrot };
+  cast?: { conductor: Conductor; rat: Rat };
   /**
    * First mouse press on the splash (an activation-triggering event): the caller can unlock audio
    * there, so creating the AudioContext (slow on some machines) happens while the button is held,
@@ -1337,8 +1212,6 @@ export class IntroSplash extends Container {
   private swallow = false;
   private sweepAt = 0;
   private offQuality?: () => void;
-  private flyer = new Sprite();
-  private throwing = false;
 
   constructor(o: SplashOptions) {
     super();
@@ -1406,10 +1279,10 @@ export class IntroSplash extends Container {
 
   private specs(): CardSpec[] {
     const list: CardSpec[] = [
-      { kind: 'bomb', title: t('splashBombTitle'), body: t('splashBomb'), tone: 'fire', accent: hex(C.fire) },
-      { kind: 'kegs', title: t('splashBrimTitle'), body: t('splashBrim'), tone: 'gold', accent: hex(C.fireHot) },
-      { kind: 'wheel', title: t('splashWheelTitle'), body: t('splashWheel'), tone: 'sea', accent: hex(C.seaLight) },
-      { kind: 'boost', title: t('splashBoostTitle'), body: t('splashBoost', { cost: num(BOOST_COST), boost: CHARGE_MAX_BOOST, base: CHARGE_MAX }), tone: 'silver', accent: hex(C.fireHot) },
+      { kind: 'train', title: t('splashTrainTitle'), body: t('splashTrain'), tone: 'gold', accent: hex(C.amber) },
+      { kind: 'junction', title: t('splashJunctionTitle'), body: t('splashJunction'), tone: 'green', accent: hex(C.emeraldLight) },
+      { kind: 'power', title: t('splashPowerTitle'), body: t('splashPower', { mult: POWER_MULTS[POWER_MULTS.length - 1] }), tone: 'crimson', accent: hex(C.volt) },
+      { kind: 'boost', title: t('splashBoostTitle'), body: t('splashBoost', { cost: num(BOOST_COST) }), tone: 'silver', accent: hex(C.voltLight) },
       { kind: 'max', title: t('splashMaxTitle'), body: t('splashMax', { max: num(MAX_WIN) }), tone: 'gold', accent: hex(C.gold) },
     ];
     return list.filter((s) => s.kind !== 'boost' || this.o.boost);
@@ -1419,13 +1292,11 @@ export class IntroSplash extends Container {
     const P = this.P;
     const r = this.res;
     const cw = Math.max(40, P.cw);
-    const bombArt = SYMBOL_ART[11] as { idle: () => string; hot?: () => string; win?: () => string } | undefined;
-    const bombSet = this.o.symTex.sets.get(11) as ({ idle: Texture; hot?: Texture; win?: Texture } | undefined);
-    const bombPx = Math.round(Math.max(64, (P.fit?.D ?? 120) * 0.5) * r);
+    const trainPx = Math.round(Math.max(64, (P.fit?.D ?? 120) * 0.5) * r);
     const arrowPx = Math.max(24, P.arrow) * r;
     const badgeH = P.badges?.h ?? 40;
     const pip = badgeH * 0.42 * r;
-    const [board, playTop, playBase, box, tick, arrow, dotOn, dotOff, pipOn, pipOff, bomb, bombHot, leverOff, leverOn, handle, rays, spark] = await Promise.all([
+    const [board, playTop, playBase, box, tick, arrow, dotOn, dotOff, pipOn, pipOff, train, leverOff, leverOn, handle, rays, spark] = await Promise.all([
       this.full && P.fit ? svgTexture(`splash-board-${Math.round((P.ch / cw) * 100)}`, boardSvg(P.ch / cw), cw * r, P.ch * r) : Promise.resolve(Texture.EMPTY),
       svgTexture('splash-play-top', playTopSvg(), P.play.h * PLAY_ASPECT * r),
       svgTexture('splash-play-base', playBaseSvg(), P.play.h * PLAY_ASPECT * r),
@@ -1436,12 +1307,11 @@ export class IntroSplash extends Container {
       svgTexture('splash-dot-off', dotSvg(false), Math.max(12, P.dotR * 3.2) * r),
       svgTexture('splash-pip-on', skullPipSvg(true), pip),
       svgTexture('splash-pip-off', skullPipSvg(false), pip),
-      bombSet ? Promise.resolve(bombSet.idle) : svgTexture('splash-bomb', bombArt ? bombArt.idle() : bombStandInSvg(false), bombPx),
-      bombSet ? Promise.resolve(bombSet.hot ?? bombSet.win ?? bombSet.idle) : svgTexture('splash-bomb-hot', bombArt ? (bombArt.hot ?? bombArt.win ?? bombArt.idle)() : bombStandInSvg(true), bombPx),
+      svgTexture('splash-train', locoSide(false, false), trainPx, trainPx / 2),
       svgTexture('splash-lever-off', leverBaseSvg(false), (P.fit?.D ?? 100) * 0.7 * r),
       svgTexture('splash-lever-on', leverBaseSvg(true), (P.fit?.D ?? 100) * 0.7 * r),
       svgTexture('splash-lever-handle', leverHandleSvg(), (P.fit?.D ?? 100) * 0.3 * r),
-      svgTexture('splash-rays', chestRays(), (P.fit?.D ?? 100) * 1.1 * r),
+      svgTexture('splash-rays', raysSvg(), (P.fit?.D ?? 100) * 1.1 * r),
       svgTexture('splash-spark', sparkArt(), P.play.h * 0.5 * r),
     ]);
     this.art = {
@@ -1455,8 +1325,7 @@ export class IntroSplash extends Container {
       dotOff,
       pipOn,
       pipOff,
-      bomb,
-      bombHot,
+      train,
       leverOff,
       leverOn,
       handle,
@@ -1728,14 +1597,8 @@ export class IntroSplash extends Container {
       sym: this.o.symTex,
       art: this.art,
       fx: this.demoFx,
-      wheelTex: this.o.wheelTex,
       react: (k) => this.react(k),
-      throwBomb: (g) => this.throwInto(g, fit.D / 3.08),
     };
-    this.flyer.texture = this.art.bomb;
-    this.flyer.anchor.set(0.5);
-    this.flyer.visible = false;
-    this.flyLayer.addChild(this.flyer);
     const pk = Math.min(P.cw, P.ch) / 300;
     const panel = { x0: -P.cw / 2 + 32 * pk, x1: P.cw / 2 - 32 * pk, y0: -P.ch / 2 + 30 * pk, y1: P.ch / 2 - 38 * pk };
     const pp = Math.max(5, 9 * pk);
@@ -1810,12 +1673,12 @@ export class IntroSplash extends Container {
 
   private makeDemo(kind: DemoKind, kit: DemoKit, D: number): Demo {
     switch (kind) {
-      case 'bomb':
-        return new BombDemo(kit, D);
-      case 'kegs':
-        return new KegDemo(kit, D);
-      case 'wheel':
-        return new WheelDemo(kit, D);
+      case 'train':
+        return new TrainDemo(kit, D);
+      case 'junction':
+        return new JunctionDemo(kit, D);
+      case 'power':
+        return new PowerDemo(kit, D);
       case 'boost':
         return new BoostDemo(kit, D);
       default:
@@ -2084,10 +1947,10 @@ export class IntroSplash extends Container {
       w.pivot.set(c.x, c.y);
       w.position.set(c.x + dx, c.y + dy);
     }
-    this.capWrap.addChild(cast.captain);
-    this.parWrap.addChild(cast.parrot);
-    cast.captain.fx = this.fx;
-    cast.parrot.fx = this.fx;
+    this.capWrap.addChild(cast.conductor);
+    this.parWrap.addChild(cast.rat);
+    cast.conductor.fx = this.fx;
+    cast.rat.fx = this.fx;
   }
 
   /** Hand the rigs back (never destroyed with the splash); the caller re-parents them. */
@@ -2311,101 +2174,31 @@ export class IntroSplash extends Container {
   }
 
   /** Characters react to what the featured card just did (rate-limited, never in low quality). */
-  private react(kind: 'blast' | 'loot' | 'boost' | 'wheel' | 'card') {
+  private react(kind: 'train' | 'loot' | 'boost' | 'power' | 'card') {
     const cast = this.o.cast;
     if (!cast || this.closing || quality.low || this.t < this.reactAt) return;
     this.reactAt = this.t + 2.6;
-    if (kind === 'blast') {
-      cast.captain.react('cheer', 0.9);
-      cast.parrot.react('squawk', 0.7);
+    if (kind === 'train') {
+      void cast.conductor.dispatch();
+      cast.rat.react('happy', 0.7);
     } else if (kind === 'loot') {
-      cast.captain.react('cheer', 1);
-      cast.parrot.react('happy', 0.9);
-    } else if (kind === 'boost') cast.captain.react('cheer', 0.7);
-    else if (kind === 'wheel') cast.parrot.react('happy', 0.6);
-    else cast.parrot.react('squawk', 0.45);
-  }
-
-  /** Cap'n Kaboom winds up and throws a bomb onto a demo board (C's throwBomb), flown by the splash. */
-  private throwInto(target: { x: number; y: number }, cell: number): Promise<boolean> | null {
-    const cast = this.o.cast;
-    if (!cast || this.closing || this.throwing || quality.low || speed.reduced || this.t < this.reactAt) return null;
-    if (typeof cast.captain.throwBomb !== 'function') return null;
-    return this.throwFlight(target, cell);
-  }
-
-  private async throwFlight(target: { x: number; y: number }, cell: number): Promise<boolean> {
-    const cast = this.o.cast!;
-    const cap = cast.captain;
-    this.throwing = true;
-    this.reactAt = this.t + 3;
-    const look = cap as unknown as Glance;
-    look.lookAt?.(target.x, target.y);
-    let r: { x: number; y: number; vx?: number; vy?: number; size?: number };
-    try {
-      r = await cap.throwBomb();
-    } catch {
-      this.throwing = false;
-      return false;
-    }
-    if (this.destroyed || this.closing) {
-      this.throwing = false;
-      return false;
-    }
-    const f = this.flyer;
-    const size = cell * 1.06;
-    const s0 = r.size && r.size > 4 ? r.size : size * 0.8;
-    // a ballistic arc that leaves the hand the way it was moving
-    const T = 0.5;
-    const cx = r.x + clamp((r.vx ?? 0) * T * 0.35, -this.P.W * 0.3, this.P.W * 0.3);
-    const cy = Math.min(r.y, target.y) - Math.abs(target.x - r.x) * 0.35 + clamp((r.vy ?? 0) * T * 0.2, -this.P.H * 0.2, 0);
-    const q = { t: 0 };
-    f.visible = true;
-    f.alpha = 1;
-    f.position.set(r.x, r.y);
-    setSize(f, s0);
-    let last = 0;
-    await new Promise<void>((done) => {
-      this.tw(() =>
-        gsap.to(q, {
-          t: 1,
-          duration: T,
-          ease: 'none',
-          onUpdate: () => {
-            const k = q.t;
-            const u = 1 - k;
-            f.x = u * u * r.x + 2 * u * k * cx + k * k * target.x;
-            f.y = u * u * r.y + 2 * u * k * cy + k * k * target.y;
-            f.rotation = k * Math.PI * 3;
-            setSize(f, s0 + (size - s0) * k);
-            if (k - last > 0.07) {
-              last = k;
-              this.demoFx.trail(f.x, f.y, 0.22);
-            }
-          },
-          onComplete: () => done(),
-        }),
-      );
-    });
-    f.visible = false;
-    this.throwing = false;
-    look.lookAt?.(null);
-    if (this.destroyed || this.closing) return false;
-    this.demoFx.sparks(target.x, target.y, 8, 0.8);
-    cast.parrot.react('squawk', 0.5);
-    return true;
+      cast.conductor.react('cheer', 1);
+      cast.rat.react('happy', 0.9);
+    } else if (kind === 'boost') cast.conductor.react('cheer', 0.7);
+    else if (kind === 'power') cast.rat.react('happy', 0.6);
+    else cast.rat.react('squeak', 0.45);
   }
 
   /** Both rigs glance at a point for a moment (C's lookAt, when the rigs have it). */
   private glance(x: number, y: number, hold = 1.4) {
     const cast = this.o.cast;
-    if (!cast || this.closing || quality.low || this.throwing) return;
-    const rigs = [cast.captain, cast.parrot] as unknown as Glance[];
+    if (!cast || this.closing || quality.low) return;
+    const rigs = [cast.conductor, cast.rat] as unknown as Glance[];
     for (const r of rigs) r.lookAt?.(x, y);
     this.glanceOff?.kill();
     this.glanceOff = this.tw(() =>
       gsap.delayedCall(hold, () => {
-        if (!this.throwing) for (const r of rigs) r.lookAt?.(null);
+        for (const r of rigs) r.lookAt?.(null);
       }),
     );
   }
@@ -2478,8 +2271,8 @@ export class IntroSplash extends Container {
           .fromTo(w.scale, { x: 0.9, y: 1.12 }, { x: 1, y: 1, duration: 0.5, ease: 'elastic.out(1, .45)' }, '-=0.12')
           .call(() => {
             if (!cast) return;
-            if (i === 0) cast.captain.react('cheer', 1);
-            else cast.parrot.react('squawk', 0.8);
+            if (i === 0) cast.conductor.react('cheer', 1);
+            else cast.rat.react('squeak', 0.8);
           }),
       );
     });
@@ -2672,8 +2465,7 @@ export class IntroSplash extends Container {
         .to(p, { alpha: 0, duration: 0.22 }, 0.26),
     );
     this.spark.visible = false;
-    this.flyer.visible = false;
-    for (const r of this.o.cast ? ([this.o.cast.captain, this.o.cast.parrot] as unknown as Glance[]) : []) r.lookAt?.(null);
+    for (const r of this.o.cast ? ([this.o.cast.conductor, this.o.cast.rat] as unknown as Glance[]) : []) r.lookAt?.(null);
     if (!reduced) {
       this.fx.burst(p.x, p.y, 16, 'fire', 1.1);
       this.fx.sparks(p.x, p.y, 12, 1.1);
@@ -2778,7 +2570,7 @@ function vignetteTexture(): Texture {
  * First-spin coach marks
  * ---------------------------------------------------------------------------------------- */
 
-const COACH_KEY = 'powder-keg-cove.coach.v1';
+const COACH_KEY = 'third-rail-riches.coach.v1';
 
 /** True once the player has seen the first-spin coach marks (stored per game). */
 export function coachSeen(): boolean {
@@ -2835,7 +2627,7 @@ export class CoachMarks extends Container {
 
   /** What to point at: the fuse meter, and the Powder Boost switch when it is on screen. */
   static targets(L: Layout, canvas: HTMLCanvasElement, boost: boolean): CoachTarget[] {
-    const out: CoachTarget[] = [{ ...L.meter, text: t('coachFuse'), below: true, ring: true }];
+    const out: CoachTarget[] = [{ ...L.meter, text: t('coachPower'), below: true, ring: true }];
     const el = boost ? document.querySelector<HTMLElement>('.boost-btn') : null;
     // (offsetParent is null for fixed-position HUD parts, so test the boxes instead)
     if (el && !el.hidden && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden') {
