@@ -293,7 +293,7 @@ class RunDemo extends MapDemo {
     this.settle();
     // (over the coin values)
     this.labels.addChild(this.tally);
-    this.timeline();
+    this.build();
   }
   private land(i: number) {
     const f = this.map.faces[i];
@@ -314,7 +314,7 @@ class RunDemo extends MapDemo {
     for (const f of this.map.faces) f.home0();
     this.map.faces.forEach((_, i) => this.land(i));
   }
-  private timeline() {
+  protected override build() {
     const tr = this.train;
     const f = this.map.faces;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
@@ -395,7 +395,7 @@ class SignalDemo extends MapDemo {
     this.map.over.addChild(this.arc);
     this.settle();
     this.labels.addChild(this.tally);
-    this.timeline();
+    this.build();
   }
   private land(i: number) {
     const f = this.map.faces;
@@ -440,7 +440,7 @@ class SignalDemo extends MapDemo {
       .quadraticCurveTo(c.x, c.y, bx, by)
       .stroke({ width: S * 0.09, color: 0xffffff, alpha: 0.95, cap: 'round' });
   }
-  private timeline() {
+  protected override build() {
     const tr = this.train;
     const f = this.map.faces;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
@@ -572,7 +572,7 @@ class SecurityDemo extends MapDemo {
     this.repay.position.set(0, -D * 0.135);
     this.settle();
     this.labels.addChild(this.tally, this.clear, this.incident, this.repay, this.missed);
-    this.timeline();
+    this.build();
   }
   private land(i: number) {
     const f = this.map.faces[i];
@@ -632,19 +632,12 @@ class SecurityDemo extends MapDemo {
     );
     tl.fromTo(d.scale, { x: k * 2.3, y: k * 2.3 }, { x: k, y: k, duration: 0.18, ease: 'power3.in', immediateRender: false }, at);
   }
-  private timeline() {
+  protected override build() {
     const tr = this.train;
     const f = this.map.faces;
     const S = this.map.S;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    tl.call(
-      () => {
-        this.prime();
-        this.mode = this.mode === 'clear' ? 'incident' : 'clear';
-      },
-      [],
-      0,
-    );
+    tl.call(() => this.prime(), [], 0);
     this.wave(
       tl,
       0.3,
@@ -709,6 +702,8 @@ class SecurityDemo extends MapDemo {
     this.tl = tl;
   }
   private verdict() {
+    // the verdicts alternate, ALL CLEAR first
+    this.mode = this.mode === 'clear' ? 'incident' : 'clear';
     this.ring.clear();
     const tr = this.train;
     const f = this.map.faces;
@@ -884,7 +879,7 @@ class CrashDemo extends MapDemo {
     this.settle();
     // the cloud over the coin values, under the words and numbers
     this.labels.addChild(this.boom, this.ta, this.tb, this.pile, this.word, this.x2);
-    this.timeline();
+    this.build();
   }
   private land(i: number) {
     const v = this.coins.find((c) => c[0] === i)![1];
@@ -916,7 +911,7 @@ class CrashDemo extends MapDemo {
     for (const f of this.map.faces) f.home0();
     this.map.faces.forEach((_, i) => this.land(i));
   }
-  private timeline() {
+  protected override build() {
     const f = this.map.faces;
     const S = this.map.S;
     const X = this.P(1);
@@ -1215,7 +1210,7 @@ class PowerDemo extends MapDemo {
     this.big.position.set(0, -D * 0.33);
     this.labels.addChild(this.big);
     this.settle();
-    this.timeline();
+    this.build();
   }
   private drawTrack(lit: number) {
     const D = this.D;
@@ -1264,7 +1259,7 @@ class PowerDemo extends MapDemo {
     this.big.scale.set(this.bigK);
     this.big.alpha = 1;
   }
-  private timeline() {
+  protected override build() {
     const f = this.map.faces;
     const S = this.map.S;
     const D = this.D;
@@ -1406,7 +1401,7 @@ class BoostDemo extends MapDemo {
     this.view.addChild(this.base, this.handle);
     this.labels.addChild(this.cost);
     this.settle();
-    this.timeline();
+    this.build();
   }
   protected override prime() {
     this.base.texture = this.k.art.leverOff;
@@ -1424,7 +1419,7 @@ class BoostDemo extends MapDemo {
     f[2].set(ART.COIN_SILVER, { value: 2 });
     f[3].set(7);
   }
-  private timeline() {
+  protected override build() {
     const D = this.D;
     const f = this.map.faces;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
@@ -1506,7 +1501,7 @@ class MaxDemo extends Demo {
     this.big.position.set(0, D * 0.36);
     this.view.addChild(this.rays, this.loco);
     this.labels.addChild(this.big);
-    this.timeline();
+    this.build();
   }
   private tex(pose: 'i' | 'w'): Texture {
     const own = this.k.art.sym.get(`${ART.LOCO_GOLD}${pose}`);
@@ -1514,7 +1509,7 @@ class MaxDemo extends Demo {
     const set = this.k.sym.sets.get(ART.LOCO_GOLD);
     return (pose === 'w' ? set?.win : set?.idle) ?? set?.idle ?? Texture.EMPTY;
   }
-  private timeline() {
+  protected override build() {
     const D = this.D;
     const bk = this.big.scale.x;
     const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });

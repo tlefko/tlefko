@@ -159,7 +159,7 @@ export const EN = {
   splashSecurity: 'Security Checks land on stops. ALL CLEAR: Delay Repay, haul x2. INCIDENT: the train is held.',
   splashCrashTitle: 'CRASH!',
   splashCrash: 'Trains that meet CRASH! Their hauls and every Fare Coin at and around the wreck pile up, x{mult}.',
-  splashRush: '3/4/5/6 Golden Tickets: 8/10/12/15 spins with sticky Fare Coins and POWER up to x{mult}.',
+  splashRush: '3/4/5/6 Golden Tickets: 8/10/12/15 spins. Fare Coins stick and the train powers up to x{mult}.',
   tip1: 'Match symbols on <b>3+</b> stations in a row along a line to win',
   tip2: '<b>Locomotives</b> collect every <b>Fare Coin</b> on their line',
   tip3: 'Two trains that meet <b>crash</b>: the wreck counts <b>x2</b>',

@@ -383,13 +383,13 @@ export interface SplashOptions {
   renderer: Renderer;
   /** "Don't show again" is set: only the PLAY tap (it unlocks audio), over the game. */
   quick: boolean;
-  /** Powder Boost is offered here (hidden where the jurisdiction disables buy features). */
+  /** Express Pass is offered here (hidden where the jurisdiction disables buy features). */
   boost: boolean;
   /** Carousel position to resume (the splash is rebuilt on every resize). */
   index?: number;
   /** Play the entrance (first build only; rebuilds appear settled). */
   intro?: boolean;
-  /** The scene's Cap'n Kaboom and Sparks: presented above the shade while the intro shows. */
+  /** The scene's Conductor Casey and Rivets: presented above the shade while the intro shows. */
   cast?: { conductor: Conductor; rat: Rat };
   /**
    * First mouse press on the splash (an activation-triggering event): the caller can unlock audio
@@ -424,7 +424,7 @@ interface Plan {
 /**
  * Particle systems shared by every splash build (Particles subscribes to quality and never lets
  * go): `sharedFx` draws under the cards (dust, embers, the PLAY burst), `sharedDemoFx` over the
- * cards' art but under all text (the demos' blasts, the thrown bomb's trail).
+ * cards' art but under all text (the demos' sparks, coin glints and crash blasts).
  */
 let sharedFx: Particles | undefined;
 let sharedDemoFx: Particles | undefined;
@@ -1182,8 +1182,8 @@ export class IntroSplash extends Container {
   }
 
   /**
-   * This build is the one on screen now: it takes over the shared particles and Cap'n Kaboom and
-   * Sparks (they step above the shade at their in-game posts) from the previous splash.
+   * This build is the one on screen now: it takes over the shared particles and Conductor Casey and
+   * Rivets (they step above the shade at their in-game posts) from the previous splash.
    */
   activate() {
     this.fxLayer.addChildAt(this.fx, 0);
@@ -1889,7 +1889,7 @@ interface CoachTarget {
   w: number;
   h: number;
   text: string;
-  /** Callout under the target (the fuse meter) or over it (the HUD's Powder Boost switch). */
+  /** Callout under the target (the POWER meter) or over it (the HUD's Express Pass switch). */
   below: boolean;
   /** A canvas target gets a pulsing ring; a DOM one (drawn over the canvas) only the pointer. */
   ring: boolean;
@@ -1897,7 +1897,7 @@ interface CoachTarget {
 
 /**
  * First-spin coach marks (canvas only): on a player's first visit, right after the intro,
- * parchment callouts point at the powder fuse and at the Powder Boost switch. They go at the first
+ * parchment callouts point at the POWER meter and at the Express Pass switch. They go at the first
  * spin, a tap, a resize or after a few seconds, and are marked seen once they have shown.
  */
 export class CoachMarks extends Container {
@@ -1913,7 +1913,7 @@ export class CoachMarks extends Container {
     this.eventMode = 'none';
   }
 
-  /** What to point at: the fuse meter, and the Powder Boost switch when it is on screen. */
+  /** What to point at: the POWER meter, and the Express Pass switch when it is on screen. */
   static targets(L: Layout, canvas: HTMLCanvasElement, boost: boolean): CoachTarget[] {
     const out: CoachTarget[] = [{ ...L.meter, text: t('coachPower'), below: true, ring: true }];
     const el = boost ? document.querySelector<HTMLElement>('.boost-btn') : null;

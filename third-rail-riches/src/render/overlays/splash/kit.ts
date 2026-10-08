@@ -101,8 +101,12 @@ export abstract class Demo {
       this.stopAtLoop = false;
       if (!this.running) {
         this.running = true;
+        // a fresh loop from the board as it stands (a rewound timeline would replay its callbacks
+        // backwards on the way to 0 and leave the board mid-flip)
+        this.tl.kill();
         this.prime();
-        this.tl.restart();
+        this.build();
+        this.tl.play(0);
       }
       return;
     }
@@ -123,8 +127,10 @@ export abstract class Demo {
     this.running = false;
     this.tl?.pause();
   }
-  /** The loop's opening state (called right before the timeline restarts, and at its start). */
+  /** The loop's opening state (called before a fresh loop starts, and at the start of each repeat). */
   protected prime() {}
+  /** Build `this.tl`: the loop, paused, repeating (called at construction and whenever the card starts playing). */
+  protected build() {}
   /** Snap to the loop's resting board (called when a card stops off screen). */
   protected settle() {}
   /** Stop stray one-off tweens on these targets (the loop's own are kept). */
@@ -587,7 +593,7 @@ export class MiniMap {
     this.level[li] = level;
     const s = this.glows[li];
     if (!s) return;
-    gsap.to(s, { alpha: 0.08 + level * 0.42, duration: dur, ease: 'sine.inOut', overwrite: true });
+    gsap.to(s, { alpha: 0.08 + level * 0.34, duration: dur, ease: 'sine.inOut', overwrite: true });
   }
   /** Lines back to their idle glow at once (a loop restarts). */
   unlight() {
