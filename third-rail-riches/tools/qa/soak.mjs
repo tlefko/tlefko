@@ -21,10 +21,11 @@ await page.waitForFunction(() => window.__ll && (!document.getElementById('boot'
 await page.waitForTimeout(800);
 // dismiss the splash (the game stays busy until the intro is over): Enter until it hands over
 await page.waitForFunction(() => window.__ll.splash && window.__ll.splash(), null, { timeout: 180000 });
-for (let i = 0; i < 40; i++) {
+// one press, then wait for the handover (a press after the splash is gone would start a spin)
+for (let i = 0; i < 6; i++) {
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(700);
-  if (await page.evaluate(() => !window.__ll.splash())) break;
+  const gone = await page.waitForFunction(() => !window.__ll.splash(), null, { timeout: 12000 }).then(() => true, () => false);
+  if (gone) break;
 }
 await page.waitForFunction(() => !window.__ll.ctrl.busy, null, { timeout: 60000 });
 await page.waitForTimeout(600);
