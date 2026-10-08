@@ -632,8 +632,13 @@ export class MiniMap {
  * Trains
  * ---------------------------------------------------------------------------------------- */
 
+/** Car length, coupling pitch and nose-to-centre, in station sizes (a touch shorter than the board's, for small maps). */
+export const CAR_K = 1.15;
+export const CAR_GAP = 1.0;
+export const CAR_NOSE = 0.5;
+
 /**
- * A top-down two-car set on a path (TrainRunner's look and spacing): the lead car's nose sits at
+ * A top-down two-car set on a path (TrainRunner's look): the lead car's nose sits at
  * arc length `s`, the cars follow along the same path (so they swing round bends), fade in as they
  * pull out of the starting terminal and out as they dive into the far tunnel. A warm headlamp glow
  * leads the nose; the tally floats over the lead car.
@@ -660,12 +665,12 @@ export class MiniTrain {
     golden = false,
   ) {
     const S = map.S;
-    this.gap = S * 1.12;
+    this.gap = S * CAR_GAP;
     for (let i = 0; i < 2; i++) {
       const c = new Sprite(k.art.cars.get(`${golden ? 'gold' : line}${i === 0 ? 'L' : 'C'}`) ?? Texture.EMPTY);
       c.anchor.set(0.5);
-      c.width = S * 1.3;
-      c.height = S * 1.3 * (96 / 240);
+      c.width = S * CAR_K;
+      c.height = S * CAR_K * (96 / 240);
       c.alpha = 0;
       this.cars.push(c);
     }
@@ -703,18 +708,20 @@ export class MiniTrain {
     const S = this.map.S;
     const p = this.path;
     const exitFade = this.exit > 0 ? clamp((p.length - this.s) / this.exit, 0, 1) : 1;
+    let lead = 1;
     this.cars.forEach((c, k) => {
-      const s = this.s - k * this.gap - S * 0.55;
+      const s = this.s - k * this.gap - S * CAR_NOSE;
       const q = pointAt(p, s);
       const a = pointAt(p, s - S * 0.24);
       const b = pointAt(p, s + S * 0.24);
       c.position.set(q.x, q.y);
       if (Math.hypot(b.x - a.x, b.y - a.y) > 0.3) c.rotation = Math.atan2(b.y - a.y, b.x - a.x);
-      const inFade = clamp((s + S * 0.55) / (S * 0.6), 0, 1);
+      const inFade = clamp((s + S * CAR_NOSE) / (S * 0.6), 0, 1);
       // and they fade with the map window's edge (a train never shows off the map)
       const D = this.map.D;
       const edge = clamp((D * 0.5 - Math.max(Math.abs(q.x), Math.abs(q.y))) / (D * 0.12), 0, 1);
       c.alpha = inFade * edge * (k === 0 ? exitFade : Math.min(1, exitFade * 1.6)) * this.dim;
+      if (k === 0) lead = inFade * edge;
       c.tint = this.grey > 0 ? lerpColor(0xffffff, 0x7d828c, this.grey) : 0xffffff;
     });
     const nose = pointAt(p, this.s);
@@ -725,7 +732,8 @@ export class MiniTrain {
     if (this.tally && this.tally.visible) {
       const t = this.tallyAt;
       this.tally.position.set(t.x, t.y);
-      this.tally.alpha = Math.min(1, this.cars[0].alpha * 1.5);
+      // (it shows as the train comes into view, and stays while the train dives into a tunnel)
+      this.tally.alpha = Math.min(1, lead * 1.5);
     }
   }
   /** Off the board (loop start). */
@@ -738,8 +746,8 @@ export class MiniTrain {
       c.alpha = 0;
       c.tint = 0xffffff;
       c.scale.set(Math.abs(c.scale.x), Math.abs(c.scale.y));
-      c.width = this.map.S * 1.3;
-      c.height = this.map.S * 1.3 * (96 / 240);
+      c.width = this.map.S * CAR_K;
+      c.height = this.map.S * CAR_K * (96 / 240);
     }
     gsap.killTweensOf(this.lamp);
     this.lamp.alpha = 0;

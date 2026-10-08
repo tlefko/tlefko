@@ -149,14 +149,14 @@ export function miniMapSvg(spec: MiniSpec, D: number): string {
     }
   });
   const defs = `${grad('gx', true)}${grad('gy', false)}${mask('gx')}${mask('gy')}
-    <radialGradient id="${id}field" cx="0.5" cy="0.45" r="0.72"><stop offset="0" stop-color="#1b3a63"/><stop offset="0.6" stop-color="#11264a"/><stop offset="1" stop-color="#0a1630"/></radialGradient>
+    <radialGradient id="${id}field" cx="0.5" cy="0.45" r="0.72"><stop offset="0" stop-color="#1e4373"/><stop offset="0.6" stop-color="#14305a"/><stop offset="1" stop-color="#0c1d3d"/></radialGradient>
     <radialGradient id="${id}face" cx="0.4" cy="0.3" r="0.8"><stop offset="0" stop-color="#2a3446"/><stop offset="0.7" stop-color="#121822"/><stop offset="1" stop-color="#07090e"/></radialGradient>
     <linearGradient id="${id}brass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1c2"/><stop offset="0.5" stop-color="#c9922e"/><stop offset="1" stop-color="#7d5313"/></linearGradient>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${F(W)} ${F(W)}" width="${F(W)}" height="${F(W)}"><defs>${defs}</defs>
     <g mask="url(#${id}mgx)"><g mask="url(#${id}mgy)">
       <rect x="${F(w0)}" y="${F(w0)}" width="${F(D)}" height="${F(D)}" fill="url(#${id}field)"/>
-      <g fill="#2a4a78" opacity="0.2">${blocks.join('')}</g>
-      <path d="${grid.join(' ')}" stroke="#7fb2d8" stroke-width="${F(Math.max(0.6, S * 0.02))}" opacity="0.09"/>
+      <g fill="#2f5486" opacity="0.24">${blocks.join('')}</g>
+      <path d="${grid.join(' ')}" stroke="#8fc0e4" stroke-width="${F(Math.max(0.6, S * 0.018))}" opacity="0.12"/>
       ${network(true)}
     </g></g>
     ${network(false)}
@@ -271,7 +271,7 @@ export async function buildDemoArt(o: { D: number; res: number; specs: MiniSpec[
   const { D, res, specs, needs } = o;
   const maxS = Math.max(0.12, ...specs.map((s) => s.S)) * D;
   const symPx = Math.max(24, maxS * SYM_K * res * 1.08);
-  const carW = Math.max(24, maxS * 1.3 * res);
+  const carW = Math.max(24, maxS * 1.15 * res);
   const jobs: Promise<unknown>[] = [];
   const art: DemoArt = {
     cars: new Map(),
