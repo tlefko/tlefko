@@ -1,0 +1,1433 @@
+/* Control bar (track H): the dash of a 1930s subway car, maroon enamel panels under a brass rail,
+   iron readout plates with amber-lit labels, brass and emerald controls and a locomotive driving
+   wheel for spin. Art comes from src/ui/art.ts as SVG custom properties (--pk-deck = maroon
+   panels, --pk-rail = brass rail, --pk-helm = driving wheel, --pk-seal = golden ticket, --pk-knob,
+   --pk-stud, --pk-wood = maroon enamel, --pk-parchment = cream enamel). */
+.hud {
+  --hud-h: 84px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--hud-h);
+  pointer-events: none;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.hud-bar {
+  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  /* one row: the win plate takes only the room left between the two groups (its numerals scale
+     down to fit), so the win and stake readings can never meet, whatever the amounts */
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px max(16px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(16px, env(safe-area-inset-left));
+  background:
+    var(--pk-rail) left top / 64px 14px repeat-x,
+    var(--pk-deck) left 14px / 480px 72px repeat,
+    var(--maroon-deep);
+  box-shadow:
+    0 -8px 22px rgba(0, 0, 0, 0.5),
+    0 -2px 14px rgba(63, 200, 255, 0.12);
+}
+
+.hud-left,
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* in a full row the side groups give up room at half the win plate's rate: about half of each is
+   fixed controls, so at the full rate their one reading (balance, play amount) paid for all of it */
+.hud-left {
+  flex: 0 0.5 auto;
+}
+
+.hud-right {
+  flex: 0 0.5 auto;
+  justify-content: flex-end;
+  /* full bar height, so the wheel can sit on the floor and rise above the rail */
+  align-self: stretch;
+}
+
+/* the win plate grows into the room left over, but in a full row it asks only for what its own
+   reading needs (a fixed share starved the play amount: 70,000.00 GC under the floor at 844x390) */
+.hud-center {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  justify-content: center;
+  min-width: min-content;
+}
+
+/* a reading never gets narrower than its label; its numerals shrink instead */
+.hud-left .meter,
+.hud-right .meter,
+.hud-center .meter {
+  flex: 0 1 auto;
+  min-width: min-content;
+}
+
+/* ------------------------------- meters -------------------------------- */
+/* each reading is an iron readout plate in a brass bezel, let into the enamel; its label glows
+   like an amber indicator lamp */
+.meter {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 12px 5px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(13, 20, 24, 0.92), rgba(23, 33, 38, 0.88));
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink),
+    inset 0 0 0 3px rgba(196, 140, 40, 0.85),
+    inset 0 0 0 4px var(--ink),
+    inset 0 5px 8px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 214, 150, 0.22);
+}
+
+.meter .lbl {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--amber-light);
+  line-height: 1.1;
+  white-space: nowrap;
+  text-shadow:
+    0 1.5px 0 var(--ink),
+    0 0 8px rgba(255, 180, 60, 0.35);
+}
+
+.meter .val {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 20px;
+  line-height: 1;
+  min-height: 1.25em;
+  white-space: nowrap;
+  color: var(--paper);
+}
+
+/* a long amount scales down inside its plate rather than spilling out: fluid numerals fill the
+   reading up to their natural width and add nothing to its minimum width */
+.numsvg.fluid {
+  width: 100%;
+  height: auto;
+}
+
+/*
+ * An amount too long for its plate even at the legibility floor wraps (Hud.fit): its numerals come
+ * in chunks that break only after a thousands separator or before the currency, never inside a digit
+ * group. Neighbouring chunks overlap by their own shadow padding (22 of the 136 viewBox units, i.e.
+ * 0.194em) so the digits keep exactly the spacing of one line; the lines sit close (each numeral box
+ * already carries its outline's room).
+ */
+.meter .val.wrap {
+  flex-wrap: wrap;
+  align-content: center;
+  row-gap: 0;
+}
+.meter .val.wrap .numsvg + .numsvg {
+  margin-left: -0.194em;
+}
+
+.meter.win {
+  justify-items: center;
+  width: min(100%, 230px);
+}
+
+.meter.win .val {
+  font-size: 22px;
+  justify-content: center;
+  width: 100%;
+}
+
+.meter.win.empty .lbl {
+  opacity: 0.6;
+}
+
+.meter.fs {
+  justify-items: center;
+}
+
+.meter.fs .lbl {
+  color: var(--accent);
+}
+
+.meter.fs .val {
+  display: inline-block;
+  font-family: var(--font-cartoon);
+  font-size: 18px;
+  letter-spacing: 0.03em;
+  color: var(--paper);
+  text-shadow:
+    0 2px 0 var(--ink),
+    1px 1px 0 var(--ink),
+    -1px 1px 0 var(--ink),
+    1px -1px 0 var(--ink),
+    -1px -1px 0 var(--ink);
+}
+
+.meter.bet {
+  justify-items: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.bet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bet-row {
+  min-width: 0;
+}
+
+.bet-row .val {
+  flex: 0 1 auto;
+  min-width: 0;
+  justify-content: center;
+}
+
+.bet-row .step {
+  flex: none;
+}
+
+:lang(ar) .meter .lbl,
+:lang(hi) .meter .lbl {
+  letter-spacing: 0;
+}
+
+/* our numerals in the DOM (src/ui/numerals.ts) */
+.numsvg {
+  display: block;
+  overflow: visible;
+}
+.numsvg .nd use,
+.numsvg .nd text {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 17px;
+  stroke-linejoin: round;
+}
+.numsvg .nf use,
+.numsvg .nf text {
+  stroke: var(--ink);
+  stroke-width: 11px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.numsvg text {
+  font-family: Rye, Georgia, serif;
+  font-size: 132px;
+}
+
+/* ------------------------------- controls ------------------------------ */
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled {
+  cursor: default;
+  filter: saturate(0.3) brightness(0.7);
+}
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* round controls: emerald enamel buttons in riveted brass bezels (lit: electric blue) */
+.knob {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: var(--pk-knob) center / contain no-repeat;
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex: none;
+  transition: filter 0.2s var(--ease-ui);
+}
+
+.knob svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.knob:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.auto-btn.on,
+.turbo-btn[data-mode='turbo'],
+.turbo-btn[data-mode='super'] {
+  background-image: var(--pk-knob-lit);
+}
+
+.turbo-btn .pips {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+}
+
+.turbo-btn .pips b {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--iron-deep);
+  box-shadow: 0 0 0 1.5px var(--ink);
+  transition: background 0.2s var(--ease-ui), box-shadow 0.2s var(--ease-ui);
+}
+
+.turbo-btn[data-mode='turbo'] .pips b:first-child,
+.turbo-btn[data-mode='super'] .pips b {
+  background: var(--volt-light);
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    0 0 6px var(--volt);
+}
+
+.side-btns {
+  display: flex;
+  gap: 10px;
+}
+
+/* stake steps: brass studs (the hit area is larger than the stud) */
+.step {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: var(--pk-stud) center / contain no-repeat;
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex: none;
+  transition: filter 0.2s var(--ease-ui);
+}
+
+.step::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+}
+
+.step svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+
+.step:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* bonus buy: a Golden Ticket with a maroon enamel label panel */
+.buy-btn {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border: 0;
+  padding: 0;
+  background: var(--pk-seal) center / contain no-repeat;
+  flex: none;
+  transition: filter 0.2s var(--ease-ui);
+}
+
+.buy-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.buy-text {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  font-family: var(--font-cartoon);
+  font-size: 12.5px;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: var(--cream);
+  text-align: center;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 var(--ink),
+    1px 1px 0 var(--ink),
+    -1px 1px 0 var(--ink),
+    1px -1px 0 var(--ink),
+    -1px -1px 0 var(--ink);
+  pointer-events: none;
+}
+
+/* spin: a locomotive driving wheel in a brass bezel round an electric-blue dispatch hub; it turns
+   while a round plays, and glows (pulses) while it can be pressed */
+.spin-btn {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  /* sits on the bar's floor and stands proud of the rail above it */
+  align-self: flex-end;
+  margin: 0 -4px 3px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+  transition: filter 0.2s var(--ease-ui);
+}
+
+.spin-btn:hover {
+  filter: brightness(1.08);
+}
+
+.spin-btn:active {
+  filter: brightness(0.94);
+}
+
+.spin-helm {
+  position: absolute;
+  inset: -2px;
+  background: var(--pk-helm) center / contain no-repeat;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* the dispatch glow round the wheel: it breathes while the button is ready, and sits steady and
+   dim while a round plays */
+.spin-btn::before {
+  content: '';
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  box-shadow:
+    0 0 14px 3px rgba(63, 200, 255, 0.55),
+    0 0 30px 6px rgba(63, 200, 255, 0.25);
+  pointer-events: none;
+  animation: spin-ready 2.2s ease-in-out infinite;
+}
+
+.hud.busy .spin-btn::before,
+.spin-btn:disabled::before {
+  animation: none;
+  opacity: 0.25;
+}
+
+.hud.in-bonus .spin-btn::before {
+  box-shadow:
+    0 0 14px 3px rgba(255, 180, 60, 0.55),
+    0 0 30px 6px rgba(255, 180, 60, 0.25);
+}
+
+@keyframes spin-ready {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pk-low .spin-btn::before {
+  animation: none;
+  opacity: 0.8;
+}
+
+.hud.in-bonus .spin-helm {
+  background-image: var(--pk-helm-hot);
+}
+
+.spin-icon,
+.spin-stop,
+.spin-count {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.spin-icon svg,
+.spin-count svg:not(.numsvg) {
+  width: 34px;
+  height: 34px;
+}
+
+.spin-stop svg {
+  width: 24px;
+  height: 24px;
+}
+
+.spin-count {
+  font-size: 19px;
+}
+
+/* Express Pass: a pass switch on an iron plate in a brass bezel beside the wheel */
+.boost-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 52px;
+  padding: 0 12px 0 4px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--iron) 0%, var(--iron-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 4.5px var(--gold),
+    inset 0 0 0 6px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.06),
+    0 4px 0 rgba(0, 0, 0, 0.35);
+  color: var(--cream);
+  flex: none;
+  transition: box-shadow 0.25s var(--ease-ui), filter 0.2s var(--ease-ui);
+}
+
+.boost-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.boost-art {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  pointer-events: none;
+}
+
+.boost-text {
+  display: grid;
+  gap: 1px;
+  text-align: start;
+  line-height: 1.05;
+  pointer-events: none;
+}
+
+.boost-name {
+  font-family: var(--font-cartoon);
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-shadow:
+    0 1.5px 0 var(--ink),
+    1px 1px 0 var(--ink),
+    -1px 1px 0 var(--ink);
+}
+
+.boost-cost {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--amber-light);
+  white-space: nowrap;
+}
+
+/* compact layouts show the cost as numerals only */
+.boost-x {
+  display: none;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.boost-lamp {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--tunnel);
+  box-shadow: inset 0 0 0 2px var(--ink);
+  transition: background 0.25s var(--ease-ui), box-shadow 0.25s var(--ease-ui);
+}
+
+.hud.boost-on .boost-btn {
+  background: linear-gradient(180deg, var(--volt-night) 0%, #071a45 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 4.5px var(--volt-light),
+    inset 0 0 0 6px var(--ink),
+    0 0 20px rgba(63, 200, 255, 0.6),
+    0 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.hud.boost-on .boost-lamp {
+  background: var(--volt-light);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    0 0 9px var(--volt);
+}
+
+/* a cream enamel notice by the switch: what Express Pass costs and does */
+.boost-tip {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(var(--hud-h) + 10px);
+  width: max-content;
+  max-width: min(340px, calc(100vw - 28px));
+  padding: 10px 14px 11px;
+  border-radius: 12px;
+  background: var(--pk-parchment) 0 0 / 256px 256px, var(--cream);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4.5px var(--emerald),
+    inset 0 0 0 5.5px var(--ink),
+    0 12px 26px rgba(0, 0, 0, 0.5);
+  color: var(--parch-ink);
+  font-size: 13.5px;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.boost-tip b {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--font-cartoon);
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.03em;
+  color: var(--maroon);
+}
+
+/* ---------------------------- plates & bars ---------------------------- */
+.feature-bar {
+  pointer-events: auto;
+  position: absolute;
+  bottom: calc(var(--hud-h) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 12px 9px 16px;
+  border-radius: 12px;
+  background: var(--pk-wood) center / 96px auto;
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 4px var(--volt),
+    inset 0 0 0 5px var(--ink),
+    0 0 18px rgba(63, 200, 255, 0.35),
+    0 12px 30px rgba(0, 0, 0, 0.5);
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.feature-bar[hidden] {
+  display: none;
+}
+
+.fb-text b {
+  color: var(--amber-light);
+  font-weight: 600;
+}
+
+.fb-off {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--gold);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 2px 0 var(--gold-light);
+}
+
+.hud-extras {
+  position: absolute;
+  bottom: calc(var(--hud-h) + 6px);
+  left: max(12px, env(safe-area-inset-left));
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--pk-parchment) 0 0 / 256px 256px, var(--cream);
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink),
+    inset 0 0 0 3px var(--emerald);
+  padding: 4px 9px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* ------------------------------- replay -------------------------------- */
+/* Stake bet replay: the bar keeps its enamel and rail but none of its betting controls; the replay
+   panel lies over it with the REPLAY tag, the round's five results, the win reading and the menu
+   (both moved in by Hud.enterReplay), and one Play / Play again control. */
+.hud.replay .hud-bar > * {
+  display: none !important;
+}
+
+.replay-bar {
+  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px max(14px, env(safe-area-inset-right)) max(3px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  font-size: 13px;
+}
+
+@media (min-width: 1200px) {
+  .replay-bar {
+    font-size: 15px;
+  }
+}
+
+.replay-bar .menu-btn {
+  flex: none;
+}
+
+.replay-bar .meter.win {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: min-content;
+  max-width: 24%;
+  /* the tag and results sit centred between the menu and the win */
+  margin-left: auto;
+}
+
+/* the REPLAY tag: a maroon enamel tag, first in the row of results */
+.rp-tag {
+  flex: none;
+  position: relative;
+  align-self: center;
+  padding: 5px 12px 4px;
+  border-radius: 6px;
+  font-family: var(--font-cartoon);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--cream);
+  background: var(--maroon);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 3.5px var(--gold),
+    inset 0 0 0 4.5px var(--ink),
+    0 3px 0 rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 0 var(--ink);
+}
+
+/* the round's mode (Base game, Express Pass, a bonus) beside the tag */
+.rp-mode {
+  flex: none;
+  align-self: center;
+  font-family: var(--font-cartoon);
+  font-size: 1em;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: var(--paper);
+  text-shadow: 0 2px 0 var(--ink);
+}
+.rp-stats {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 10px;
+}
+
+/* one reading per result: label over value, on an iron readout plate */
+.rp-item {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  flex: none;
+  padding: 3px 10px 4px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(13, 20, 24, 0.92), rgba(23, 33, 38, 0.88));
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink),
+    inset 0 0 0 2.5px rgba(196, 140, 40, 0.8),
+    inset 0 4px 6px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 214, 150, 0.2);
+}
+
+.rp-lbl {
+  font-size: 1em;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--amber-light);
+  text-shadow: 0 1.5px 0 var(--ink);
+}
+
+.rp-val {
+  display: flex;
+  font-size: 1.35em;
+  line-height: 1;
+}
+
+.rp-info {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--amber-light);
+  text-shadow: 0 1.5px 0 var(--ink);
+}
+
+.rp-play {
+  flex: none;
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-family: var(--font-cartoon);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4.5px var(--gold),
+    inset 0 0 0 5.5px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.12),
+    0 5px 0 rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 0 var(--ink);
+}
+
+.rp-play.gone {
+  visibility: hidden;
+}
+
+/* not enough room for one row: the readings flow into lines, label and value side by side */
+.replay-bar.compact .rp-stats {
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 3px 6px;
+}
+
+.replay-bar.compact .rp-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px 2px;
+  border-radius: 7px;
+}
+
+.replay-bar.compact .rp-val {
+  font-size: 1.12em;
+}
+
+/* portrait: tag, win, menu and Play on the first line, the results in a grid below */
+.hud.portrait .replay-bar {
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 6px 8px;
+  padding-top: 12px;
+}
+
+.hud.portrait .replay-bar .rp-stats,
+.hud.portrait .replay-bar .meter.win {
+  margin-left: 0;
+}
+
+/* the tag and the five results as a 3 x 2 grid under the controls */
+.hud.portrait .replay-bar .rp-stats {
+  order: 5;
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+/* the REPLAY tag over the round's mode in the first cell; the five results fill the other five (two rows) */
+.hud.portrait .replay-bar .rp-tag {
+  grid-area: 1 / 1;
+  align-self: start;
+  justify-self: center;
+}
+.hud.portrait .replay-bar .rp-mode {
+  grid-area: 1 / 1;
+  align-self: end;
+  justify-self: center;
+  white-space: normal;
+  text-align: center;
+}
+
+.hud.portrait .rp-tag {
+  justify-self: center;
+}
+
+.hud.portrait .rp-item {
+  min-width: 0;
+  padding: 2px 4px 3px;
+}
+
+.hud.portrait .rp-lbl {
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.hud.portrait .rp-val {
+  font-size: 1.2em;
+  max-width: 100%;
+}
+
+.hud.portrait .replay-bar .meter.win {
+  max-width: 34%;
+}
+
+.hud.portrait .rp-play {
+  min-height: 42px;
+  padding: 7px 16px;
+}
+
+.hud.portrait .replay-bar .menu-btn {
+  width: 42px;
+  height: 42px;
+}
+
+.hud.portrait .rp-lbl {
+  line-height: 1.05;
+}
+
+/* the popouts: no win reading here either (the in-scene bar carries it), smaller controls */
+@media (orientation: landscape) and (max-width: 600px) and (max-height: 480px) {
+  .replay-bar {
+    gap: 5px;
+    padding: 5px max(6px, env(safe-area-inset-right)) max(2px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    font-size: 11.5px;
+  }
+  .replay-bar .meter.win {
+    display: none;
+  }
+  .rp-tag {
+    font-size: 1em;
+    padding: 3px 6px 2px;
+  }
+  .rp-play {
+    min-height: 40px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+}
+
+/* Replay on short landscape screens (Stake's popouts, phones on their side; Stake's Popout S review): the results
+   take a column at the screen's right (layout.ts replayColumn, --rp-w) and the scene is laid out left of it, so the
+   reels keep their normal-play size and nothing lies over them. Top to bottom: the REPLAY tag and the mode (the menu
+   in the corner), the five results (label and value on one line, a long value under its label, right-aligned),
+   Play / Play again at the foot. The win reading steps aside: the win is one of the results. Type never under
+   12.5 px (Hud.fitReplay). */
+#hud:has(> .hud.rp-col) {
+  top: 0;
+}
+.hud.rp-col {
+  top: 0;
+  left: auto;
+  width: var(--rp-w);
+  height: auto;
+}
+.hud.rp-col .hud-bar {
+  background:
+    var(--pk-deck) left top / 480px 72px repeat,
+    var(--maroon-deep);
+  box-shadow: -8px 0 22px rgba(0, 0, 0, 0.45);
+}
+.hud.rp-col .replay-bar {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 4px;
+  padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) 6px;
+  font-size: 13px;
+}
+.hud.rp-col .replay-bar .menu-btn {
+  position: absolute;
+  top: max(6px, env(safe-area-inset-top));
+  right: max(6px, env(safe-area-inset-right));
+  width: 34px;
+  height: 34px;
+}
+.hud.rp-col .replay-bar .meter.win {
+  display: none;
+}
+/* the tag and the mode share the first row where they fit (the menu in the corner), each result a full row */
+.hud.rp-col .rp-stats,
+.hud.rp-col .replay-bar.compact .rp-stats {
+  flex: 0 1 auto;
+  margin: 0 38px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  gap: 3px 6px;
+}
+.hud.rp-col .rp-tag {
+  font-size: 1em;
+  padding: 4px 8px 3px;
+}
+.hud.rp-col .rp-mode {
+  white-space: normal;
+}
+.hud.rp-col .rp-item,
+.hud.rp-col .replay-bar.compact .rp-item {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 6px;
+  padding: 1px 6px 2px;
+}
+/* the results take the column's whole width (under the menu) */
+.hud.rp-col .rp-item:first-of-type {
+  margin-top: 2px;
+}
+.hud.rp-col .rp-stats > .rp-item {
+  margin-right: -38px;
+}
+/* (the first one keeps clear of the menu in the corner) */
+.hud.rp-col .rp-stats > .rp-item:first-of-type {
+  margin-right: 0;
+}
+.hud.rp-col .rp-lbl {
+  white-space: normal;
+}
+.hud.rp-col .rp-val,
+.hud.rp-col .replay-bar.compact .rp-val {
+  margin-left: auto;
+  font-size: 1.04em;
+}
+.hud.rp-col .rp-play {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 15px;
+}
+/* the shortest popouts (320x180): a slimmer Play */
+@media (max-height: 209px) {
+  .hud.rp-col .rp-play {
+    min-height: 28px;
+    padding: 2px 8px;
+    font-size: 14px;
+  }
+  .hud.rp-col .rp-item,
+  .hud.rp-col .replay-bar.compact .rp-item {
+    padding: 0 6px 1px;
+  }
+}
+
+/* ---------------------------- portrait phones ---------------------------- */
+/*
+ * 28 columns. On top the readings take 8 + 7 + 13: the play amount sits between its -/+ studs, so it
+ * gets the widest plate (Stake review, "it is possible to overlap the win and play amounts": on a
+ * 375px iPhone SE a 70,000.00 GC play amount was squeezed between its studs into ~50px and shrank
+ * to ~7px; it now reads at 17px beside a 75.00 GC win and a 575.00 GC balance, all on one line).
+ * Below, seven controls, the wheel taking eight columns and the others four or six.
+ */
+.hud.portrait .hud-bar {
+  display: grid;
+  padding: 13px max(10px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  background:
+    var(--pk-rail) left top / 48px 10px repeat-x,
+    var(--pk-deck) left 10px / 480px 72px repeat,
+    var(--maroon-deep);
+  grid-template-columns: repeat(28, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'bal bal bal bal bal bal bal bal win win win win win win win bet bet bet bet bet bet bet bet bet bet bet bet bet'
+    'buy buy buy buy buy buy menu menu menu menu menu menu spin spin spin spin spin spin spin spin aut aut aut aut turbo turbo turbo turbo';
+  gap: 5px 0;
+  align-items: center;
+}
+
+.hud.portrait.has-boost .hud-bar {
+  grid-template-areas:
+    'bal bal bal bal bal bal bal bal win win win win win win win bet bet bet bet bet bet bet bet bet bet bet bet bet'
+    'buy buy buy buy menu menu menu menu spin spin spin spin spin spin spin spin boost boost boost boost aut aut aut aut turbo turbo turbo turbo';
+}
+
+.hud.portrait .hud-left,
+.hud.portrait .hud-center,
+.hud.portrait .hud-right,
+.hud.portrait .side-btns {
+  display: contents;
+}
+
+.hud.portrait .meter {
+  padding: 3px 5px 4px;
+  margin: 0 2px;
+  justify-self: stretch;
+  align-self: stretch;
+  align-content: center;
+}
+
+.hud.portrait .meter .lbl {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.05;
+}
+
+.hud.portrait .bal {
+  grid-area: bal;
+}
+.hud.portrait .win,
+.hud.portrait .fs {
+  grid-area: win;
+  min-width: 0;
+}
+.hud.portrait.in-bonus .win {
+  display: none;
+}
+.hud.portrait.in-bonus .fs {
+  display: grid;
+}
+.hud.portrait .bet {
+  grid-area: bet;
+}
+.hud.portrait .buy-btn {
+  grid-area: buy;
+  justify-self: center;
+  width: 56px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+.hud.portrait .menu-btn {
+  grid-area: menu;
+  justify-self: center;
+}
+.hud.portrait .spin-btn {
+  grid-area: spin;
+  justify-self: center;
+  align-self: center;
+  margin: 0;
+  /* never taller than its row: readings that run to more lines take room from the wheel, never from
+     the readings or the screen */
+  width: auto;
+  height: min(96px, calc(var(--hud-h) - 64px), 100%);
+  aspect-ratio: 1;
+}
+.hud.portrait .boost-btn {
+  grid-area: boost;
+  justify-self: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  width: 48px;
+  height: min(62px, 100%);
+  padding: 4px 2px 5px;
+}
+.hud.portrait .boost-btn .boost-art {
+  width: 34px;
+  height: 34px;
+}
+.hud.portrait .boost-btn .boost-name,
+.hud.portrait .boost-btn .boost-cost,
+.hud.portrait .boost-btn .boost-lamp {
+  display: none;
+}
+.hud.portrait .boost-btn .boost-x {
+  display: flex;
+}
+.hud.portrait .auto-btn {
+  grid-area: aut;
+  justify-self: center;
+}
+.hud.portrait .turbo-btn {
+  grid-area: turbo;
+  justify-self: center;
+}
+.hud.portrait .knob {
+  width: 46px;
+  height: 46px;
+}
+.hud.portrait .meter .val {
+  font-size: 16px;
+}
+.hud.portrait .meter.win .val {
+  font-size: 16px;
+}
+.hud.portrait .meter.fs .val {
+  font-size: 15px;
+}
+/* the play amount between its studs: 20px studs (a 36px touch area) keep the plate one amount line tall */
+.hud.portrait .bet-row {
+  gap: 3px;
+}
+.hud.portrait .bet-row .val {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.hud.portrait .step {
+  width: 20px;
+  height: 20px;
+}
+.hud.portrait .step::before {
+  inset: -8px;
+}
+.hud.portrait .step svg {
+  width: 12px;
+  height: 12px;
+}
+.hud.portrait .meter.win {
+  min-width: 0;
+  width: auto;
+}
+.hud.portrait .boost-tip {
+  right: 50%;
+  transform: translateX(50%);
+}
+
+/*
+ * Two lines in a plate (a two-line label, or an amount wrapped by Hud.fit): the plate closes up its
+ * spacing, and in portrait the bar does too (.tall), so the readings' row stays short enough for the
+ * wheel to keep its size.
+ */
+.hud .meter.tight {
+  padding-top: 1px;
+  padding-bottom: 2px;
+  gap: 0;
+}
+.hud .meter.tight .lbl {
+  line-height: 1;
+}
+.hud.portrait.tall .hud-bar {
+  padding-top: 11px;
+  row-gap: 3px;
+}
+
+/* mid-size landscape: the boost switch folds to its pass and cost */
+@media (orientation: landscape) and (max-width: 1199px) and (min-height: 481px) {
+  .hud:not(.portrait) .boost-btn {
+    flex-direction: column;
+    justify-content: center;
+    width: 52px;
+    height: 62px;
+    padding: 3px 2px 4px;
+    gap: 0;
+  }
+  .hud:not(.portrait) .boost-btn .boost-art {
+    width: 38px;
+    height: 38px;
+  }
+  .hud:not(.portrait) .boost-btn .boost-name,
+  .hud:not(.portrait) .boost-btn .boost-cost,
+  .hud:not(.portrait) .boost-btn .boost-lamp {
+    display: none;
+  }
+  .hud:not(.portrait) .boost-btn .boost-x {
+    display: flex;
+  }
+}
+
+/* --------------------------- short landscape --------------------------- */
+@media (max-height: 480px) and (orientation: landscape) {
+  .hud-bar {
+    gap: 10px;
+    padding-top: 8px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .hud-left,
+  .hud-right {
+    gap: 8px;
+  }
+  .meter {
+    padding: 2px 9px 3px;
+  }
+  .meter .val {
+    font-size: 16px;
+  }
+  .meter.win .val {
+    font-size: 17px;
+  }
+  .spin-btn {
+    width: 70px;
+    height: 70px;
+    margin: 0 -2px 2px;
+  }
+  .spin-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+  .buy-btn {
+    width: 52px;
+    height: 52px;
+  }
+  .buy-text {
+    font-size: 10px;
+  }
+  .knob {
+    width: 42px;
+    height: 42px;
+  }
+  .knob svg {
+    width: 23px;
+    height: 23px;
+  }
+  .hud-center {
+    gap: 10px;
+  }
+  .boost-btn {
+    flex-direction: column;
+    justify-content: center;
+    width: 44px;
+    height: 54px;
+    padding: 2px;
+    gap: 0;
+  }
+  .boost-art {
+    width: 30px;
+    height: 30px;
+  }
+  .boost-btn .boost-name,
+  .boost-btn .boost-cost,
+  .boost-btn .boost-lamp {
+    display: none;
+  }
+  .boost-btn .boost-x {
+    display: flex;
+  }
+  /* the play amount's studs as in the mini-player: its plate stays under the rail, and the amount
+     gets 30px more of the row (70,000.00 GC beside a 99,999,999.99 GC balance on a phone) */
+  .step {
+    width: 22px;
+    height: 22px;
+  }
+  .step svg {
+    width: 12px;
+    height: 12px;
+  }
+  .bet-row {
+    gap: 3px;
+  }
+}
+
+/* Stake mini-player popout and other tiny landscape views: one tight row. The in-scene win bar
+   carries the win, and speed lives in the menu, so those two controls step aside here. */
+@media (orientation: landscape) and (max-width: 600px) and (max-height: 480px) {
+  .hud-bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 6px max(6px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px, env(safe-area-inset-left));
+  }
+  .hud-left,
+  .hud-right {
+    gap: 4px;
+  }
+  /* labels may take two lines here, so the readings fit the smallest popout; the plates hug their
+     text so a two-line label still sits inside the bar */
+  .meter .lbl {
+    white-space: normal;
+    /* between words only: a reading is never narrower than its longest word, so a two-word label
+       takes two lines at most */
+    overflow-wrap: normal;
+    line-height: 1;
+  }
+  .meter {
+    gap: 1px;
+    padding: 2px 5px 2px;
+    align-self: center;
+  }
+  .meter .val {
+    min-height: 0;
+  }
+  /* the win steps aside here (the in-scene win bar carries it): its slot takes no room */
+  .hud-center {
+    flex: 0 1 0;
+    min-width: 0;
+    gap: 0;
+  }
+  .hud-center .meter.win,
+  .turbo-btn {
+    display: none !important;
+  }
+  .buy-btn {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+  .buy-text {
+    font-size: 8.5px;
+  }
+  .knob {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+  .knob svg {
+    width: 21px;
+    height: 21px;
+  }
+  .spin-btn {
+    width: 54px;
+    height: 54px;
+    margin: 0 -2px 2px;
+    flex-shrink: 0;
+  }
+  .spin-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .meter .val,
+  .meter.fs .val {
+    font-size: 14px;
+  }
+  .bet-row {
+    gap: 3px;
+  }
+  .bet-row .val {
+    min-width: 0;
+  }
+  .step {
+    width: 22px;
+    height: 22px;
+  }
+  .step svg {
+    width: 12px;
+    height: 12px;
+  }
+  .boost-btn {
+    flex-direction: column;
+    justify-content: center;
+    width: 42px;
+    height: 54px;
+    padding: 2px;
+    gap: 0;
+  }
+  .boost-art {
+    width: 28px;
+    height: 28px;
+  }
+  .meter {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}

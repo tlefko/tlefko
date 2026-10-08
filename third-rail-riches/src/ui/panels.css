@@ -1,0 +1,1326 @@
+/* Panels (track H): station signage. A cream enamel sheet in a maroon enamel frame with a brass
+   pinstripe and art-deco brass corners, under an emerald enamel header band. Text is ink on cream
+   (high contrast); the art is SVG from src/ui/art.ts (--pk-parchment = cream enamel, --pk-wood =
+   maroon enamel, --pk-corner, ...). */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  /* one track the size of the screen: a tall sheet is capped by max-height, never pushed off-screen */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  pointer-events: auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 14, 0.68);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.modal-sheet:focus {
+  outline: none;
+}
+
+.modal-sheet {
+  position: relative;
+  width: min(1040px, 100%);
+  max-height: min(88vh, 100%);
+  display: flex;
+  flex-direction: column;
+  border: 11px solid transparent;
+  border-radius: 18px;
+  background:
+    var(--pk-parchment) 0 0 / 256px 256px padding-box,
+    var(--pk-wood) 0 0 / 192px 192px border-box;
+  background-color: var(--cream);
+  box-shadow:
+    0 0 0 2.5px var(--ink),
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4.5px var(--gold),
+    inset 0 0 0 5.5px var(--ink),
+    inset 0 0 22px rgba(156, 34, 50, 0.16),
+    0 26px 60px rgba(0, 0, 0, 0.62);
+  color: var(--parch-ink);
+}
+
+/* a brass pinstripe round the maroon frame */
+.modal-sheet::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 13px;
+  box-shadow: inset 0 0 0 1.5px rgba(244, 183, 58, 0.75);
+  pointer-events: none;
+}
+
+/* art-deco brass corners */
+.mc {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  background: var(--pk-corner) center / contain no-repeat;
+  pointer-events: none;
+  z-index: 2;
+}
+.mc.tl {
+  left: -15px;
+  top: -15px;
+}
+.mc.tr {
+  right: -15px;
+  top: -15px;
+  transform: scaleX(-1);
+}
+.mc.bl {
+  left: -15px;
+  bottom: -15px;
+  transform: scaleY(-1);
+}
+.mc.br {
+  right: -15px;
+  bottom: -15px;
+  transform: scale(-1, -1);
+}
+
+.auto-modal .modal-sheet,
+.menu-modal .modal-sheet,
+.keys-modal .modal-sheet {
+  width: min(540px, 100%);
+}
+
+.history-modal .modal-sheet {
+  width: min(640px, 100%);
+}
+
+.info-modal .modal-sheet {
+  width: min(860px, 100%);
+}
+
+/* the title on an emerald enamel sign band, ruled in brass */
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 10px 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0, rgba(255, 255, 255, 0) 45%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0) 0 22px, rgba(0, 0, 0, 0.06) 22px 24px),
+    linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 -5.5px 0 var(--gold),
+    inset 0 -7px 0 var(--ink),
+    inset 0 4.5px 0 rgba(95, 211, 161, 0.45),
+    0 3px 0 rgba(23, 33, 38, 0.18);
+  border-radius: 6px 6px 0 0;
+}
+
+.modal-title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-cartoon);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  color: var(--amber-light);
+  overflow-wrap: anywhere;
+  text-shadow:
+    0 3px 0 var(--ink),
+    1.5px 1.5px 0 var(--ink),
+    -1.5px 1.5px 0 var(--ink),
+    1.5px -1.5px 0 var(--ink),
+    -1.5px -1.5px 0 var(--ink),
+    0 -1px 0 var(--ink);
+}
+
+.modal-close.knob {
+  width: 44px;
+  height: 44px;
+}
+
+.modal-close.knob svg {
+  width: 22px;
+  height: 22px;
+}
+
+.modal-body {
+  padding: 16px 24px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+/* ------------------------------ buttons ----------------------------- */
+.btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-family: var(--font-cartoon);
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+  background: var(--pk-wood) center / 96px auto;
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink),
+    inset 0 7px 0 rgba(255, 255, 255, 0.08),
+    0 4px 0 rgba(23, 33, 38, 0.45);
+  text-shadow: 0 2px 0 var(--ink);
+  transition: filter 0.2s var(--ease-ui), transform 0.2s var(--ease-ui);
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+}
+
+/* the main action: an emerald "go" signal button */
+.btn.primary {
+  background: linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.12),
+    0 4px 0 rgba(23, 33, 38, 0.45);
+}
+
+.btn.wide {
+  width: 100%;
+  margin-top: 16px;
+}
+
+/* ------------------------------ buy ------------------------------ */
+.bet-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin: 0 0 16px;
+}
+
+.bet-line .lbl {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bet-line .val {
+  display: flex;
+  justify-content: center;
+  min-width: 96px;
+  font-size: 22px;
+}
+
+.offers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.offer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 14px;
+  color: var(--cream);
+  background: var(--pk-wood) 0 0 / 192px 192px;
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 5px var(--o-trim),
+    inset 0 0 0 7px var(--ink),
+    0 0 16px var(--o-glow),
+    0 6px 0 rgba(23, 33, 38, 0.35);
+}
+
+.o-witching {
+  /* Rush Hour: electric blue trim, a tunnel-blue window */
+  --o-trim: var(--volt);
+  --o-glow: rgba(63, 200, 255, 0.28);
+  --o-accent: var(--volt-light);
+  --o-well: radial-gradient(ellipse at 50% 40%, #1a3f86 0%, var(--volt-night) 55%, #06173d 100%);
+}
+.o-tantrum {
+  /* Last Train: gold trim, an amber-lit window */
+  --o-trim: var(--gold);
+  --o-glow: rgba(255, 180, 60, 0.28);
+  --o-accent: var(--amber-light);
+  --o-well: radial-gradient(ellipse at 50% 40%, #5a3510 0%, #2e1a08 60%, #1a0f06 100%);
+}
+
+.offer-art {
+  height: 124px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: var(--o-well);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4px var(--gold-deep),
+    inset 0 0 0 5px var(--ink),
+    inset 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+.offer-art .art svg {
+  width: 110px;
+  height: 110px;
+  display: block;
+}
+
+.offer-art .art.big svg {
+  width: 120px;
+  height: 120px;
+}
+
+.offer h3,
+.confirm h3 {
+  margin: 0 0 6px;
+  /* one long compound (fi Mustaruutiryöstö, de ...) breaks at a hyphen, never spills */
+  hyphens: auto;
+  overflow-wrap: anywhere;
+  font-family: var(--font-cartoon);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.03em;
+  color: var(--o-accent);
+  text-shadow:
+    0 2.5px 0 var(--ink),
+    1px 1px 0 var(--ink),
+    -1px 1px 0 var(--ink),
+    1px -1px 0 var(--ink),
+    -1px -1px 0 var(--ink);
+}
+
+.offer p {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--cream);
+  flex: 1;
+}
+
+.offer-foot {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.vol {
+  font-size: 12.5px;
+  color: var(--amber-light);
+}
+
+.price {
+  display: flex;
+  font-size: 22px;
+}
+
+.offer-cta {
+  border: 0;
+  border-radius: 11px;
+  padding: 11px 12px;
+  font-family: var(--font-cartoon);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--emerald) 0%, var(--emerald-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink),
+    inset 0 8px 0 rgba(255, 255, 255, 0.12),
+    0 4px 0 rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 0 var(--ink);
+  transition: filter 0.2s var(--ease-ui), transform 0.2s var(--ease-ui);
+}
+
+.offer-cta:hover {
+  filter: brightness(1.1);
+}
+
+.offer-cta:active {
+  transform: translateY(2px);
+}
+
+.confirm {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 4px 0;
+}
+
+.confirm .offer-art {
+  height: 170px;
+  width: 220px;
+}
+
+.confirm .offer-art .art.big svg {
+  width: 158px;
+  height: 158px;
+}
+
+.confirm h3 {
+  font-size: 24px;
+}
+
+.confirm-q {
+  font-size: 18px;
+  margin: 6px 0 4px;
+  color: var(--parch-ink);
+}
+
+.confirm-q b {
+  color: var(--maroon);
+}
+
+.confirm-note {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 0 0 18px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  width: min(380px, 100%);
+}
+
+.confirm-actions .btn {
+  flex: 1;
+}
+
+/* --------------------------- autoplay ---------------------------- */
+.field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.field-lbl {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* segmented choices: iron keys, the chosen one brass */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 6px;
+  /* room for the chosen tab's pressed-in offset */
+  padding-bottom: 2px;
+}
+
+.seg button {
+  min-height: 40px;
+  overflow-wrap: anywhere;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--iron-light) -40%, var(--iron) 60%, var(--iron-deep) 140%);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 2.5px 0 rgba(255, 255, 255, 0.18),
+    0 3px 0 rgba(23, 33, 38, 0.35);
+  font-variant-numeric: tabular-nums;
+  transition: background 0.2s var(--ease-ui), color 0.2s var(--ease-ui), transform 0.15s var(--ease-ui);
+}
+
+.seg button:hover {
+  filter: brightness(1.1);
+}
+
+.seg button.on {
+  color: var(--ink);
+  background: var(--gold);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 2px 0 var(--gold-light),
+    inset 0 -3px 0 var(--gold-deep),
+    0 1px 0 rgba(23, 33, 38, 0.35);
+  transform: translateY(2px);
+}
+
+.seg.small {
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+}
+
+.seg.small button {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* checkbox: a brass-rimmed cream tick box, ticked in emerald */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.check i {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 6px;
+  background: var(--cream);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 4px var(--gold);
+}
+
+.check input:checked + i::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 7px;
+  height: 12px;
+  border: solid var(--emerald);
+  border-width: 0 4px 4px 0;
+  transform: rotate(40deg);
+}
+
+.check input:focus-visible + i {
+  outline: 3px solid var(--volt-deep);
+  outline-offset: 2px;
+}
+
+/* ------------------------------ menu ----------------------------- */
+.menu-list {
+  display: grid;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  min-height: 48px;
+  border-radius: 12px;
+  background: transparent;
+  border: 0;
+  text-align: start;
+  font-size: 15px;
+  font-weight: 600;
+  width: 100%;
+  color: var(--parch-ink);
+}
+
+.row .ri {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+
+.row .ri svg {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+.row .rt {
+  flex: 1;
+  min-width: 0;
+}
+
+.row .rt small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.row.stack {
+  flex-wrap: wrap;
+}
+
+/* the choices drop under the text, lined up with it (a long label or note never gets squeezed
+   into a narrow column beside them: de Energiesparmodus, fi Virransäästötila) */
+.row.stack .rt {
+  flex: 1 1 calc(100% - 44px);
+}
+.row.stack .seg {
+  flex: 1 1 100%;
+  margin-inline-start: 42px;
+}
+
+.row.link:hover:not(:disabled),
+.row.switch:hover {
+  background: rgba(31, 138, 99, 0.12);
+}
+
+.row + .row {
+  box-shadow: 0 -1px 0 rgba(156, 34, 50, 0.2);
+}
+
+/* on/off: a brass knob in an iron slot that lights electric blue */
+.switch {
+  cursor: pointer;
+  position: relative;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch i {
+  width: 52px;
+  height: 28px;
+  border-radius: 28px;
+  background: var(--iron);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 3px 4px rgba(0, 0, 0, 0.5);
+  position: relative;
+  transition: background 0.2s var(--ease-ui);
+  flex: none;
+}
+
+.switch i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 2px 0 var(--gold-light),
+    inset 0 -3px 0 var(--gold-deep);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.switch input:checked + i {
+  background: var(--volt-deep);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 3px 4px rgba(0, 0, 0, 0.35),
+    0 0 10px rgba(63, 200, 255, 0.55);
+}
+
+.switch input:checked + i::after {
+  transform: translateX(24px);
+}
+
+.switch input:focus-visible + i {
+  outline: 3px solid var(--volt-deep);
+  outline-offset: 2px;
+}
+
+.fineprint {
+  margin: 14px 4px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ------------------------------ rules ---------------------------- */
+.rules section {
+  padding: 16px 0;
+  border-top: 2px solid rgba(31, 138, 99, 0.35);
+}
+
+.rules section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.rules h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-cartoon);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.03em;
+  color: var(--maroon);
+  text-shadow: 0 1.5px 0 rgba(86, 16, 25, 0.2);
+}
+
+.rules h4 {
+  margin: 14px 0 6px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--emerald-deep);
+}
+
+.rules p {
+  margin: 0 0 10px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--parch-ink);
+}
+
+.art.mini svg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.art.icon svg {
+  width: 44px;
+  height: 44px;
+}
+
+.pay-scroll {
+  overflow-x: auto;
+}
+
+table.pay {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+
+table.pay th {
+  font-weight: 700;
+  color: var(--muted);
+  padding: 6px 6px;
+  text-align: right;
+  font-size: 12.5px;
+}
+
+table.pay td {
+  padding: 4px 6px;
+  text-align: right;
+  border-top: 1px solid rgba(156, 34, 50, 0.2);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+table.pay td.sym {
+  text-align: left;
+  width: 64px;
+}
+
+table.pay td.sym .art svg {
+  width: 52px;
+  height: 52px;
+  display: block;
+}
+
+table.kv {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+table.kv td {
+  padding: 8px 6px;
+  border-top: 1px solid rgba(156, 34, 50, 0.2);
+}
+
+table.kv td:not(:first-child) {
+  text-align: right;
+  color: var(--emerald-deep);
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--gold);
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink),
+    inset 0 -2px 0 var(--gold-deep),
+    0 2px 0 rgba(23, 33, 38, 0.35);
+  white-space: nowrap;
+}
+
+.kbd-arrow {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+}
+
+table.keys td:last-child {
+  text-align: left;
+  color: var(--parch-ink);
+}
+
+table.hist {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+table.hist th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 6px;
+}
+
+table.hist td {
+  padding: 9px 6px;
+  border-top: 1px solid rgba(156, 34, 50, 0.2);
+}
+
+table.hist td small {
+  display: block;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+table.hist td.won {
+  color: var(--emerald-deep);
+  font-weight: 700;
+}
+
+.pay-cards {
+  display: none;
+  gap: 10px;
+}
+
+/* the rules never scroll sideways: a symbol-win table wider than the sheet gives way to the cards (fitPayTable) */
+.pay-cards-on .pay-scroll {
+  display: none;
+}
+.pay-cards-on .pay-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+
+.pay-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(239, 226, 192, 0.85);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(31, 138, 99, 0.45),
+    inset 4px 0 0 var(--emerald);
+}
+
+.pc-art {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pc-art .art svg {
+  width: 68px;
+  height: 68px;
+  display: block;
+}
+
+/*
+ * Two columns of cluster sizes only when both fit whole; otherwise one (Stake review, "symbol
+ * payouts displayed correctly in all versions": on a 375px iPhone SE at a 70,000.00 GC play amount
+ * the fixed two columns cut the right-hand column off, wrapped "4,200,000.00 GC" and split the size
+ * labels). Every size and amount stays on one line.
+ */
+.pay-card dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
+  gap: 3px 14px;
+  min-width: 0;
+}
+
+.pay-card dl div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13.5px;
+  min-width: 0;
+}
+
+.pay-card dt {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pay-card dd {
+  margin: 0;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* the narrowest sheets (320 px phones, the 320x180 popout): the symbol's art sits over its wins, so a long win
+   (Rp7,500,000,000.00 at the biggest play amount) keeps one line inside its card, never past it */
+@media (max-width: 360px) {
+  .pay-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  /* the modes table shares the sheet's width: its cells wrap between words ("1x play amount", "Max 50,000x") */
+  table.kv {
+    width: 100%;
+    table-layout: fixed;
+  }
+  table.kv td {
+    white-space: normal;
+    overflow-wrap: normal;
+  }
+}
+
+/* ------------------------------ toast ---------------------------- */
+.toasts {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+  width: min(520px, calc(100% - 32px));
+}
+
+.toast {
+  padding: 11px 16px;
+  border-radius: 12px;
+  background: var(--pk-parchment) 0 0 / 256px 256px, var(--cream);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 5px var(--maroon),
+    inset 0 0 0 6px var(--ink),
+    0 14px 34px rgba(0, 0, 0, 0.5);
+  color: var(--parch-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* --------------------------- responsive -------------------------- */
+@media (max-width: 860px) {
+  .offers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pay-scroll {
+    display: none;
+  }
+  .pay-cards {
+    display: grid;
+  }
+}
+
+@media (max-width: 520px) {
+  .modal {
+    padding: 10px;
+    align-items: end;
+  }
+  .modal-sheet {
+    border-width: 8px;
+    border-radius: 16px;
+    max-height: 92vh;
+  }
+  .mc {
+    width: 26px;
+    height: 26px;
+  }
+  .mc.tl,
+  .mc.bl {
+    left: -11px;
+  }
+  .mc.tr,
+  .mc.br {
+    right: -11px;
+  }
+  .mc.tl,
+  .mc.tr {
+    top: -11px;
+  }
+  .mc.bl,
+  .mc.br {
+    bottom: -11px;
+  }
+  .modal-body {
+    padding: 12px 14px 18px;
+  }
+  .modal-head {
+    padding: 8px 8px 8px 14px;
+  }
+  .modal-title {
+    font-size: 22px;
+  }
+  .offers {
+    gap: 10px;
+  }
+  .offer {
+    padding: 10px;
+  }
+  .offer-art {
+    height: 92px;
+  }
+  .offer-art .art svg,
+  .offer-art .art.big svg {
+    width: 84px;
+    height: 84px;
+  }
+  .offer h3 {
+    font-size: 16px;
+  }
+  .offer p {
+    font-size: 12.5px;
+  }
+  .price {
+    font-size: 17px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .modal-sheet {
+    max-height: 96vh;
+  }
+  .modal-head {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .modal-title {
+    font-size: 20px;
+  }
+  .modal-close.knob {
+    width: 40px;
+    height: 40px;
+  }
+  .offer-art {
+    height: 78px;
+  }
+  .offer-art .art svg,
+  .offer-art .art.big svg {
+    width: 72px;
+    height: 72px;
+  }
+  .offer p {
+    display: none;
+  }
+}
+
+.guide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+.g-row {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.g-ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 38% 32%, var(--emerald-light) -20%, var(--emerald) 45%, var(--emerald-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 4px var(--gold),
+    inset 0 0 0 5px var(--ink);
+}
+.g-ic svg {
+  width: 24px;
+  height: 24px;
+}
+.g-row b {
+  font-size: 14px;
+  color: var(--emerald-deep);
+}
+.g-row p {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+}
+table.kv td:nth-child(n + 2) {
+  white-space: nowrap;
+}
+/* two-column "name / what it does" tables: descriptions wrap and read left-aligned */
+table.kv.desc td {
+  vertical-align: top;
+}
+table.kv.desc td:first-child {
+  width: 34%;
+  font-weight: 700;
+  padding-right: 12px;
+  color: var(--emerald-deep);
+}
+table.kv.desc td:nth-child(2) {
+  white-space: normal;
+  text-align: left;
+  color: var(--parch-ink);
+}
+@media (max-width: 640px) {
+  table.kv td,
+  table.kv td:nth-child(n + 2) {
+    white-space: normal;
+    font-size: 13px;
+  }
+  .guide {
+    grid-template-columns: 1fr;
+  }
+}
+.offers.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 700px;
+  margin: 0 auto;
+}
+.rule-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.rule-row .art.mini svg {
+  width: 56px;
+  height: 56px;
+}
+.rule-row.special {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(239, 226, 192, 0.85);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(31, 138, 99, 0.45),
+    inset 4px 0 0 var(--emerald);
+}
+.rule-row.special p {
+  margin: 0;
+}
+
+/* ------------------------- route diagrams ------------------------- */
+.rule-key {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(156, 34, 50, 0.08);
+  box-shadow: inset 4px 0 0 var(--maroon);
+  font-weight: 600;
+}
+
+.diagram {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 8px 0 14px;
+}
+
+.dg-step {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.dg-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #1d2a3a 0%, #121b28 100%);
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink),
+    inset 0 0 0 5px var(--maroon),
+    inset 0 0 0 6.5px var(--ink);
+  overflow: visible;
+}
+
+.dg-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 3px;
+}
+
+.dg-cell.lit::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: rgba(255, 194, 51, 0.45);
+  filter: blur(3px);
+}
+
+/* a cleared cell (its symbol vanished in an earlier blast): an empty slot, not a dark hole */
+.dg-cell.gone::after {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border-radius: 8px;
+  border: 2px dashed rgba(244, 239, 227, 0.28);
+}
+
+.dg-sym,
+.dg-puff {
+  position: relative;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.dg-puff {
+  opacity: 0.9;
+}
+
+.dg-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 118%;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.dg-area {
+  position: absolute;
+  border-radius: 8px;
+  background: rgba(255, 122, 31, 0.1);
+  box-shadow:
+    inset 0 0 0 2.5px var(--fire-hot),
+    0 0 0 1.5px var(--ink);
+  pointer-events: none;
+}
+
+.dg-badge {
+  position: absolute;
+  transform: translate(-50%, -30%);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.diagram.one {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dg-map {
+  display: block;
+  width: min(100%, 360px);
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+.dg-step.wide .dg-board {
+  aspect-ratio: 5 / 3;
+}
+
+.dg-route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(63, 200, 255, 0.9));
+}
+
+.rule-row.coins {
+  display: flex;
+  gap: 6px;
+}
+
+.dg-step figcaption {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--parch-ink);
+}
+
+.dg-step figcaption b {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  font-family: var(--font-cartoon);
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--cream);
+  background: var(--maroon);
+  box-shadow: inset 0 0 0 2px var(--ink);
+  vertical-align: 1px;
+}
+
+@media (max-width: 640px) {
+  .diagram {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .dg-step {
+    grid-template-columns: minmax(112px, 42%) 1fr;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+/* low power (quality.low): no backdrop blur, a denser shade instead */
+.pk-low .modal-backdrop {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(6, 10, 14, 0.82);
+}
+
+/* focus on cream enamel: a deep electric blue ring (the light one is for dark plates) */
+.modal-body button:focus-visible,
+.modal-body [tabindex]:focus-visible {
+  outline-color: var(--volt-deep);
+}
+.modal-body .offer button:focus-visible {
+  outline-color: var(--volt-light);
+}

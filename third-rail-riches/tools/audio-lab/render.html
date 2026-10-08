@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Audio Lab Renderer</title>
+    <style>
+      :root { color-scheme: dark; --bg: #121210; --fg: #e9e4d8; --dim: #9a9484; --acid: #9dff3a; --fire: #ff7a1a; --card: #1d1c19; }
+      body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p { color: var(--dim); margin: 0 0 12px; }
+      .grid { display: flex; flex-wrap: wrap; gap: 6px; }
+      button { background: var(--card); color: var(--fg); border: 1px solid #3a3830; border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit; }
+      button:hover { border-color: var(--acid); }
+      button.busy { border-color: var(--fire); color: var(--fire); }
+      h2 { font-size: 14px; color: var(--acid); margin: 16px 0 6px; }
+      #status { color: var(--dim); margin-top: 12px; min-height: 1.4em; }
+    </style>
+  </head>
+  <body>
+    <h1>Renderer / live preview</h1>
+    <p>Renders a definition with Tone.Offline in this tab and plays it (unnormalised, before MP3). The build script drives this same page headlessly. For the shipped assets use <a href="./index.html" style="color:var(--acid)">the audition page</a>.</p>
+    <h2>Music</h2>
+    <div class="grid" id="tracks"></div>
+    <h2>SFX</h2>
+    <div class="grid" id="sfx"></div>
+    <div id="status"></div>
+    <script type="module" src="./src/render-page.ts"></script>
+  </body>
+</html>

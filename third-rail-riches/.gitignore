@@ -1,0 +1,12 @@
+node_modules
+dist
+.vercel
+.env.local
+tools/qa/out
+tools/art/out
+tools/audio-lab/out
+stake-math
+.DS_Store
+stake-upload
+.env*
+tools/brand/out

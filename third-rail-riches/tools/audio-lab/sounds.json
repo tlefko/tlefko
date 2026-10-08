@@ -1,0 +1,1054 @@
+{
+ "version": "c4fe0ca6",
+ "sfx": [
+  {
+   "id": "uiClick",
+   "name": "uiClick",
+   "variant": 0,
+   "desc": "soft Bakelite button tick with a hint of brass",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "uiToggle",
+   "name": "uiToggle",
+   "variant": 0,
+   "desc": "two-step brass toggle switch",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "uiOpen",
+   "name": "uiOpen",
+   "variant": 0,
+   "desc": "ticket-window shutter rolls up, a tiny bell ping",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "uiClose",
+   "name": "uiClose",
+   "variant": 0,
+   "desc": "the shutter rolls down and lands with a soft clack",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "betUp",
+   "name": "betUp",
+   "variant": 0,
+   "desc": "a fare token clinks onto the stack, stepping up",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "betDown",
+   "name": "betDown",
+   "variant": 0,
+   "desc": "a fare token lifted off the stack, stepping down",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "spinPress",
+   "name": "spinPress",
+   "variant": 0,
+   "desc": "the turnstile: a lever thunk, the ratchet turning, a little air",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "buy",
+   "name": "buy",
+   "variant": 0,
+   "desc": "tokens drop in the fare box, the register goes \"ka-ching\", a ticket is punched",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "error",
+   "name": "error",
+   "variant": 0,
+   "desc": "gentle two-note muted-horn \"wah-wah\" over a soft tuba",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "iris",
+   "name": "iris",
+   "variant": 0,
+   "desc": "cartoon iris wipe: a slide whistle up and down over a brush swish",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boostOn",
+   "name": "boostOn",
+   "variant": 0,
+   "desc": "Express Pass on: a knife switch thrown, a spark and the power humming up",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "boostOff",
+   "name": "boostOff",
+   "variant": 0,
+   "desc": "Express Pass off: the switch opens with a click and the power winds down",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "lowPowerClick",
+   "name": "lowPowerClick",
+   "variant": 0,
+   "desc": "a lamp switch clicks (low-power toggle): metal click and the bulb tinking",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_0",
+   "name": "reelDrop",
+   "variant": 0,
+   "desc": "a column lands: soft wooden-metal clack (index = column 0..5)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_1",
+   "name": "reelDrop",
+   "variant": 1,
+   "desc": "a column lands: soft wooden-metal clack (index = column 0..5)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_2",
+   "name": "reelDrop",
+   "variant": 2,
+   "desc": "a column lands: soft wooden-metal clack (index = column 0..5)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_3",
+   "name": "reelDrop",
+   "variant": 3,
+   "desc": "a column lands: soft wooden-metal clack (index = column 0..5)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_4",
+   "name": "reelDrop",
+   "variant": 4,
+   "desc": "a column lands: soft wooden-metal clack (index = column 0..5)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelDrop_5",
+   "name": "reelDrop",
+   "variant": 5,
+   "desc": "a column lands: soft wooden-metal clack (index = column 0..5)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "reelStop",
+   "name": "reelStop",
+   "variant": 0,
+   "desc": "last column: a heavier thunk with an iron rattle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "ticketLand_1",
+   "name": "ticketLand",
+   "variant": 1,
+   "desc": "Golden Ticket lands: punch \"chk\", register \"ka-ching\" and a rising sparkle (index = count 1..6; 3+ adds bell, brass and shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "ticketLand_2",
+   "name": "ticketLand",
+   "variant": 2,
+   "desc": "Golden Ticket lands: punch \"chk\", register \"ka-ching\" and a rising sparkle (index = count 1..6; 3+ adds bell, brass and shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "ticketLand_3",
+   "name": "ticketLand",
+   "variant": 3,
+   "desc": "Golden Ticket lands: punch \"chk\", register \"ka-ching\" and a rising sparkle (index = count 1..6; 3+ adds bell, brass and shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "ticketLand_4",
+   "name": "ticketLand",
+   "variant": 4,
+   "desc": "Golden Ticket lands: punch \"chk\", register \"ka-ching\" and a rising sparkle (index = count 1..6; 3+ adds bell, brass and shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "ticketLand_5",
+   "name": "ticketLand",
+   "variant": 5,
+   "desc": "Golden Ticket lands: punch \"chk\", register \"ka-ching\" and a rising sparkle (index = count 1..6; 3+ adds bell, brass and shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "ticketLand_6",
+   "name": "ticketLand",
+   "variant": 6,
+   "desc": "Golden Ticket lands: punch \"chk\", register \"ka-ching\" and a rising sparkle (index = count 1..6; 3+ adds bell, brass and shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinLand_0",
+   "name": "coinLand",
+   "variant": 0,
+   "desc": "a Fare Coin lands (index = metal: 0 bronze, 1 silver, 2 gold, 3 platinum with a shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinLand_1",
+   "name": "coinLand",
+   "variant": 1,
+   "desc": "a Fare Coin lands (index = metal: 0 bronze, 1 silver, 2 gold, 3 platinum with a shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinLand_2",
+   "name": "coinLand",
+   "variant": 2,
+   "desc": "a Fare Coin lands (index = metal: 0 bronze, 1 silver, 2 gold, 3 platinum with a shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinLand_3",
+   "name": "coinLand",
+   "variant": 3,
+   "desc": "a Fare Coin lands (index = metal: 0 bronze, 1 silver, 2 gold, 3 platinum with a shimmer)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "locoLand",
+   "name": "locoLand",
+   "variant": 0,
+   "desc": "a Locomotive lands: heavy iron clunk, a puff of steam and a short horn toot",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "switchLand",
+   "name": "switchLand",
+   "variant": 0,
+   "desc": "a Junction lands: an iron clank with the lever rattling in its stand",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wildLand_0",
+   "name": "wildLand",
+   "variant": 0,
+   "desc": "the Live Wire lands: an electric zap and crackle (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wildLand_1",
+   "name": "wildLand",
+   "variant": 1,
+   "desc": "the Live Wire lands: an electric zap and crackle (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wildLand_2",
+   "name": "wildLand",
+   "variant": 2,
+   "desc": "the Live Wire lands: an electric zap and crackle (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "win",
+   "name": "win",
+   "variant": 0,
+   "desc": "small win sting: a clarinet scoop up into a muted-trumpet and piano \"doo-DAH\" on F6, a ride ting",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "clusterTrace",
+   "name": "clusterTrace",
+   "variant": 0,
+   "desc": "an electric sweep running along the winning cells: a rising arc, crackles and a faint glockenspiel shimmer",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symPretzel",
+   "name": "symPretzel",
+   "variant": 0,
+   "desc": "pretzel: a salty crunch and a little pop",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symCoffee",
+   "name": "symCoffee",
+   "variant": 0,
+   "desc": "diner coffee: a short slurp and the cup clinking on its saucer",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symNewspaper",
+   "name": "symNewspaper",
+   "variant": 0,
+   "desc": "newspaper: a quick rustle and a crisp flap as it snaps open",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symUmbrella",
+   "name": "symUmbrella",
+   "variant": 0,
+   "desc": "umbrella pops open: catch click, a whoosh and the canopy snapping taut with a little boing",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symPigeon",
+   "name": "symPigeon",
+   "variant": 0,
+   "desc": "pigeon: a soft \"croo-ROO-coo\" and a wing flutter",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symCat",
+   "name": "symCat",
+   "variant": 0,
+   "desc": "alley cat: a sly \"mee-ow\"",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symBulldog",
+   "name": "symBulldog",
+   "variant": 0,
+   "desc": "Officer Bulldog: a gruff \"WOOF-woof\"",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symRat",
+   "name": "symRat",
+   "variant": 0,
+   "desc": "Rivets the rat: a cheeky \"squeak-squeak\" and a tiny tail flick",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "symConductor",
+   "name": "symConductor",
+   "variant": 0,
+   "desc": "Conductor Casey: a jolly \"HO-ho!\" on a trombone blat",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "whistle",
+   "name": "whistle",
+   "variant": 0,
+   "desc": "Conductor Casey's brass guard's whistle, two-tone: a short and a long blast",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainDepart",
+   "name": "trainDepart",
+   "variant": 0,
+   "desc": "a train pulls out: brakes release with a hiss, the motor hums up, the horn sounds and the wheels start clacking",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainRun",
+   "name": "trainRun",
+   "variant": 0,
+   "desc": "loop: the train running a row, rhythmic clickety-clack over the third-rail hum, motor whine and a low roar",
+   "kind": "loop",
+   "bank": "core"
+  },
+  {
+   "id": "trainExit",
+   "name": "trainExit",
+   "variant": 0,
+   "desc": "the train leaves the board: a whoosh past and a Doppler horn fading off",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainBrake",
+   "name": "trainBrake",
+   "variant": 0,
+   "desc": "the train stops: wheels slowing, a long brake squeal, a final clunk and a big steam hiss",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_1",
+   "name": "coinCollect",
+   "variant": 1,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_2",
+   "name": "coinCollect",
+   "variant": 2,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_3",
+   "name": "coinCollect",
+   "variant": 3,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_4",
+   "name": "coinCollect",
+   "variant": 4,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_5",
+   "name": "coinCollect",
+   "variant": 5,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_6",
+   "name": "coinCollect",
+   "variant": 6,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_7",
+   "name": "coinCollect",
+   "variant": 7,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_8",
+   "name": "coinCollect",
+   "variant": 8,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_9",
+   "name": "coinCollect",
+   "variant": 9,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_10",
+   "name": "coinCollect",
+   "variant": 10,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_11",
+   "name": "coinCollect",
+   "variant": 11,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coinCollect_12",
+   "name": "coinCollect",
+   "variant": 12,
+   "desc": "the train picks up a Fare Coin: token clink + chime, one F major scale step higher per coin (index 1..12)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "switchThrow",
+   "name": "switchThrow",
+   "variant": 0,
+   "desc": "a Junction is thrown: the lever hauled over with a ratchet and clank, an electric snap and the signal lighting",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "branch",
+   "name": "branch",
+   "variant": 0,
+   "desc": "a train branches onto the next track: a quick whoosh and the points clacking over",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "haulCount_0",
+   "name": "haulCount",
+   "variant": 0,
+   "desc": "soft counting tick for the haul (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "haulCount_1",
+   "name": "haulCount",
+   "variant": 1,
+   "desc": "soft counting tick for the haul (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "haulCount_2",
+   "name": "haulCount",
+   "variant": 2,
+   "desc": "soft counting tick for the haul (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "haulMult",
+   "name": "haulMult",
+   "variant": 0,
+   "desc": "the haul multiplier slams in: a punchy brass \"BWAP!\", timpani, kick, snare and crash",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barTick_0",
+   "name": "barTick",
+   "variant": 0,
+   "desc": "tiny counting tick for the Total Win Bar (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barTick_1",
+   "name": "barTick",
+   "variant": 1,
+   "desc": "tiny counting tick for the Total Win Bar (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barTick_2",
+   "name": "barTick",
+   "variant": 2,
+   "desc": "tiny counting tick for the Total Win Bar (called rapidly)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "barApply",
+   "name": "barApply",
+   "variant": 0,
+   "desc": "the Total Win Bar applies: register \"ka-ching\" into a brass hit with snare and crash",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "anticipationStart",
+   "name": "anticipationStart",
+   "variant": 0,
+   "desc": "a train approaching: far-off whistle, the rails starting to sing, a tremolo swell and a crackle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "anticipationEnd",
+   "name": "anticipationEnd",
+   "variant": 0,
+   "desc": "release: a soft down-whoosh, the air brakes sighing, a brush settle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "anticipation",
+   "name": "anticipation",
+   "variant": 0,
+   "desc": "loop: an endlessly rising (Shepard) tremolo string bed over the rumble of an approaching train, the rails clacking and the third rail humming",
+   "kind": "loop",
+   "bank": "core"
+  },
+  {
+   "id": "bonusTrigger",
+   "name": "bonusTrigger",
+   "variant": 0,
+   "desc": "Golden Tickets punched (chk-chk-chk), the register rings, and a brass fanfare with the train whistle",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "bonusIntro",
+   "name": "bonusIntro",
+   "variant": 0,
+   "desc": "title-card fanfare: snare roll and piano glissando into a big-band \"ta-da\" with the whistle motif on top",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bonusEnd",
+   "name": "bonusEnd",
+   "variant": 0,
+   "desc": "end of the line: \"shave and a haircut\" cadence (trad.) on piano, clarinet and muted trumpet, the station bell ding-ding, a band \"ta-da\"",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "retrigger",
+   "name": "retrigger",
+   "variant": 0,
+   "desc": "more spins: the electric station bell rings, a clarinet run up, a glockenspiel and a whistle toot",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "powerStep_1",
+   "name": "powerStep",
+   "variant": 1,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_2",
+   "name": "powerStep",
+   "variant": 2,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_3",
+   "name": "powerStep",
+   "variant": 3,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_4",
+   "name": "powerStep",
+   "variant": 4,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_5",
+   "name": "powerStep",
+   "variant": 5,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_6",
+   "name": "powerStep",
+   "variant": 6,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_7",
+   "name": "powerStep",
+   "variant": 7,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_8",
+   "name": "powerStep",
+   "variant": 8,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_9",
+   "name": "powerStep",
+   "variant": 9,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_10",
+   "name": "powerStep",
+   "variant": 10,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_11",
+   "name": "powerStep",
+   "variant": 11,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "powerStep_12",
+   "name": "powerStep",
+   "variant": 12,
+   "desc": "a passenger boards the POWER meter: a little electric bell blip, one pentatonic step higher per index (1..12; 13+ cycles back to 1)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "levelUp",
+   "name": "levelUp",
+   "variant": 0,
+   "desc": "POWER level up: the station bell rings, a power surge whines up, and a brass hit lands",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "goldenArrive",
+   "name": "goldenArrive",
+   "variant": 0,
+   "desc": "the Golden Locomotive arrives: a majestic horn chord over a brass swell and timpani roll, golden shimmer",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinStart",
+   "name": "bigWinStart",
+   "variant": 0,
+   "desc": "big-band hit: a clarinet run into a full-band Bb stab, crash, timpani and a whistle toot",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_0",
+   "name": "bigWinTier",
+   "variant": 0,
+   "desc": "tier step-up: brass pickup into a full-band stab (index 0..3, the top note climbs Bb, D, F, Bb; whistle from tier 2)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_1",
+   "name": "bigWinTier",
+   "variant": 1,
+   "desc": "tier step-up: brass pickup into a full-band stab (index 0..3, the top note climbs Bb, D, F, Bb; whistle from tier 2)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_2",
+   "name": "bigWinTier",
+   "variant": 2,
+   "desc": "tier step-up: brass pickup into a full-band stab (index 0..3, the top note climbs Bb, D, F, Bb; whistle from tier 2)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinTier_3",
+   "name": "bigWinTier",
+   "variant": 3,
+   "desc": "tier step-up: brass pickup into a full-band stab (index 0..3, the top note climbs Bb, D, F, Bb; whistle from tier 2)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "bigWinEnd",
+   "name": "bigWinEnd",
+   "variant": 0,
+   "desc": "closing big-band \"ta-da\": F7 into Bb6/9 with a drum roll, crash and the whistle",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "maxWin",
+   "name": "maxWin",
+   "variant": 0,
+   "desc": "MAX WIN: drum roll and piano glissando, the horn and whistle blasting, the full band and choir on Bb, station bell, golden cascade",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "tierSlam",
+   "name": "tierSlam",
+   "variant": 0,
+   "desc": "a big-win tier title slams in: a heavy iron coupling slam, doubled snare and crash, an electric crack (unpitched)",
+   "kind": "sfx",
+   "bank": "extra"
+  },
+  {
+   "id": "introSting",
+   "name": "introSting",
+   "variant": 0,
+   "desc": "ALL ABOARD: the station bell, a whistle \"woo-woo\", a stride-piano run into an open-fifth brass \"ta-da\"",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "playSting",
+   "name": "playSting",
+   "variant": 0,
+   "desc": "PLAY pressed: a turnstile clack, a clarinet run up and an open-fifth brass \"ta-da\"",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "carouselWhoosh",
+   "name": "carouselWhoosh",
+   "variant": 0,
+   "desc": "the splash carousel slides: a soft card swoosh",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "coachPop",
+   "name": "coachPop",
+   "variant": 0,
+   "desc": "a coach-mark tip pops up: a soft cork pop and a tiny ping",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_0",
+   "name": "flapRattle",
+   "variant": 0,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_1",
+   "name": "flapRattle",
+   "variant": 1,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_2",
+   "name": "flapRattle",
+   "variant": 2,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapRattle_3",
+   "name": "flapRattle",
+   "variant": 3,
+   "desc": "a station departure board flips: a light, crisp burst of split-flap cards clattering (4 takes; plays per station)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapSettle_0",
+   "name": "flapSettle",
+   "variant": 0,
+   "desc": "the last flap lands on the new symbol: a satisfying wood-and-tin clack with a tiny rebound (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapSettle_1",
+   "name": "flapSettle",
+   "variant": 1,
+   "desc": "the last flap lands on the new symbol: a satisfying wood-and-tin clack with a tiny rebound (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "flapSettle_2",
+   "name": "flapSettle",
+   "variant": 2,
+   "desc": "the last flap lands on the new symbol: a satisfying wood-and-tin clack with a tiny rebound (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainStep_0",
+   "name": "trainStep",
+   "variant": 0,
+   "desc": "a train moves one station: a quick, quiet clickety-clack (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainStep_1",
+   "name": "trainStep",
+   "variant": 1,
+   "desc": "a train moves one station: a quick, quiet clickety-clack (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "trainStep_2",
+   "name": "trainStep",
+   "variant": 2,
+   "desc": "a train moves one station: a quick, quiet clickety-clack (3 takes)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "signalSwitch",
+   "name": "signalSwitch",
+   "variant": 0,
+   "desc": "a Signal changes aspect: relay click, the lamp humming up, then the heavy points sliding over and locking with a clunk",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "securityAlarm",
+   "name": "securityAlarm",
+   "variant": 0,
+   "desc": "a Security Check: a two-tone station klaxon (hi-lo, hi-lo) and a scanner sweeping the train, a tick of the alarm bell",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "allClear",
+   "name": "allClear",
+   "variant": 0,
+   "desc": "ALL CLEAR, Delay Repay x2: a bright three-note chime climbing F, A, C and a rubber-stamp thump",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "incident",
+   "name": "incident",
+   "variant": 0,
+   "desc": "INCIDENT, train held: a low \"denied\" buzzer, a heavy air-brake hiss and a dull stamp",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "crashRumble",
+   "name": "crashRumble",
+   "variant": 0,
+   "desc": "two trains closing in: a rising rush from both sides, motors screaming up, wheels hammering faster (0.6 s, plays right before crashImpact)",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "crashImpact",
+   "name": "crashImpact",
+   "variant": 0,
+   "desc": "two trains collide: heavy iron impact, crunching metal, glass shattering, a deep boom with a sub thump, then bolts and debris bouncing down",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "wreckScatter",
+   "name": "wreckScatter",
+   "variant": 0,
+   "desc": "the wreck scatters coins and bolts: a spray of clinks flying out, jingling and tumbling into a pile",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "crashMult",
+   "name": "crashMult",
+   "variant": 0,
+   "desc": "the x2 crash multiplier slams onto the coin pile: a heavy iron-and-brass stamp with kick, snare and a coin jump",
+   "kind": "sfx",
+   "bank": "core"
+  },
+  {
+   "id": "routeTrace",
+   "name": "routeTrace",
+   "variant": 0,
+   "desc": "a route win lights up: a light electric zip running along the glowing line, a glint at the end",
+   "kind": "sfx",
+   "bank": "core"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "base",
+   "title": "The Midnight Local",
+   "desc": "base game: toe-tapping hot swing in F, 144 bpm, AABA: muted trumpet and clarinet, stride piano, walking bass, brushed train shuffle, the whistle motif",
+   "bpm": 144,
+   "beatsPerBar": 4,
+   "bars": 32,
+   "stems": []
+  },
+  {
+   "id": "rush",
+   "title": "Rush Hour",
+   "desc": "Rush Hour free spins: busy hot jazz in Bb at 200 bpm, riff chorus then a brass shout, crowd energy; tension stem via intensity()",
+   "bpm": 200,
+   "beatsPerBar": 4,
+   "bars": 32,
+   "stems": [
+    "tension"
+   ]
+  },
+  {
+   "id": "last",
+   "title": "Last Train",
+   "desc": "Last Train: noir D minor blues on the night train (plunger trumpet, low clarinet) building to a golden F major swing, 120 bpm shuffle",
+   "bpm": 120,
+   "beatsPerBar": 4,
+   "bars": 24,
+   "stems": []
+  },
+  {
+   "id": "bigwin",
+   "title": "Full Steam Shout",
+   "desc": "big-win loop: big-band shout chorus on a 12-bar Bb blues, 180 bpm, screaming trumpets, punching trombones and saxes, hard-swinging kit",
+   "bpm": 180,
+   "beatsPerBar": 4,
+   "bars": 12,
+   "stems": []
+  },
+  {
+   "id": "surge",
+   "title": "Power Surge",
+   "desc": "anticipation bed: tense electric loop on a D pedal, 150 bpm, 8 bars: pizzicato ostinato, tremolo strings, growling muted-trumpet stabs, ticking hats, rail clatter and arcing third rail",
+   "bpm": 150,
+   "beatsPerBar": 4,
+   "bars": 8,
+   "stems": []
+  }
+ ]
+}

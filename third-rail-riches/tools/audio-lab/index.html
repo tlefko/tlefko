@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Third Rail Riches audio lab</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #11110f; --panel: #1b1a17; --line: #34312a; --fg: #ebe6d9; --dim: #9d9786;
+        --acid: #a6ff3b; --fire: #ff7a1a;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+      header { padding: 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+      h1 { font-size: 18px; margin: 0; letter-spacing: 0.02em; }
+      h1 span { color: var(--acid); }
+      h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fire); margin: 0 0 10px; }
+      main { padding: 16px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+      section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+      section.wide { grid-column: 1 / -1; }
+      button { background: #26241f; color: var(--fg); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; font: inherit; cursor: pointer; }
+      button:hover { border-color: var(--acid); }
+      button.on { border-color: var(--acid); color: var(--acid); }
+      button.primary { background: var(--acid); color: #111; border-color: var(--acid); font-weight: 600; }
+      .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .sfx { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+      .card { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+      .card .name { font-weight: 600; }
+      .card .desc { color: var(--dim); font-size: 12px; }
+      .card .meta { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+      .idx button { padding: 3px 7px; font-size: 12px; }
+      label { color: var(--dim); display: inline-flex; gap: 6px; align-items: center; }
+      input[type=range] { width: 140px; accent-color: var(--acid); }
+      #beat { display: flex; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+      .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--acid); transform-origin: center bottom; }
+      .pips { display: flex; gap: 4px; }
+      .pip { width: 10px; height: 10px; border-radius: 2px; background: #333; }
+      .pip.on { background: var(--fire); }
+      pre { margin: 0; font-size: 11px; color: var(--dim); white-space: pre-wrap; word-break: break-all; }
+      table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+      th, td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+      th { color: var(--dim); font-weight: 500; }
+      .tablewrap { overflow-x: auto; }
+      .bad { color: var(--fire); }
+      #status { color: var(--dim); }
+      @media (max-width: 480px) { header, main { padding: 12px; } input[type=range] { width: 100px; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Third Rail Riches <span>audio lab</span></h1>
+      <button class="primary" id="start">Start audio</button>
+      <label>volume <input id="vol" type="range" min="0" max="1" step="0.01" value="0.85" /></label>
+      <button id="musicOn" class="on">music on</button>
+      <button id="sfxOn" class="on">sfx on</button>
+      <span id="status">not started (click Start: the AudioContext is only created on a gesture)</span>
+    </header>
+    <main>
+      <section>
+        <h2>Music</h2>
+        <div class="row" id="tracks"></div>
+        <p class="row">
+          <label>fade <input id="fade" type="range" min="0" max="3" step="0.1" value="0.9" /> <span id="fadeV">0.9 s</span></label>
+        </p>
+        <p class="row">
+          <label>intensity <input id="intensity" type="range" min="0" max="1" step="0.01" value="0" /> <span id="intV">0.00</span></label>
+          <button id="duck">duck 60% for 2 s</button>
+        </p>
+        <div id="beat"><div class="dot" id="dot"></div><div class="pips" id="pips"></div><span id="beatTxt">bpm -</span></div>
+      </section>
+      <section>
+        <h2>Loops and demos</h2>
+        <div class="row" id="loops"></div>
+        <p class="row" id="demos"></p>
+        <pre id="debug"></pre>
+      </section>
+      <section class="wide">
+        <h2>Sound effects</h2>
+        <div class="sfx" id="sfx"></div>
+      </section>
+      <section class="wide">
+        <h2>Measurements (tools/audio-lab/qa-report.json)</h2>
+        <div class="tablewrap" id="qa">Run <code>node tools/audio-lab/qa.mjs</code> to fill this in.</div>
+      </section>
+    </main>
+    <script type="module" src="./audition.ts"></script>
+  </body>
+</html>
