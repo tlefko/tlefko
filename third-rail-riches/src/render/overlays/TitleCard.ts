@@ -4,8 +4,8 @@ import { hudHeight } from '../layout';
 import gsap from 'gsap';
 import { bitmapNum, displayText, FONT_UI, type DisplayOptions, type DisplayText, type NumTone } from '../text';
 import { svgTexture } from '../textures';
-import { captainHead } from '../../art/captain';
-import { parrotHead } from '../../art/critters';
+import { conductorHead } from '../../art/conductor';
+import { ratHead } from '../../art/rat';
 import { ribbon } from '../../art/props';
 import { T, done } from '../timing';
 import { RollingNumber } from '../winbar/RollingNumber';
@@ -20,8 +20,8 @@ export interface CardSpec {
   bigTone?: NumTone;
   body?: string; // one sentence, UI font
   cta?: string;
-  captain?: 'laugh' | 'smug' | 'pray' | 'shock';
-  parrot?: 'happy' | 'squawk';
+  conductor?: 'laugh' | 'smug' | 'pray' | 'shock';
+  rat?: 'happy' | 'squeak' | 'worried';
 }
 
 /** Ribbon art: the band runs between the scroll rolls, `RIB_END` units in from each end. */
@@ -36,7 +36,7 @@ const ZOOM_S = 7;
 /** How far in from each side the leaning portraits reach (hat brim, beak), in portrait sides. */
 const PORTRAIT_REACH = 1.05;
 const CAPTAINS = ['laugh', 'smug', 'pray', 'shock'] as const;
-const PARROTS = ['happy', 'squawk'] as const;
+const PARROTS = ['happy', 'squeak', 'worried'] as const;
 
 /** Side of the leaning portraits for a W x H screen (the one size every card and prepare() use). */
 export function cardPortraitSize(W: number, H: number): number {
@@ -135,14 +135,14 @@ export class TitleCard extends Container {
   static async prepare(W: number, H: number, res: number, floor = H - hudHeight(W, H), renderer?: Renderer): Promise<Texture[]> {
     const side = cardPortraitSize(W, H);
     const out: Texture[] = await Promise.all([
-      ...CAPTAINS.map((e) => svgTexture(capKey(e), captainHead(e), side * res)),
-      ...PARROTS.map((e) => svgTexture(parKey(e), parrotHead(e, false, 'all', true), side * 0.9 * res)),
+      ...CAPTAINS.map((e) => svgTexture(capKey(e), conductorHead(e), side * res)),
+      ...PARROTS.map((e) => svgTexture(parKey(e), ratHead(e, false, 'all'), side * 0.9 * res)),
     ]);
     const specs: CardSpec[] = [
-      { palette: [0x123a52, 0x061426], kicker: t('youWon'), title: t('witchingHourCaps'), titleTone: 'sea', big: t('freeSpinsCaps', { n: 10 }), bigTone: 'gold', cta: t('tapToBegin'), captain: 'smug', parrot: 'happy' },
-      { palette: [0x5a1a08, 0x2a0b04], kicker: t('youWon'), title: t('infernoHourCaps'), titleTone: 'fire', big: t('freeSpinsCaps', { n: 10 }), bigTone: 'gold', cta: t('tapToBegin'), captain: 'laugh', parrot: 'happy' },
-      ...[t('bigWin'), t('megaWin'), t('epicWin'), t('unholyWin'), t('bonusOver', { name: t('witchingHourCaps') }), t('bonusOver', { name: t('infernoHourCaps') })].map(
-        (kicker): CardSpec => ({ palette: [0x10304a, 0x05101f], kicker, title: t('totalWinCaps'), titleTone: 'white', big: '0', bigTone: 'gold', cta: t('tapToContinue'), captain: 'laugh', parrot: 'happy' }),
+      { palette: [0x123a52, 0x061426], kicker: t('youWon'), title: t('rushHourCaps'), titleTone: 'crimson', big: t('freeSpinsCaps', { n: 10 }), bigTone: 'gold', cta: t('tapToBegin'), conductor: 'smug', rat: 'happy' },
+      { palette: [0x5a1a08, 0x2a0b04], kicker: t('youWon'), title: t('lastTrainCaps'), titleTone: 'gold', big: t('freeSpinsCaps', { n: 10 }), bigTone: 'gold', cta: t('tapToBegin'), conductor: 'laugh', rat: 'happy' },
+      ...[t('bigWin'), t('megaWin'), t('epicWin'), t('unholyWin'), t('bonusOver', { name: t('rushHourCaps') }), t('bonusOver', { name: t('lastTrainCaps') })].map(
+        (kicker): CardSpec => ({ palette: [0x10304a, 0x05101f], kicker, title: t('totalWinCaps'), titleTone: 'white', big: '0', bigTone: 'gold', cta: t('tapToContinue'), conductor: 'laugh', rat: 'happy' }),
       ),
     ];
     for (const spec of specs) {
@@ -231,8 +231,8 @@ export class TitleCard extends Container {
     // portraits first: the text is fitted to stay clear of them
     const side = cardPortraitSize(W, H);
     const [capT, parT] = await Promise.all([
-      spec.captain ? svgTexture(capKey(spec.captain), captainHead(spec.captain), side * res) : Promise.resolve(undefined),
-      spec.parrot ? svgTexture(parKey(spec.parrot), parrotHead(spec.parrot, false, 'all', true), side * 0.9 * res) : Promise.resolve(undefined),
+      spec.conductor ? svgTexture(capKey(spec.conductor), conductorHead(spec.conductor), side * res) : Promise.resolve(undefined),
+      spec.rat ? svgTexture(parKey(spec.rat), ratHead(spec.rat, false, 'all'), side * 0.9 * res) : Promise.resolve(undefined),
     ]);
     if (this.destroyed) return;
     const portraitTop = this.floor - side * 0.84;

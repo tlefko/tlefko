@@ -14,9 +14,9 @@ import { currency, fmtBalance, fmtBet, fmtWin, winApi, API_MULT } from '../stake
 import { RgsError, type DemoRgs, type Jurisdiction, type Rgs, type RgsRound } from '../stake/rgs';
 import { env } from '../stake/env';
 
-/** The game's RTP for the jurisdiction display, in the player's number format (96.20% / 96,20 %). */
+/** The game's RTP for the jurisdiction display, in the player's number format (96.30% / 96,30 %). */
 // read at use time: a Stake.us session switches to English at authenticate
-const rtpText = () => new Intl.NumberFormat(lang === 'en' ? 'en-US' : lang, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(0.962);
+const rtpText = () => new Intl.NumberFormat(lang === 'en' ? 'en-US' : lang, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(0.963);
 
 export interface AutoConfig {
   spins: number;
@@ -51,7 +51,7 @@ export class Controller {
   rounds = 0;
   /** QA hook: auto-advance title cards. */
   qaAuto = false;
-  /** Powder Boost (docs/BOMB.md): spins play mode BOOST at bet x MODE_COST.BOOST. Off at every session start. */
+  /** Express Pass: spins play mode BOOST at bet x MODE_COST.BOOST. Off at every session start. */
   boost = false;
   private auto: (AutoConfig & { left: number; startApi: number }) | null = null;
   private hud!: Hud;
@@ -76,15 +76,15 @@ export class Controller {
    * round resumes, even if it is no longer one of the offered levels. Cleared once the round ends.
    */
   private resumeBetApi: number | undefined;
-  /** Powder Boost is offered unless the jurisdiction disables buy features (never in replay). */
+  /** Express Pass is offered unless the jurisdiction disables buy features (never in replay). */
   get boostAllowed(): boolean {
     return !!this.jur && !this.jur.disabledBuyFeature && !env.replay;
   }
-  /** The mode a spin press plays now: BOOST while Powder Boost is on (and allowed), else BASE. */
+  /** The mode a spin press plays now: BOOST while Express Pass is on (and allowed), else BASE. */
   get spinMode(): StakeMode {
     return this.boost && this.boostAllowed ? 'BOOST' : 'BASE';
   }
-  /** What the next spin costs in API units: the bet, or bet x 1.5 with Powder Boost. */
+  /** What the next spin costs in API units: the bet, or bet x 1.5 with Express Pass. */
   get spinCostApi(): number {
     return Math.round(this.betApi * MODE_COST[this.spinMode]);
   }
@@ -180,7 +180,7 @@ export class Controller {
   }
 
   /**
-   * Turn Powder Boost on or off (the HUD toggle calls this). Ignored while a round is running (the
+   * Turn Express Pass on or off (the HUD toggle calls this). Ignored while a round is running (the
    * HUD is told the unchanged state) and forced off where the jurisdiction disables buy features.
    */
   setBoost(on: boolean) {
@@ -188,7 +188,7 @@ export class Controller {
     this.notifyBoost();
   }
 
-  /** Tell the HUD the Powder Boost state (track H adds Hud.setBoost; the call is optional until then). */
+  /** Tell the HUD the Express Pass state (track H adds Hud.setBoost; the call is optional until then). */
   private notifyBoost() {
     (this.hud as { setBoost?: (on: boolean, allowed: boolean) => void } | undefined)?.setBoost?.(this.boost, this.boostAllowed);
   }
@@ -323,7 +323,7 @@ export class Controller {
     if (bal) this.balanceApi = bal.amount;
     const cost = Math.round(bet * (MODE_COST[mode] ?? 1));
     this.netApi += win - cost;
-    this.settings.history.unshift({ t: Date.now(), mode, betApi: bet, costApi: cost, winApi: win, bonus: r.bonus ? t('witchingHour') : undefined, maxWin: r.maxWin || undefined });
+    this.settings.history.unshift({ t: Date.now(), mode, betApi: bet, costApi: cost, winApi: win, bonus: r.bonus ? (r.bonus.kind === 'last' ? t('lastTrain') : t('rushHour')) : undefined, maxWin: r.maxWin || undefined });
     this.lastRound = { mode, payoutMultiplier: pm, winApi: win, bonus };
     this.hud.setBalance(this.balanceApi);
     this.hud.setWin(win, true);
@@ -382,7 +382,7 @@ export class Controller {
       payoutMultiplier: { label: t('replayPayoutMultiplier'), value: mult(data.payoutMultiplier) },
       win: { label: t('replayWin'), value: fmtWin(winAmt) },
     };
-    const modeName = ({ BASE: t('rBaseGame'), BOOST: t('boostName'), WITCHING: t('witchingHour'), INFERNO: t('infernoHour') } as Record<string, string>)[mode] ?? mode;
+    const modeName = ({ BASE: t('rBaseGame'), BOOST: t('boostName'), WITCHING: t('rushHour'), INFERNO: t('lastTrain') } as Record<string, string>)[mode] ?? mode;
     this.hud.replayStats(stats, modeName);
     const info = Object.values(stats).map((x) => `${x.label} ${x.value}`).join('  ·  ');
     const run = async () => {
@@ -416,7 +416,7 @@ export class Controller {
       this.hud.setAuto(null);
       return;
     }
-    // autoplay honours Powder Boost (each spin plays the mode that is on when it starts)
+    // autoplay honours Express Pass (each spin plays the mode that is on when it starts)
     setTimeout(() => this.auto && !this.busy && void this.play(this.spinMode), speed.mode === 'normal' ? 350 : 120);
   }
 

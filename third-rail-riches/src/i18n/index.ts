@@ -26,7 +26,7 @@ export let joinedScript = lang === 'ar' || lang === 'hi';
 /** Scripts without spaces between words (wrapped text must break inside words). */
 export let cjkScript = lang === 'ja' || lang === 'zh' || lang === 'ko';
 /** Short banners drawn glyph by glyph with the bitmap number font: kept in English for joined scripts. */
-const BITMAP_KEYS = new Set<StringKey>(['tantrum', 'hounds', 'inferno', 'plusFreeSpins', 'freeSpinsCaps']);
+const BITMAP_KEYS = new Set<StringKey>(['powerLabel', 'plusFreeSpins', 'freeSpinsCaps']);
 let table: Record<string, string> = {};
 let socialTable: Record<string, string> = {};
 let social = env.social;

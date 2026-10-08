@@ -1,7 +1,7 @@
 import { Container, Sprite, Texture } from 'pixi.js';
 import { svgTexture } from '../textures';
-import { puff, twinkle, ember, note, smoke, stave, hoopShard, streak, shine } from '../../art/fx';
-import { coin } from '../../art/props';
+import { puff, twinkle, ember, note, smoke, spark, streak, shine } from '../../art/fx';
+import { fareCoin } from '../../art/specials';
 import { C } from '../../art/kit';
 import { quality } from '../quality';
 import { T } from '../timing';
@@ -17,14 +17,12 @@ type Kind =
   | 'coinG'
   | 'smoke'
   | 'smoke2'
-  | 'stave0'
-  | 'stave1'
-  | 'stave2'
-  | 'hoop'
+  | 'bolt'
+  | 'volt'
   | 'streak'
   | 'shine';
 
-const ALL_KINDS: Kind[] = ['puff', 'star', 'ember', 'green', 'note', 'coinB', 'coinS', 'coinG', 'smoke', 'smoke2', 'stave0', 'stave1', 'stave2', 'hoop', 'streak', 'shine'];
+const ALL_KINDS: Kind[] = ['puff', 'star', 'ember', 'green', 'note', 'coinB', 'coinS', 'coinG', 'smoke', 'smoke2', 'bolt', 'volt', 'streak', 'shine'];
 
 interface P {
   s: Sprite;
@@ -81,15 +79,13 @@ export class Particles extends Container {
       ['ember', svgTexture('fx-ember', ember(), px(0.18))],
       ['green', svgTexture('fx-green', ember(C.green), px(0.18))],
       ['note', svgTexture('fx-note', note(), px(0.3))],
-      ['coinB', svgTexture('fx-coinB', coin('bronze'), px(0.42))],
-      ['coinS', svgTexture('fx-coinS', coin('silver'), px(0.42))],
-      ['coinG', svgTexture('fx-coinG', coin('gold'), px(0.42))],
+      ['coinB', svgTexture('fx-coinB', fareCoin('bronze'), px(0.42))],
+      ['coinS', svgTexture('fx-coinS', fareCoin('silver'), px(0.42))],
+      ['coinG', svgTexture('fx-coinG', fareCoin('gold'), px(0.42))],
       ['smoke', svgTexture('fx-smoke0', smoke(0), px(0.9))],
       ['smoke2', svgTexture('fx-smoke1', smoke(1), px(0.9))],
-      ['stave0', svgTexture('fx-stave0', stave(0), px(0.4))],
-      ['stave1', svgTexture('fx-stave1', stave(1), px(0.4))],
-      ['stave2', svgTexture('fx-stave2', stave(2), px(0.4))],
-      ['hoop', svgTexture('fx-hoop', hoopShard(), px(0.4))],
+      ['bolt', svgTexture('fx-bolt', spark(), px(0.4))],
+      ['volt', svgTexture('fx-volt', ember(C.volt), px(0.18))],
       ['streak', svgTexture('fx-streak', streak(), px(0.32), px(0.08))],
       ['shine', svgTexture('fx-shine', shine(), px(0.4))],
     ];
@@ -198,12 +194,12 @@ export class Particles extends Container {
   }
 
   /** Radial burst of sparks (ignition, wheel landing, multiplier hits). */
-  burst(x: number, y: number, n: number, color: 'fire' | 'green' | 'white' = 'fire', power = 1) {
+  burst(x: number, y: number, n: number, color: 'fire' | 'green' | 'white' | 'volt' = 'fire', power = 1) {
     const U = this.unit;
     for (let i = 0; i < this.n(n); i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = U * (1.5 + Math.random() * 2.5) * power;
-      const kind: Kind = color === 'green' ? 'green' : color === 'white' ? 'star' : 'ember';
+      const kind: Kind = color === 'green' ? 'green' : color === 'white' ? 'star' : color === 'volt' ? 'volt' : 'ember';
       this.spawn(kind, x, y, {
         size: U * (kind === 'star' ? 0.14 : 0.12) * (0.7 + Math.random() * 0.8),
         vx: Math.cos(a) * sp,
@@ -313,13 +309,13 @@ export class Particles extends Container {
     }
   }
 
-  /** Keg debris: broken staves and bent hoops flung out of a blast, tumbling under gravity. */
+  /** Electric debris: spark stars flung out of a surge, tumbling under gravity. */
   debris(x: number, y: number, n: number, power = 1) {
     const U = this.unit;
     for (let i = 0; i < this.n(n); i++) {
       const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.7;
       const sp = U * (3 + Math.random() * 3.5) * power;
-      const kind: Kind = i % 4 === 3 ? 'hoop' : (['stave0', 'stave1', 'stave2'] as const)[i % 3];
+      const kind: Kind = 'bolt';
       this.spawn(kind, x + (Math.random() - 0.5) * U * 0.3, y + (Math.random() - 0.5) * U * 0.3, {
         size: U * (0.26 + Math.random() * 0.14),
         vx: Math.cos(a) * sp,
@@ -354,6 +350,7 @@ export class Particles extends Container {
         s1: 0.35,
         align: true,
         blend: 'add',
+        tint: 0xd8f6ff,
       });
     }
   }

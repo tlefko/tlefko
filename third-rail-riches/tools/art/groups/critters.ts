@@ -1,14 +1,20 @@
-import { crabHead, octoHead, sharkHead, parrotHead, type Pose, type ParrotExpr } from '../../../src/art/critters';
+import { pigeonHead, pigeonWinFrames, catHead, catWinFrames, bulldogHead, bulldogWinFrames, type Pose } from '../../../src/art/critters';
 
+/** Third Rail Riches critter highs: every pose and win frame, on the dark subway hold, and @90 px. */
+const SUBWAY = '#151b1f';
 const poses: Pose[] = ['idle', 'blink', 'win'];
-const px: ParrotExpr[] = ['idle', 'blink', 'happy', 'squawk', 'worried'];
+const SET: [string, (p: Pose) => string, (() => string)[]][] = [
+  ['pigeon', pigeonHead, pigeonWinFrames],
+  ['cat', catHead, catWinFrames],
+  ['bulldog', bulldogHead, bulldogWinFrames],
+];
+
 export default () => [
-  ...poses.map((p) => ({ label: `crab ${p}`, svg: crabHead(p), w: 260 })),
-  ...poses.map((p) => ({ label: `octo ${p}`, svg: octoHead(p), w: 260 })),
-  ...poses.map((p) => ({ label: `shark ${p}`, svg: sharkHead(p), w: 260 })),
-  ...px.map((p) => ({ label: `parrot ${p}`, svg: parrotHead(p), w: 260 })),
-  { label: 'crab @90', svg: crabHead('idle'), w: 90 },
-  { label: 'octo @90', svg: octoHead('idle'), w: 90 },
-  { label: 'shark @90', svg: sharkHead('idle'), w: 90 },
-  { label: 'parrot @90', svg: parrotHead('idle'), w: 90 },
+  ...SET.flatMap(([n, head, frames]) => [
+    ...poses.map((p) => ({ label: `${n} ${p}`, svg: head(p), w: 240 })),
+    ...frames.map((f, k) => ({ label: `${n} win ${k + 1}`, svg: f(), w: 180 })),
+  ]),
+  ...SET.map(([n, head]) => ({ label: `${n} on subway`, svg: head('idle'), w: 200, bg: SUBWAY })),
+  ...SET.map(([n, head]) => ({ label: `${n} @90`, svg: head('idle'), w: 90, bg: SUBWAY })),
+  ...SET.flatMap(([n, , frames]) => frames.map((f, k) => ({ label: `${n} w${k + 1} @90`, svg: f(), w: 90, bg: SUBWAY }))),
 ];

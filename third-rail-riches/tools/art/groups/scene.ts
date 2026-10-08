@@ -1,105 +1,108 @@
 /**
- * Environment review group: every Powder Keg Cove scenery piece on one contact sheet.
- * npx tsx tools/art/sheet.ts scene 2
+ * Environment review group: every Third Rail Riches station piece on one contact sheet.
+ * npx tsx tools/art/sheet.ts scene 1
  */
 import {
-  skyBackdrop,
-  moonDisc,
-  cloudWisp,
-  sparkle,
-  headland,
-  lighthouse,
-  lighthouseBeam,
-  distantShip,
-  seaRow,
-  glint,
-  fogTile,
-  bulwarkTile,
-  deckTile,
-  mastTile,
-  mastFoot,
-  poleTile,
-  poleCap,
-  lanternBracket,
-  lantern,
-  LANTERN_WICK,
-  sailCorner,
-  jollyRoger,
-  pennant,
-  barrel,
-  cannon,
-  cannonballs,
-  ropeCoil,
-  treasurePile,
-  hatchFrame,
-  skullFinial,
-  HATCH,
+  stationBackdrop,
+  tunnelPortal,
+  signalHead,
+  clockFace,
+  clockHand,
+  pendantLamp,
+  enamelSign,
+  poster,
+  bench,
+  vendingMachine,
+  litterBin,
+  floorGrate,
+  pigeonPerch,
+  commuterCrowd,
+  sparkArc,
+  starGlint,
+  ironColumn,
+  carFrame,
+  markerLamp,
+  CLOCK,
+  HAND,
+  CAR,
+  SIGNAL,
+  SIGNAL_COLORS,
 } from '../../../src/art/scene';
 import { C } from '../../../src/art/kit';
-import { flame } from '../../../src/art/characters';
 
-const night = `linear-gradient(${C.skyTop},${C.night} 60%,${C.skyLow})`;
-const sea = `linear-gradient(${C.seaDeep},${C.nightDeep})`;
-const row = (svg: string, n: number) => `<div style="display:flex">${Array.from({ length: n }, () => `<div style="flex:1">${svg}</div>`).join('')}</div>`;
-const col = (svg: string, n: number) => `<div style="display:flex;flex-direction:column;width:64px">${Array.from({ length: n }, () => svg).join('')}</div>`;
+const wall = `linear-gradient(${C.iron},${C.tunnel})`;
+const S = 110;
+/** Nested SVGs must not inherit the sheet's `svg{height:auto}` CSS: show composites as images, like the game rasterises them. */
+const asImg = (svg: string) => `<img style="display:block;width:100%" src="data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}">`;
 
-/** Lantern assembled the way the renderer layers it: glow, tinted interior, flame, cage. */
-const lanternAssembled = (tint: string, fl: 'fire' | 'green') => `<div style="position:relative;width:128px;height:224px">
-  <div style="position:absolute;left:-60px;top:20px;width:248px;height:248px;border-radius:50%;background:radial-gradient(${tint}66,transparent 65%)"></div>
-  <div style="position:absolute;inset:0;opacity:.9;filter:drop-shadow(0 0 0 ${tint})">${lantern('back').replace('<svg ', `<svg style="filter:sepia(1) saturate(4) hue-rotate(${fl === 'fire' ? '-10deg' : '90deg'})" `)}</div>
-  <div style="position:absolute;left:${128 * LANTERN_WICK.x - (128 * LANTERN_WICK.flameW) / 2}px;top:${224 * LANTERN_WICK.y - 128 * LANTERN_WICK.flameW * 0.95}px;width:${128 * LANTERN_WICK.flameW}px">${flame(fl)}</div>
-  <div style="position:absolute;inset:0">${lantern('front')}</div></div>`;
+/** Clock with its hands placed the way the renderer does (11:58). */
+const clockAssembled = () => {
+  const k = 220 / 256;
+  const hand = (kind: 'hour' | 'minute', deg: number) =>
+    `<div style="position:absolute;left:${CLOCK.cx * k - HAND.px * k}px;top:${CLOCK.cy * k - HAND.py * k}px;width:${HAND.w * k}px;height:${HAND.h * k}px;transform-origin:${HAND.px * k}px ${HAND.py * k}px;transform:rotate(${deg}deg)">${clockHand(kind)}</div>`;
+  return `<div style="position:relative;width:220px;height:220px">${clockFace()}${hand('hour', -1)}${hand('minute', -12)}<div style="position:absolute;left:52px;top:-44px;width:64px">${pigeonPerch('sit')}</div><div style="position:absolute;left:104px;top:-44px;width:64px;transform:scaleX(-1)">${pigeonPerch('peck')}</div></div>`;
+};
+
+/** Signal head with its red aspect lit. */
+const signalLit = () => {
+  const L = SIGNAL.lenses[0];
+  return `<div style="position:relative;width:72px;height:210px">${signalHead()}<div style="position:absolute;left:${L.x - 30}px;top:${L.y - 30}px;width:60px;height:60px;border-radius:50%;background:radial-gradient(${SIGNAL_COLORS.red},transparent 65%);mix-blend-mode:screen"></div></div>`;
+};
 
 export default () => [
   {
-    label: 'sky backdrop (1200 x 520 sample)',
+    label: 'station backdrop (1200 x 700 sample, S = 110)',
     w: 1200,
-    bg: C.nightDeep,
-    svg: skyBackdrop({
+    bg: C.ink,
+    svg: asImg(stationBackdrop({
       w: 1200,
-      h: 520,
-      horizon: 500,
-      moon: { x: 1010, y: 120, r: 62 },
-      calm: [
-        { x: 30, y: 30, w: 260, h: 160 },
-        { x: 380, y: 24, w: 440, h: 130 },
+      h: 700,
+      S,
+      ceilY: 34,
+      bandY: 430,
+      baseY: 520,
+      lipY: 590,
+      floorY: 650,
+      tunnels: [
+        { x: 10, w: 200, side: -1 },
+        { x: 990, w: 200, side: 1 },
       ],
-      u: 1.1,
-      clouds: [
-        { x: 40, y: 450, w: 300 },
-        { x: 880, y: 430, w: 260 },
+      signals: [
+        { x: 240, y: 330, h: 100 },
+        { x: 960, y: 330, h: 100 },
       ],
-    }),
+      columns: [
+        { x: 340, w: 48 },
+        { x: 860, w: 48 },
+      ],
+      posters: [{ x: 420, y: 190, w: 110, kind: 0 }, { x: 680, y: 190, w: 110, kind: 1 }],
+      signs: [{ x: 520, y: 340, w: 170, kind: 0 }],
+      props: [
+        { kind: 'vending', x: 300, w: 64, y: 640 },
+        { kind: 'bench', x: 600, w: 220, y: 640 },
+        { kind: 'bin', x: 880, w: 52, y: 640 },
+      ],
+      grates: [{ x: 760, y: 655, w: 110 }],
+      lamps: [
+        { x: 300, y: 140 },
+        { x: 900, y: 140 },
+      ],
+    })),
   },
-  { label: 'moon', svg: moonDisc(), bg: night },
-  { label: 'moon (Moonlight Raid)', svg: moonDisc(true), bg: night },
-  { label: 'cloud wisp', svg: cloudWisp(), w: 512, bg: night },
-  { label: 'sparkle', svg: sparkle(), w: 96, bg: C.night },
-  { label: 'headland left', svg: headland('left'), w: 600, bg: night },
-  { label: 'headland right', svg: headland('right'), w: 600, bg: night },
-  { label: 'lighthouse', svg: lighthouse(), w: 128, bg: night },
-  { label: 'lighthouse beam', svg: lighthouseBeam(), w: 512, bg: C.night },
-  { label: 'distant ship', svg: distantShip(), bg: night },
-  { label: 'sea rows 0-4 (far to near)', w: 1200, bg: C.skyLow, svg: `<div style="width:100%">${[0, 1, 2, 3, 4].map((i) => row(seaRow(i / 4, i), 2)).join('')}</div>` },
-  { label: 'glint', svg: glint(), w: 128, bg: C.seaDeep },
-  { label: 'fog tile x2', svg: row(fogTile(), 2), w: 720, bg: sea },
-  { label: 'bulwark tile, 4 bays (game)', svg: bulwarkTile(4), w: 1400 },
-  { label: 'bulwark tile, 2 bays (default)', svg: bulwarkTile(), w: 720 },
-  { label: 'deck tile x2', svg: row(deckTile(), 2), w: 960 },
-  { label: 'mast tile x2', svg: col(mastTile(), 2), w: 80, bg: night },
-  { label: 'mast foot', svg: mastFoot() },
-  { label: 'pole + cap', w: 64, bg: night, svg: `<div style="width:32px;margin:auto">${poleCap().replace('<svg ', '<svg style="width:32px" ')}${col(poleTile(), 3).replace('width:64px', 'width:32px')}</div>` },
-  { label: 'lantern bracket', svg: lanternBracket(), w: 160, bg: night },
-  { label: 'lantern back / front', w: 280, bg: night, svg: `<div style="display:flex;gap:8px">${lantern('back')}${lantern('front')}</div>` },
-  { label: 'lantern lit (fire / green)', w: 300, bg: night, svg: `<div style="display:flex;gap:30px;padding:10px 20px">${lanternAssembled(C.fireHot, 'fire')}${lanternAssembled(C.green, 'green')}</div>` },
-  { label: 'sail corner', svg: sailCorner(), w: 360, bg: night },
-  { label: 'jolly roger', svg: jollyRoger(), w: 320, bg: night },
-  { label: 'pennants', w: 360, bg: night, svg: `<div style="display:flex;gap:6px">${[C.crimson, C.gold, C.navyLight, C.paperWarm, C.teal].map((c) => pennant(c)).join('')}</div>` },
-  { label: 'barrel', svg: barrel() },
-  { label: 'cannon', svg: cannon() },
-  { label: 'cannonballs', svg: cannonballs() },
-  { label: 'rope coil', svg: ropeCoil() },
-  { label: 'treasure pile', svg: treasurePile() },
-  { label: 'skull finial', svg: skullFinial(), w: 128 },
-  { label: `hatch frame (S = 100 units, ${HATCH.vw} x ${HATCH.vh})`, svg: hatchFrame(), w: 740, bg: night },
+  { label: 'tunnel mouth (left / right)', w: 520, bg: wall, svg: `<div style="display:flex;gap:10px">${tunnelPortal(-1)}${tunnelPortal(1)}</div>` },
+  { label: 'signal head (dark / red lit)', w: 200, bg: wall, svg: `<div style="display:flex;gap:20px">${signalHead()}${signalLit()}</div>` },
+  { label: 'clock + hands + pigeons (11:58)', w: 260, bg: wall, svg: `<div style="padding-top:40px">${clockAssembled()}</div>` },
+  { label: 'clock hands', w: 120, bg: C.tile, svg: `<div style="display:flex;gap:10px">${clockHand('hour')}${clockHand('minute')}</div>` },
+  { label: 'pendant lamp', w: 160, bg: wall, svg: pendantLamp() },
+  { label: 'enamel signs', w: 320, bg: wall, svg: `<div style="display:flex;flex-direction:column;gap:8px">${enamelSign(0)}${enamelSign(1)}${enamelSign(2)}</div>` },
+  { label: 'posters', w: 520, bg: wall, svg: `<div style="display:flex;gap:8px">${poster(0)}${poster(1)}${poster(2)}</div>` },
+  { label: 'bench', w: 360, bg: wall, svg: bench() },
+  { label: 'vending machine / bin', w: 300, bg: wall, svg: `<div style="display:flex;gap:16px;align-items:flex-end">${vendingMachine()}${litterBin()}</div>` },
+  { label: 'floor grate', w: 260, bg: C.g4, svg: floorGrate() },
+  { label: 'pigeons', w: 280, bg: wall, svg: `<div style="display:flex;gap:8px">${pigeonPerch('sit')}${pigeonPerch('peck')}</div>` },
+  { label: 'iron column', w: 120, bg: wall, svg: `<div style="width:60px;margin:auto">${ironColumn(480)}</div>` },
+  { label: 'Rush Hour crowd tile', w: 700, bg: C.tile, svg: commuterCrowd() },
+  { label: 'spark arcs / glint', w: 420, bg: C.ink, svg: `<div style="display:flex;gap:8px;align-items:center">${sparkArc(1)}${sparkArc(2)}<div style="width:48px">${starGlint()}</div></div>` },
+  { label: `car-window reel frame (S = 100 units, ${CAR.vw} x ${CAR.vh})`, w: 760, bg: C.ink, svg: carFrame() },
+  { label: 'marker lamp', w: 100, bg: C.maroon, svg: markerLamp() },
 ];

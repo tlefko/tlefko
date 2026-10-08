@@ -7,15 +7,16 @@ import { Reels } from '../render/grid/Reels';
 import { GridView } from '../render/grid/GridView';
 import { SymbolTextures } from '../render/grid/SymbolView';
 import { WinBar } from '../render/winbar/WinBar';
-import { TantrumMeter } from '../render/winbar/TantrumMeter';
+import { PowerMeter } from '../render/winbar/PowerMeter';
 import { Particles } from '../render/fx/Particles';
 import { FilmOverlay } from '../render/fx/FilmOverlay';
-import { Captain } from '../render/characters/Captain';
-import { Parrot } from '../render/characters/Parrot';
+import { Conductor } from '../render/characters/Conductor';
+import { Rat } from '../render/characters/Rat';
+import { TrainLayer } from '../render/grid/Trains';
 import { Logo } from '../render/Logo';
-import { buildWheelTextures, Wheel, type WheelTextures } from '../render/wheel/Wheel';
 import { RenderTexture, Sprite, Container as PContainer } from 'pixi.js';
 import { speed } from '../render/timing';
+import { cast } from '../render/characters/cast';
 
 /**
  * Owns every display object and lays the stage out for the current viewport.
@@ -31,17 +32,16 @@ export class Scene {
   fx = new Particles();
   grid!: GridView;
   winBar = new WinBar();
-  meter = new TantrumMeter();
-  captain = new Captain();
-  parrot = new Parrot();
+  meter = new PowerMeter();
+  conductor = new Conductor();
+  rat = new Rat();
+  trains!: TrainLayer;
   logo = new Logo();
   chars = new Container();
-  wheelLayer = new Container();
   labelLayer = new Container();
   overlay = new Container();
   dimmer = new Graphics();
   film = new FilmOverlay();
-  wheelTex!: WheelTextures;
   busy = false;
   mood: 'tantrum' | 'witching' | 'limbo' | null = null;
   private ambientAcc = 0;
@@ -57,20 +57,22 @@ export class Scene {
   async init(host: HTMLElement) {
     await this.stage.init(host);
     this.grid = new GridView(this.symTex, this.fx);
-    // The crew stand in front of the hatch: drawn over the symbols (under the post finials), so a
-    // throw or a lean that reaches across the frame's edge reads as depth, never as an arm behind the
-    // board. Their layout envelopes keep every other pose clear of the reels (layout.ts).
-    this.shake.addChild(this.bg, this.reels.back, this.grid, this.chars, this.reels.front, this.winBar, this.meter, this.logo, this.dimmer, this.wheelLayer, this.fx, this.labelLayer);
-    this.chars.addChild(this.captain, this.parrot);
-    this.captain.fx = this.fx;
-    this.parrot.fx = this.fx;
+    this.trains = new TrainLayer(this.grid, this.fx);
+    // Casey and Rivets stand in front of the train-car frame: a lean that reaches across the frame's
+    // edge reads as depth. The trains run over the symbols, under the frame's front trim.
+    this.shake.addChild(this.bg, this.reels.back, this.grid, this.trains, this.chars, this.reels.front, this.winBar, this.meter, this.logo, this.dimmer, this.fx, this.labelLayer);
+    this.chars.addChild(this.conductor, this.rat);
+    this.conductor.fx = this.fx;
+    this.rat.fx = this.fx;
+    cast.conductor = this.conductor;
+    cast.rat = this.rat;
     this.meter.fx = this.fx;
     this.root.addChild(this.shake, this.overlay, this.film);
     this.stage.app.stage.addChild(this.root);
     // Separate render groups: a structural change (a particle born, a symbol dropped in, a label
     // popped, a small graphic redrawn) rebuilds only its own group's draw list instead of the whole
     // scene's, and a screen shake moves a handful of group transforms instead of every object.
-    for (const c of [this.bg, this.chars, this.grid, this.winBar, this.meter, this.wheelLayer, this.fx, this.labelLayer, this.overlay, this.film]) c.isRenderGroup = true;
+    for (const c of [this.bg, this.chars, this.grid, this.trains, this.winBar, this.meter, this.fx, this.labelLayer, this.overlay, this.film]) c.isRenderGroup = true;
     this.dimmer.alpha = 0;
     this.dimmer.visible = false;
     this.film.reduced = speed.reduced;
@@ -135,10 +137,10 @@ export class Scene {
       this.winBar.layout(L.winBar, res),
       this.meter.layout(L.meter, res),
       this.fx.build(S, res),
-      this.captain.build(L.captain.h, res),
-      this.parrot.build(L.parrot.h, res),
+      this.conductor.build(L.captain.h, res),
+      this.rat.build(L.parrot.h, res),
       this.logo.layout(L.logo, res),
-      buildWheelTextures(S * 2.35, res).then((t) => (this.wheelTex = t)),
+      this.trains.layout(L, res),
     ]);
     if (stamp !== this.laidOut) return;
     this.L = L;
@@ -147,10 +149,11 @@ export class Scene {
     this.root.scale.set(1);
     this.root.position.set(0, 0);
     this.grid.layout(L);
-    this.captain.position.set(L.captain.x, L.captain.y);
-    this.captain.scale.x = L.captain.flip ? -1 : 1;
-    this.parrot.position.set(L.parrot.x, L.parrot.y);
-    this.parrot.scale.x = L.parrot.flip ? -1 : 1;
+    this.conductor.position.set(L.captain.x, L.captain.y);
+    this.conductor.scale.x = L.captain.flip ? -1 : 1;
+    this.rat.position.set(L.parrot.x, L.parrot.y);
+    this.rat.scale.x = L.parrot.flip ? -1 : 1;
+    this.grid.refreshValues();
     this.dimmer.clear().rect(0, 0, W, H).fill({ color: 0x000000 });
     this.film.resize(W, H);
     this.onLayout?.(L);
@@ -170,9 +173,6 @@ export class Scene {
       tmp.destroy({ children: true });
       await pause();
     };
-    const add = new Sprite(this.wheelTex.bulb);
-    add.blendMode = 'add';
-    await draw(new Wheel(this.wheelTex, this.L.S * 2.35), add);
     const sets = [...this.symTex.sets.values()];
     for (let i = 0; i < sets.length; i += 3) {
       const group: Sprite[] = [];
@@ -187,7 +187,7 @@ export class Scene {
     holder.addChild(this.fx);
     this.stage.app.renderer.render({ container: holder, target: rt });
     rt.destroy(true);
-    this.shake.addChildAt(this.fx, this.shake.children.indexOf(this.wheelLayer) + 1);
+    this.shake.addChildAt(this.fx, this.shake.children.indexOf(this.dimmer) + 1);
     holder.destroy();
   }
 
@@ -218,9 +218,8 @@ export class Scene {
     this.meter.update(dt);
     this.fx.update(dt);
     this.film.update(dt);
-    this.captain.update(dt);
-    this.parrot.update(dt);
+    this.conductor.update(dt);
+    this.rat.update(dt);
     this.grid?.update(dt, this.busy);
-    for (const w of this.wheelLayer.children) (w as unknown as { update?: (d: number) => void }).update?.(dt);
   }
 }

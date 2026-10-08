@@ -5,20 +5,20 @@ type Pt = { x: number; y: number };
 
 /** Glow colour per symbol (its identity hue from docs/ART.md), light core first. */
 export const HUE: Record<number, [number, number]> = {
-  0: [0xbff5ea, 0x23b3a6],
-  1: [0xffe0ee, 0xff86b4],
-  2: [0xfff3d6, 0xe8563f],
-  3: [0xfff0b0, 0xf4b73a],
-  4: [0xffd7c2, 0xf0592d],
-  5: [0xead6ff, 0x9b5cf0],
-  6: [0xe2ecf2, 0x6f93b5],
-  7: [0xe4ffc8, 0x4fbf3a],
-  8: [0xffe0c8, 0xd42c24],
+  0: [0xffe6b8, 0xc97a2e], // pretzel
+  1: [0xffd9d2, 0xe0473a], // coffee
+  2: [0xf7ecd6, 0x4560a3], // newspaper
+  3: [0xd6ebff, 0x2f6fd6], // umbrella
+  4: [0xe8e4ff, 0x8a83b8], // pigeon
+  5: [0xffe2bf, 0xf08a24], // alley cat
+  6: [0xd6e2ff, 0x2c4fb3], // officer bulldog
+  7: [0xffd6de, 0xd42c24], // Rivets
+  8: [0xfff0b0, 0xf4b73a], // Conductor Casey
 };
 
 /**
- * Perimeter loops of a set of cells on the 6x5 lattice, as lattice corner points (col 0..6,
- * row 0..5). Loops run clockwise on screen with the cells on their right; two cells touching only
+ * Perimeter loops of a set of cells on the board lattice, as lattice corner points (col 0..COLS,
+ * row 0..ROWS). Loops run clockwise on screen with the cells on their right; two cells touching only
  * at a corner give two loops that meet there.
  */
 export function perimeter(positions: number[]): Pt[][] {

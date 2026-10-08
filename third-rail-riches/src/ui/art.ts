@@ -238,30 +238,26 @@ export function studSvg(): string {
 }
 
 /**
- * Powder Boost toggle art: a little powder keg whose fuse is cold (off) or burning (on). 96 box.
+ * Express Pass toggle art: a little punched travel pass with a lightning bolt; off it is plain
+ * paper, on it is gold and the bolt crackles electric blue. 96 box.
  */
-export function kegSvg(on: boolean): string {
-  const body = 'M26 30 Q22 58 26 86 Q48 94 70 86 Q74 58 70 30 Q48 22 26 30 Z';
-  const spark = on
-    ? `<circle cx="80" cy="12" r="11" fill="${C.fireHot}" opacity=".4"/>
-       <path d="M80 1 L83 9 L91 12 L83 15 L80 23 L77 15 L69 12 L77 9 Z" fill="${C.fireHot}" stroke="${C.ink}" stroke-width="2.4" stroke-linejoin="round"/>
-       <circle cx="80" cy="12" r="3" fill="${C.fireCore}"/>`
-    : `<circle cx="79" cy="13" r="3.5" fill="${C.g3}" stroke="${C.ink}" stroke-width="2"/>`;
+export function passSvg(on: boolean): string {
+  const card = 'M18 26 Q18 20 24 20 H74 Q80 20 80 26 V44 Q73 48 73 55 Q73 62 80 66 V80 Q80 86 74 86 H24 Q18 86 18 80 V66 Q25 62 25 55 Q25 48 18 44 Z';
+  const face = on ? C.gold : C.paperWarm;
+  const bolt = 'M52 30 L38 56 H48 L42 78 L62 48 H51 L58 30 Z';
   return doc(
     96,
     96,
-    `<ellipse cx="50" cy="90" rx="26" ry="5" fill="#000" opacity=".35"/>
-    <path d="M52 28 Q60 12 79 13" fill="none" stroke="${C.ink}" stroke-width="7" stroke-linecap="round"/>
-    <path d="M52 28 Q60 12 79 13" fill="none" stroke="${on ? C.fireCore : C.paperWarm}" stroke-width="3.2" stroke-linecap="round"/>
-    <path d="${body}" fill="${C.wood}" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M60 32 Q66 58 62 86 Q68 84 70 86 Q74 58 70 30 Z" fill="${C.woodMid}" opacity=".85"/>
-    <path d="M24 44 Q48 51 72 44 M23 72 Q48 79 73 72" fill="none" stroke="${C.ink}" stroke-width="8"/>
-    <path d="M24 44 Q48 51 72 44 M23 72 Q48 79 73 72" fill="none" stroke="${C.gold}" stroke-width="4"/>
-    <ellipse cx="48" cy="29" rx="22" ry="5.5" fill="${C.woodLight}" stroke="${C.ink}" stroke-width="3.5"/>
-    <path d="M40 54 Q48 50 56 54 Q56 64 48 66 Q40 64 40 54 Z" fill="${on ? C.fireHot : C.crimson}" stroke="${C.ink}" stroke-width="2.5"/>
-    <circle cx="44.5" cy="57" r="2" fill="${C.ink}"/><circle cx="51.5" cy="57" r="2" fill="${C.ink}"/>
-    <path d="M31 36 Q30 56 32 66" fill="none" stroke="${C.woodLight}" stroke-width="3" stroke-linecap="round" opacity=".7"/>
-    ${spark}`,
+    `<ellipse cx="49" cy="90" rx="28" ry="5" fill="#000" opacity=".35"/>
+    ${on ? `<circle cx="49" cy="53" r="40" fill="${C.volt}" opacity=".25"/>` : ''}
+    <g transform="rotate(-8 49 53)">
+      <path d="${card}" fill="${face}" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M24 28 H72" stroke="${on ? C.goldLight : C.white}" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+      <path d="M26 79 H72" stroke="${on ? C.goldDeep : C.g2}" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 4"/>
+      <path d="${bolt}" fill="${on ? C.voltLight : C.g3}" stroke="${C.ink}" stroke-width="3.5" stroke-linejoin="round"/>
+      ${on ? `<path d="${bolt}" fill="${C.voltCore}" opacity=".55" transform="translate(50 54) scale(.55) translate(-50 -54)"/>` : ''}
+    </g>
+    ${on ? `<path d="M80 10 L83 18 L91 21 L83 24 L80 32 L77 24 L69 21 L77 18 Z" fill="${C.voltLight}" stroke="${C.ink}" stroke-width="2.2" stroke-linejoin="round"/>` : ''}`,
   );
 }
 

@@ -1,769 +1,481 @@
 /**
- * High-pay symbols: the cove's crew of critters. Crab (orange), octopus with an eye patch
- * (violet), shark with a gold earring (steel blue) and Sparks the parrot (green). Each has
- * idle, blink and win frames; the parrot head is also used by the Sparks rig.
+ * High-pay symbols for Third Rail Riches (docs/ART.md): the regulars of the Third Rail Line.
+ * A city pigeon (purple-grey, iridescent neck), a scruffy orange alley cat (bent ear, bandage) and
+ * Officer Bulldog (tan, navy police cap with a gold badge). Each head has idle, blink and win
+ * poses plus a 4-frame cheering win loop; every frame shares the 256 viewBox and anchor.
  */
-import { C, composeSymbol, pieEye, closedEye, nextId, brow, cel, celForm, celTones, shine, mix, scallops } from './kit';
-import { type V, P, taper, sparkle, lens, mirrorX } from './geo';
+import { C, composeSymbol, pieEye, closedEye, nextId, brow, cel, celForm, celTones, GOLD_TONES, shine, mix } from './kit';
+import { type V, P, add, dir, taper, sparkle, lens, mirrorX } from './geo';
 
 export type Pose = 'idle' | 'blink' | 'win';
 
-const flip = (pts: V[]): V[] => pts.map(([x, y]) => [256 - x, y]);
+/* ------------------------------------------------------------------ */
+/* Shared face parts                                                   */
+/* ------------------------------------------------------------------ */
+const tones = celTones;
+const PAINT = { autoCel: false, contour: 0.8, inkShift: [1, 1.2] as [number, number] };
+const FIT = 'translate(128 132) scale(.92) translate(-128 -132)';
+
+const ell = (cx: number, cy: number, rx: number, ry: number) => `M${cx - rx} ${cy} A${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`;
 
 /** Toothy open mouth: dark inside, a white teeth band on top and a tongue, all clipped. */
-function mouth(path: string, teethY: number, tongue: [number, number, number, number]) {
+function mouth(path: string, teethY: number, tongue: [number, number, number, number], sw = 7) {
   const id = nextId('mo');
   return `<clipPath id="${id}"><path d="${path}"/></clipPath>
     <path d="${path}" fill="${C.crimsonDeep}"/>
     <g clip-path="url(#${id})">
       <ellipse cx="${tongue[0]}" cy="${tongue[1]}" rx="${tongue[2]}" ry="${tongue[3]}" fill="${C.crimson}"/>
       <ellipse cx="${tongue[0] - tongue[2] * 0.3}" cy="${tongue[1] - tongue[3] * 0.35}" rx="${tongue[2] * 0.3}" ry="${tongue[3] * 0.22}" fill="${C.crimsonLight}" opacity=".7"/>
-      <rect x="0" y="0" width="256" height="${teethY}" fill="${C.white}"/>
-      <path d="M0 ${teethY} L256 ${teethY}" stroke="${C.ink}" stroke-width="4"/>
+      ${teethY > 0 ? `<rect x="0" y="0" width="256" height="${teethY}" fill="${C.white}"/><path d="M0 ${teethY} L256 ${teethY}" stroke="${C.ink}" stroke-width="3.5"/>` : ''}
     </g>
-    <path d="${path}" fill="none" stroke="${C.ink}" stroke-width="7" stroke-linejoin="round"/>`;
+    <path d="${path}" fill="none" stroke="${C.ink}" stroke-width="${sw}" stroke-linejoin="round"/>`;
 }
 
-/* ------------------------------------------------------------------ */
-/* Shared cel painting for the critters                                */
-/* ------------------------------------------------------------------ */
-const tones = celTones;
-
-/** An eye white with a cel crescent (paper, never pure white) and its ink ring. */
+/** An eye white with a cel crescent and its ink ring. */
 function eyeWhite(cx: number, cy: number, rx: number, ry: number, sw = 6.5): string {
-  const d = `M${cx - rx} ${cy} A${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`;
+  const d = ell(cx, cy, rx, ry);
   return `${cel(d, { base: C.white, shade: C.paperWarm, cut: [-rx * 0.28, -ry * 0.3] })}<path d="${d}" fill="none" stroke="${C.ink}" stroke-width="${sw}"/>`;
 }
 
-
-/* ------------------------------------------------------------------ */
-/* H4: the crab (orange)                                               */
-/* ------------------------------------------------------------------ */
-interface CrabPose {
-  eyes: 'open' | 'blink' | 'happy' | 'wide';
-  mouth: 'grin' | 'laugh' | 'chomp';
-  /** Dactyl opening in degrees per claw (0 = shut). */
-  open: [number, number];
-  /** Extra outward tilt of each claw (degrees) and lift (units). */
-  tilt: [number, number];
-  lift: [number, number];
-  /** Body squash (1 = rest, < 1 squashed down on the snap). */
-  squash?: number;
-  /** Snap burst at the claw tips. */
-  snap?: [boolean, boolean];
+/** A heavy lid over the top of an eye: skin-coloured, clipped to the eye, with an ink lid line (y0 left, y1 right). */
+function lid(cx: number, cy: number, rx: number, ry: number, y0: number, y1: number, skin: string): string {
+  const id = nextId('ld');
+  return `<clipPath id="${id}"><path d="${ell(cx, cy, rx, ry)}"/></clipPath>
+    <g clip-path="url(#${id})"><path d="M${cx - rx - 4} ${cy - ry - 4} L${cx + rx + 4} ${cy - ry - 4} L${cx + rx + 4} ${y1} L${cx - rx - 4} ${y0} Z" fill="${skin}"/></g>
+    <path d="M${cx - rx + 1} ${y0 + (y1 - y0) * 0.02} L${cx + rx - 1} ${y1 - (y1 - y0) * 0.02}" stroke="${C.ink}" stroke-width="5.5" stroke-linecap="round"/>`;
 }
 
-const CRAB_BODY =
-  'M128 97 C160 97 190 101 208 113 L231 110 L221 128 L237 136 L223 149 C222 190 186 219 128 219 C70 219 34 190 33 149 L19 136 L35 128 L25 110 L48 113 C66 101 96 97 128 97 Z';
-/** Left claw, local space: wrist at the origin, pincer pointing up, outer side at -x. */
-const CLAW_PALM =
-  'M12 2 C0 6 -18 2 -27 -16 C-37 -38 -35 -62 -27 -80 C-23 -92 -19 -104 -12 -117 C-5 -107 -3 -96 -3 -86 Q-3 -78 3 -76 C11 -74 21 -68 23 -54 C27 -36 23 -10 12 2 Z';
-const CLAW_FINGER = 'M1 -76 C-1 -90 -4 -104 -10 -115 C1 -111 15 -97 19 -80 C20 -74 15 -69 8 -69 Z';
-const CLAW_HINGE: V = [7, -73];
-/** Dark pincer tips (clipped inside palm and finger). */
-const CLAW_TIP_PALM = 'M-30 -97 L-3 -101 L-3 -130 L-30 -130 Z';
-const CLAW_TIP_FINGER = 'M-20 -100 L24 -94 L24 -130 L-20 -130 Z';
+type Eyes = 'open' | 'blink' | 'happy' | 'wide' | 'wink';
 
-function crabArt(p: CrabPose): string {
-  const T = tones(C.crab, C.crabDeep, C.crabLight);
-  const sq = p.squash ?? 1;
-  // squash about the base of the body so the crab stays planted on its legs
-  const bodyT = sq === 1 ? '' : `translate(128 219) scale(${(2 - sq).toFixed(3)} ${sq.toFixed(3)}) translate(-128 -219)`;
-  const bx = (x: number) => 128 + (x - 128) * (2 - sq);
-  const by = (y: number) => 219 + (y - 219) * sq;
-  const g = (s: string) => (bodyT ? `<g transform="${bodyT}">${s}</g>` : s);
-
-  // legs: jointed, tapering to points, tucked behind the shell
-  const legPts: V[][] = [
-    [[76, 194], [52, 202], [36, 215], [30, 235]],
-    [[98, 206], [86, 219], [80, 233], [80, 247]],
-  ];
-  const legs = [...legPts, ...legPts.map(flip)].map((pts, i) =>
-    celForm(taper(pts, 12, 3.6, 14).d, { base: mix(C.crab, C.crabDeep, 0.3), shade: T.shade, cut: [-5, -6], seed: 40 + i }),
-  );
-
-  // eye stalks
-  const lift = p.eyes === 'wide' ? 5 : 0;
-  const eyeL: V = [bx(102), by(56) - lift];
-  const eyeR: V = [bx(154), by(56) - lift];
-  const stalk = (base: V, eye: V) =>
-    celForm(taper([base, [base[0] + (eye[0] - base[0]) * 0.5 - 2, base[1] + (eye[1] - base[1]) * 0.55], [eye[0], eye[1] + 14]], 8, 6, 12).d, { ...T, cut: [-3, -2], seed: 20 });
-  const stalks = [stalk([bx(113), by(106)], eyeL), stalk([bx(143), by(106)], eyeR)];
-
-  // claws: palm with the fixed finger, and the hinged finger that snaps. The right claw is
-  // mirrored in its path data so the light still falls from the upper left.
-  const tiltOf = (side: 0 | 1) => -7 - p.tilt[side];
-  const clawT = (side: 0 | 1) => `translate(${side ? 206 : 50} ${152 - p.lift[side]}) rotate(${side ? -tiltOf(1) : tiltOf(0)}) scale(.97)`;
-  const hinge = (side: 0 | 1): V => [side ? -CLAW_HINGE[0] : CLAW_HINGE[0], CLAW_HINGE[1]];
-  const fingerT = (side: 0 | 1) => `${clawT(side)} rotate(${side ? -p.open[1] : p.open[0]} ${hinge(side)[0]} ${hinge(side)[1]})`;
-  const m0 = (d: string, side: 0 | 1) => (side ? mirrorX(d, 0) : d);
-  const clawPt = (side: 0 | 1, v: V): V => {
-    const a = ((side ? -tiltOf(1) : tiltOf(0)) * Math.PI) / 180;
-    const x = (side ? -v[0] : v[0]) * 0.97;
-    const y = v[1] * 0.97;
-    return [(side ? 206 : 50) + x * Math.cos(a) - y * Math.sin(a), 152 - p.lift[side] + x * Math.sin(a) + y * Math.cos(a)];
-  };
-  const tipInk = mix(C.crabDeep, C.ink, 0.3);
-  const palms = ([0, 1] as const).map((side) =>
-    celForm(m0(CLAW_PALM, side), {
-      ...T,
-      t: clawT(side),
-      cut: [-8, -10],
-      hatch: T.hatch,
-      seed: 11 + side,
-      inner: `<path d="${m0(CLAW_TIP_PALM, side)}" transform="${clawT(side)}" fill="${tipInk}"/>`,
-    }),
-  );
-  const fingers = ([0, 1] as const).map((side) =>
-    celForm(m0(CLAW_FINGER, side), { ...T, t: fingerT(side), cut: [-6, -7], seed: 13 + side, inner: `<path d="${m0(CLAW_TIP_FINGER, side)}" transform="${fingerT(side)}" fill="${tipInk}"/>` }),
-  );
-  const clawShine = (side: 0 | 1) => {
-    const pts: V[] = side ? [[-14, -22], [-17, -38], [-15, -52]] : [[-24, -30], [-27, -50], [-23, -71]];
-    return shine(pts.map((v) => clawPt(side, [side ? -v[0] : v[0], v[1]])), side ? 2.4 : 3.3, side ? 0.5 : 0.72);
-  };
-  const snapMark = (side: 0 | 1) => {
-    if (!p.snap?.[side]) return '';
-    const c = clawPt(side, [-7, -113]);
-    const up = clawPt(side, [-7, -150]);
-    const al = Math.hypot(up[0] - c[0], up[1] - c[1]);
-    const ux = (up[0] - c[0]) / al;
-    const uy = (up[1] - c[1]) / al;
-    return (side === 0 ? [-5, 40, 85] : [5, -40, -85])
-      .map((deg) => {
-        const r = (deg * Math.PI) / 180;
-        const dx = ux * Math.cos(r) - uy * Math.sin(r);
-        const dy = ux * Math.sin(r) + uy * Math.cos(r);
-        return `<path d="${lens([[c[0] + dx * 9, c[1] + dy * 9], [c[0] + dx * 27, c[1] + dy * 27]], 4.2)}" fill="${C.fireCore}" stroke="${C.ink}" stroke-width="2.8" stroke-linejoin="round"/>`;
-      })
-      .join('');
-  };
-
-  const eyes = (() => {
-    if (p.eyes === 'open' || p.eyes === 'wide') {
-      const r: [number, number] = p.eyes === 'wide' ? [19, 23] : [18, 22];
-      const pr: [number, number] = p.eyes === 'wide' ? [7.5, 11] : [8.5, 12.5];
-      return `${eyeWhite(eyeL[0], eyeL[1], r[0], r[1])}${eyeWhite(eyeR[0], eyeR[1], r[0], r[1])}
-        ${pieEye(eyeL[0] + 4, eyeL[1] + 5, pr[0], pr[1])}${pieEye(eyeR[0] + 3, eyeR[1] + 5, pr[0], pr[1])}`;
-    }
-    const lid = (e: V) => cel(`M${e[0] - 18} ${e[1]} A18 22 0 1 0 ${e[0] + 18} ${e[1]} A18 22 0 1 0 ${e[0] - 18} ${e[1]} Z`, { ...T, cut: [-5, -6] });
-    const ring = (e: V) => `<ellipse cx="${e[0]}" cy="${e[1]}" rx="18" ry="22" fill="none" stroke="${C.ink}" stroke-width="6.5"/>`;
-    const shut =
-      p.eyes === 'blink'
-        ? closedEye(eyeL[0], eyeL[1] + 4, 24, false) + closedEye(eyeR[0], eyeR[1] + 4, 24, false)
-        : closedEye(eyeL[0], eyeL[1] + 2, 26, true) + closedEye(eyeR[0], eyeR[1] + 2, 26, true);
-    return `${lid(eyeL)}${lid(eyeR)}${ring(eyeL)}${ring(eyeR)}${shut}`;
-  })();
-  const m =
-    p.mouth === 'laugh'
-      ? mouth('M80 142 Q128 160 176 142 Q170 204 128 208 Q86 204 80 142 Z', 162, [128, 204, 30, 16])
-      : p.mouth === 'chomp'
-        ? mouth('M86 150 Q128 166 170 150 Q164 182 128 186 Q92 182 86 150 Z', 163, [128, 184, 22, 9])
-        : mouth('M86 148 Q128 166 170 148 Q166 192 128 196 Q90 192 86 148 Z', 164, [128, 194, 24, 12]);
-  // shell bumps: little raised domes catching the light
-  const bumps = ([
-    [98, 122, 7],
-    [158, 118, 8],
-    [128, 111, 5],
-    [70, 138, 5],
-    [188, 136, 5.5],
-    [210, 166, 4],
-    [46, 168, 4],
-  ] as const)
-    .map(([x, y, r]) => `<circle cx="${x + 1.3}" cy="${y + 1.7}" r="${r}" fill="${T.shade}"/><circle cx="${x}" cy="${y}" r="${r * 0.86}" fill="${T.light}"/><circle cx="${x - r * 0.3}" cy="${y - r * 0.32}" r="${r * 0.3}" fill="${C.white}" opacity=".8"/>`)
-    .join('');
-  const body = celForm(CRAB_BODY, { ...T, cut: [-12, -15], twist: -3, hatch: T.hatch, seed: 7 });
-
-  return composeSymbol({
-    autoCel: false,
-    texture: { seed: 4 },
-    contour: 0.8,
-    inkShift: [1, 1.2],
-    transform: 'translate(128 150) scale(.95) translate(-128 -150)',
-    layers: [
-      { fills: legs.map((l) => l.fills).join(''), lines: legs.map((l) => l.line('stroke-width="5.5"')).join('') },
-      { fills: stalks.map((l) => l.fills).join(''), lines: stalks.map((l) => l.line('stroke-width="5.5"')).join('') },
-      { fills: g(body.fills), lines: g(body.line()) },
-      { fills: palms.map((l) => l.fills).join(''), lines: palms.map((l) => l.line()).join('') },
-      { fills: fingers.map((l) => l.fills).join(''), lines: fingers.map((l) => l.line('stroke-width="6.5"')).join('') },
-    ],
-    top: `
-      ${g(`${bumps}
-      ${shine([[80, 121], [94, 113], [110, 108], [124, 106]], 2.8, 0.7)}
-      <ellipse cx="66" cy="172" rx="13" ry="8" fill="${C.parrotRed}" opacity=".3"/><ellipse cx="190" cy="172" rx="13" ry="8" fill="${C.parrotRed}" opacity=".3"/>`)}
-      ${clawShine(0)}${clawShine(1)}${snapMark(0)}${snapMark(1)}
-      ${eyes}${g(m)}`,
-  });
+/** Pie eyes in a pair of whites, or closed / happy arcs, or a wink (left happy, right open). */
+function eyePair(L: V, R: V, rx: number, ry: number, e: Eyes, skin: string, o: { look?: number; sw?: number; lidL?: number; lidR?: number } = {}): string {
+  const look = o.look ?? 3;
+  const sw = o.sw ?? 6.5;
+  const open = (c: V, k = 1, lidD = 0) =>
+    `${eyeWhite(c[0], c[1], rx * k, ry * k, sw)}${pieEye(c[0] + look, c[1] + ry * 0.24, rx * 0.46 * (e === 'wide' ? 0.9 : 1), ry * 0.56 * (e === 'wide' ? 0.9 : 1))}${
+      lidD ? lid(c[0], c[1], rx * k, ry * k, c[1] - ry + lidD, c[1] - ry + lidD * 0.7, skin) : ''
+    }`;
+  const shutLid = (c: V) => `${cel(ell(c[0], c[1], rx, ry), { base: skin, shade: mix(skin, C.ink, 0.25), cut: [-rx * 0.3, -ry * 0.3] })}<path d="${ell(c[0], c[1], rx, ry)}" fill="none" stroke="${C.ink}" stroke-width="${sw}"/>`;
+  if (e === 'open') return open(L, 1, o.lidL ?? 0) + open(R, 1, o.lidR ?? 0);
+  if (e === 'wide') return open([L[0], L[1] - 3], 1.08) + open([R[0], R[1] - 3], 1.08);
+  if (e === 'blink') return `${shutLid(L)}${shutLid(R)}${closedEye(L[0], L[1] + ry * 0.2, rx * 1.4, false)}${closedEye(R[0], R[1] + ry * 0.2, rx * 1.4, false)}`;
+  if (e === 'happy') return closedEye(L[0], L[1] + 2, rx * 1.55, true) + closedEye(R[0], R[1] + 2, rx * 1.55, true);
+  return closedEye(L[0], L[1] + 2, rx * 1.55, true) + open(R, 1.04);
 }
 
-const CRAB: Record<Pose, CrabPose> = {
-  idle: { eyes: 'open', mouth: 'grin', open: [16, 16], tilt: [0, 0], lift: [0, 0] },
-  blink: { eyes: 'blink', mouth: 'grin', open: [16, 16], tilt: [0, 0], lift: [0, 0] },
-  win: { eyes: 'happy', mouth: 'laugh', open: [30, 30], tilt: [5, 5], lift: [6, 6] },
-};
-
-export function crabHead(pose: Pose = 'idle'): string {
-  return crabArt(CRAB[pose]);
+/** Paint `d` inside a cel form so it takes the form's cut shadow (for bands and patches in `inner`). */
+function painted(formD: string, cut: V, d: string, base: string, shade: string, t = ''): string {
+  const id = nextId('pm');
+  const tt = t ? ` transform="${t}"` : '';
+  return `<mask id="${id}" maskUnits="userSpaceOnUse" x="-200" y="-200" width="656" height="656"><path d="${formD}"${tt} fill="#fff"/><path d="${formD}" transform="translate(${cut[0]} ${cut[1]}) ${t}" fill="#000"/></mask>
+    <path d="${d}"${tt} fill="${base}"/><path d="${d}"${tt} fill="${shade}" mask="url(#${id})"/>`;
 }
 
-/** Crab win loop: claws open wide, SNAP shut (the body squashes), open again, snap. */
-export const crabWinFrames: (() => string)[] = [
-  () => crabArt({ eyes: 'wide', mouth: 'laugh', open: [34, 34], tilt: [6, 6], lift: [8, 8] }),
-  () => crabArt({ eyes: 'happy', mouth: 'chomp', open: [0, 0], tilt: [3, 3], lift: [2, 2], squash: 0.96, snap: [true, true] }),
-  () => crabArt({ eyes: 'wide', mouth: 'laugh', open: [30, 30], tilt: [7, 7], lift: [11, 11] }),
-  () => crabArt({ eyes: 'happy', mouth: 'laugh', open: [0, 0], tilt: [5, 5], lift: [4, 4], squash: 0.97, snap: [true, true] }),
-];
+/** Cheer dashes (white with ink) fanning out from `c`. */
+const cheer = (c: V, angs: number[], r0: number, r1: number, w = 3.6) =>
+  angs.map((a) => `<path d="${lens([add(c, dir(a), r0), add(c, dir(a), r1)], w)}" fill="${C.white}" stroke="${C.ink}" stroke-width="2.6" stroke-linejoin="round"/>`).join('');
+
+/** A raised light-catching bump (feather tips, fur tufts). */
+const bump = (x: number, y: number, r: number, light: string, shade: string) =>
+  `<circle cx="${x + 1}" cy="${y + 1.3}" r="${r}" fill="${shade}"/><circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="${light}"/><circle cx="${x - r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.28}" fill="${C.white}" opacity=".8"/>`;
 
 /* ------------------------------------------------------------------ */
-/* H3: the octopus with an eye patch (violet)                          */
+/* H4: the city pigeon (purple-grey, iridescent green neck)            */
 /* ------------------------------------------------------------------ */
-interface OctoPose {
-  eye: 'open' | 'blink' | 'happy' | 'wide';
-  mouth: 'smirk' | 'grin' | 'laugh';
-  /** Wiggle phase in degrees and strength (0 = the resting curls). */
-  phase?: number;
-  amp?: number;
-  /** Mantle bob: units up (stretch) or down (squash). */
+interface PigeonPose {
+  eyes: Eyes;
+  beak: 'shut' | 'open' | 'coo';
+  /** Wing raise in degrees, or null with the wings tucked away. */
+  wing: number | null;
+  /** Head bob: squash down (units). */
   bob?: number;
+  /** Chest puff (1 = rest). */
+  puff?: number;
+  burst?: boolean;
+  twinkle?: V;
 }
 
-const OCTO_MANTLE = 'M128 20 C182 20 208 62 206 106 C204 142 178 164 128 164 C78 164 52 142 50 106 C48 62 74 20 128 20 Z';
-/** Tentacle rigs (left side): root point and a chain of [length, heading] segments that curl at the tip. */
-const OCTO_ARMS: { root: V; segs: [number, number][]; w: number; lag: number }[] = [
-  { root: [86, 144], segs: [[34, 152], [32.6, 137.5], [27.2, 107], [22.8, 52], [18.4, -12.5], [16.1, -83], [11.7, -160]], w: 21, lag: 0 },
-  { root: [104, 154], segs: [[34.2, 110.6], [26.7, 103], [19.7, 66], [18.1, 6.3], [14.6, -74], [11.2, -153]], w: 19, lag: 1.6 },
-];
+const PIGEON_BODY =
+  'M128 36 C174 36 202 68 202 108 C202 130 196 144 188 156 C212 170 230 196 230 232 C202 244 160 248 128 248 C96 248 54 244 26 232 C26 196 44 170 68 156 C60 144 54 130 54 108 C54 68 82 36 128 36 Z';
+/** Left wing, local space: shoulder at the origin, reaching up and left. */
+const PIGEON_WING = 'M10 -4 C-14 -30 -58 -44 -86 -38 Q-98 -34 -92 -24 Q-100 -14 -88 -8 Q-94 4 -78 6 Q-80 18 -62 16 C-40 22 -12 18 10 10 Z';
+const PIGEON_WING_BARS = ['M-70 -30 Q-60 -12 -44 4', 'M-50 -36 Q-38 -16 -22 0'];
 
-/** Walk a tentacle chain; the wiggle travels from root to tip and grows toward the tip. */
-function armPts(arm: (typeof OCTO_ARMS)[number], phase: number, amp: number): V[] {
-  const pts: V[] = [arm.root];
-  let p = arm.root;
-  const n = arm.segs.length;
-  arm.segs.forEach(([len, head], i) => {
-    const u = (i + 1) / n;
-    const a = head + amp * (0.35 + 0.65 * u) * Math.sin(((phase * Math.PI) / 180) - arm.lag - i * 0.75);
-    p = [p[0] + Math.cos((a * Math.PI) / 180) * len, p[1] + Math.sin((a * Math.PI) / 180) * len];
-    pts.push(p);
-  });
-  return pts;
-}
-
-function octoArt(p: OctoPose): string {
-  const T = tones(C.octo, C.octoDeep, C.octoLight);
-  const phase = p.phase ?? 0;
-  const amp = p.amp ?? 0;
+function pigeonArt(p: PigeonPose): string {
+  const T = tones(C.pigeon, C.pigeonDeep, C.pigeonLight);
+  const NECK = tones(C.pigeonNeck, C.emeraldDeep, C.emeraldLight);
+  const CHEST = { base: mix(C.pigeon, C.pigeonLight, 0.55), shade: mix(C.pigeon, C.pigeonDeep, 0.2) };
+  const ORANGE = mix(C.fire, C.amber, 0.3);
   const bob = p.bob ?? 0;
-  const mT = bob ? `translate(0 ${-bob})` : '';
-  const gm = (s: string) => (mT ? `<g transform="${mT}">${s}</g>` : s);
-  // left arms wiggle at the phase, right arms half a beat later so the pair ripples
-  const arms = OCTO_ARMS.flatMap((arm) => [
-    { pts: armPts(arm, phase, amp), w: arm.w, side: -1 },
-    { pts: flip(armPts(arm, phase + 180, amp)), w: arm.w, side: 1 },
-  ]).map((t, i) => ({ ...t, ...taper(t.pts, t.w, 5, 24), i }));
-  // inner arms in front of the outer ones
-  const order = [0, 1, 2, 3];
-  const armForms = order.map((k) => {
-    const t = arms[k];
-    return { t, f: celForm(t.d, { ...T, cut: [-6, -7], hatch: T.hatch, hatchGap: 5.5, seed: 30 + k }) };
-  });
-  const suckers = arms
-    .map((t) =>
-      t.spine
-        .map((q, i) => {
-          const u = i / (t.spine.length - 1);
-          if (u < 0.28 || u > 0.9 || i % 3) return '';
-          const w = t.w + (5 - t.w) * Math.pow(u, 0.9);
-          const n = t.norms[i];
-          const c: V = [q[0] + n[0] * t.side * w * 0.42, q[1] + n[1] * t.side * w * 0.42];
-          const r = w * 0.36;
-          return `<circle cx="${(c[0] + 0.8).toFixed(1)}" cy="${(c[1] + 1).toFixed(1)}" r="${(r + 1.2).toFixed(1)}" fill="${T.shade}"/><circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="${r.toFixed(1)}" fill="${C.pinkLight}" stroke="${C.octoDeep}" stroke-width="1.8"/><circle cx="${(c[0] + r * 0.12).toFixed(1)}" cy="${(c[1] + r * 0.15).toFixed(1)}" r="${(r * 0.42).toFixed(1)}" fill="${C.pink}" opacity=".7"/>`;
-        })
-        .join(''),
-    )
+  const puff = p.puff ?? 1;
+  const bt = `translate(128 248) scale(${(puff + bob * 0.006).toFixed(3)} ${(1 - bob * 0.008).toFixed(3)}) translate(-128 -248)`;
+  const cut: V = [-13, -15];
+
+  const band = 'M20 150 Q128 196 236 150 L240 196 Q128 236 16 196 Z';
+  const chest = `M10 186 Q32 194 48 192 Q60 206 76 202 Q90 214 106 208 Q118 218 128 212 Q138 218 150 208 Q166 214 180 202 Q196 206 208 192 Q224 194 246 186 L250 256 L6 256 Z`;
+  const sheen = `${lens([[50, 170], [88, 184], [124, 188]], 4.5)} ${lens([[136, 186], [174, 180], [206, 166]], 3.6)}`;
+  const featherMarks = [
+    [[74, 222], [84, 228], [94, 224]],
+    [[112, 230], [122, 236], [132, 232]],
+    [[150, 226], [160, 232], [170, 226]],
+    [[92, 240], [102, 245], [112, 242]],
+    [[140, 242], [150, 246], [160, 242]],
+  ]
+    .map((pts) => `<path d="M${(pts as V[]).map(P).join(' Q')}" fill="none" stroke="${CHEST.shade}" stroke-width="3" stroke-linecap="round"/>`)
     .join('');
-
-  const eye: V = [154, 98];
-  const eyeArt =
-    p.eye === 'open' || p.eye === 'wide'
-      ? `${eyeWhite(eye[0], eye[1] - (p.eye === 'wide' ? 2 : 0), p.eye === 'wide' ? 19 : 18, p.eye === 'wide' ? 25 : 23)}${pieEye(eye[0] + 3, eye[1] + 5, p.eye === 'wide' ? 8 : 9, p.eye === 'wide' ? 11.5 : 13)}`
-      : p.eye === 'blink'
-        ? closedEye(eye[0], eye[1] + 4, 28, false)
-        : closedEye(eye[0], eye[1] + 2, 30, true);
-  const clip = nextId('oc');
-  const patch = `<clipPath id="${clip}"><path d="${OCTO_MANTLE}"/></clipPath>
-    <path d="M40 96 L84 96 M110 84 C134 62 162 42 214 30" stroke="${C.ink}" stroke-width="7.5" fill="none" stroke-linecap="round" clip-path="url(#${clip})"/>
-    <path d="M78 92 C78 80 92 74 106 78 C120 82 122 100 114 110 C106 120 86 120 80 110 C77 104 78 98 78 92 Z" fill="${C.ink}"/>
-    <path d="${lens([[86, 88], [94, 82], [104, 82]], 2.4)}" fill="${C.g4}"/>
-    <path d="M84 108 Q96 116 110 108" stroke="${C.g5}" stroke-width="1.6" stroke-dasharray="3 3" fill="none"/>`;
-  const up = p.eye === 'wide' ? -4 : 0;
-  const browR = p.mouth === 'laugh' ? brow(136, 62 + up, 172, 64 + up, -6, 4.2) : brow(134, 64 + up, 170, 60 + up, -8, 4.2);
-  const m =
-    p.mouth === 'laugh'
-      ? mouth('M94 124 Q128 140 162 124 Q158 158 128 160 Q98 158 94 124 Z', 138, [128, 158, 20, 10])
-      : p.mouth === 'grin'
-        ? mouth('M98 126 Q128 140 158 124 Q152 150 128 152 Q104 150 98 126 Z', 137, [128, 151, 16, 7])
-        : `<path d="M102 130 Q126 144 150 126" stroke="${C.ink}" stroke-width="6.5" fill="none" stroke-linecap="round"/>
-         <path d="M148 120 Q154 124 152 132" stroke="${C.ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
-  // skin: flat darker spots and a few raised, light-catching bumps
-  const spots = ([
-    [96, 44, 8],
-    [166, 50, 6],
-    [186, 88, 7],
-    [66, 76, 5],
-    [124, 34, 4],
-    [180, 122, 5],
-  ] as const)
-    .map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.85}" fill="${T.shade}" opacity=".55"/>`)
-    .join('');
-  const bumps = ([
-    [118, 52, 4.5],
-    [150, 32, 5],
-    [74, 60, 4],
-    [194, 104, 3.6],
-  ] as const)
-    .map(([x, y, r]) => `<circle cx="${x + 1}" cy="${y + 1.3}" r="${r}" fill="${T.shade}"/><circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="${T.light}"/><circle cx="${x - r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.28}" fill="${C.white}" opacity=".8"/>`)
-    .join('');
-  const mantle = celForm(OCTO_MANTLE, { ...T, cut: [-13, -15], twist: -4, hatch: T.hatch, seed: 5, inner: spots, t: mT || undefined });
-
-  return composeSymbol({
-    autoCel: false,
-    texture: { seed: 5 },
-    contour: 0.8,
-    inkShift: [1, 1.2],
-    transform: 'translate(128 128) scale(.95) translate(-128 -128)',
-    layers: [
-      { fills: armForms.map((a) => a.f.fills).join(''), lines: armForms.map((a) => a.f.line('stroke-width="6.5"')).join('') },
-      { fills: mantle.fills, lines: mantle.line() },
-    ],
-    top: `
-      ${suckers}
-      ${gm(`${bumps}
-      ${shine([[64, 78], [72, 56], [88, 38], [108, 29]], 3.4, 0.62)}
-      <ellipse cx="84" cy="138" rx="12" ry="7" fill="${C.pinkLight}" opacity=".4"/><ellipse cx="176" cy="134" rx="12" ry="7" fill="${C.pinkLight}" opacity=".4"/>
-      ${patch}${eyeArt}${browR}${m}`)}`,
-  });
-}
-
-const OCTO: Record<Pose, OctoPose> = {
-  idle: { eye: 'open', mouth: 'smirk' },
-  blink: { eye: 'blink', mouth: 'smirk' },
-  win: { eye: 'happy', mouth: 'laugh', phase: 0, amp: 10 },
-};
-
-export function octoHead(pose: Pose = 'idle'): string {
-  return octoArt(OCTO[pose]);
-}
-
-/** Octopus win loop: the arms ripple through a full wiggle while it laughs and winks. */
-export const octoWinFrames: (() => string)[] = [
-  () => octoArt({ eye: 'happy', mouth: 'laugh', phase: 0, amp: 14, bob: 2 }),
-  () => octoArt({ eye: 'wide', mouth: 'laugh', phase: 90, amp: 14, bob: 4 }),
-  () => octoArt({ eye: 'happy', mouth: 'laugh', phase: 180, amp: 14, bob: 2 }),
-  () => octoArt({ eye: 'wide', mouth: 'grin', phase: 270, amp: 14, bob: 0 }),
-];
-
-/* ------------------------------------------------------------------ */
-/* H2: the shark with a gold earring (steel blue)                      */
-/* ------------------------------------------------------------------ */
-interface SharkPose {
-  eyes: 'open' | 'blink' | 'happy' | 'wide';
-  jaw: 'grin' | 'wide' | 'mid' | 'shut';
-  /** Impact marks at the mouth corners (the chomp). */
-  chomp?: boolean;
-  /** Head squash on the chomp (1 = rest). */
-  squash?: number;
-}
-
-type Jaw = { top: [V, V, V]; bot: [V, V, V]; lip: [V, V]; chin: number; tongue: number };
-const JAWS: Record<'grin' | 'wide' | 'mid', Jaw> = {
-  grin: { top: [[64, 148], [128, 178], [192, 148]], lip: [[184, 202], [128, 206]], bot: [[86, 190], [128, 212], [170, 190]], chin: 214, tongue: 202 },
-  mid: { top: [[60, 143], [128, 173], [196, 143]], lip: [[190, 212], [128, 217]], bot: [[84, 200], [128, 224], [172, 200]], chin: 222, tongue: 211 },
-  wide: { top: [[56, 138], [128, 168], [200, 138]], lip: [[194, 222], [128, 227]], bot: [[82, 211], [128, 237], [174, 211]], chin: 231, tongue: 220 },
-};
-
-const quad = (Q: [V, V, V], t: number): V => {
-  const a = (1 - t) * (1 - t);
-  const b = 2 * (1 - t) * t;
-  const c = t * t;
-  return [a * Q[0][0] + b * Q[1][0] + c * Q[2][0], a * Q[0][1] + b * Q[1][1] + c * Q[2][1]];
-};
-/** A row of triangular teeth along a quadratic curve, pointing along its normal. */
-const teethRow = (Q: [V, V, V], n: number, h: number, t0: number, t1: number) => {
-  let d = '';
-  for (let i = 0; i < n; i++) {
-    const a = quad(Q, t0 + ((t1 - t0) * i) / n);
-    const b = quad(Q, t0 + ((t1 - t0) * (i + 1)) / n);
-    const m = quad(Q, t0 + ((t1 - t0) * (i + 0.5)) / n);
-    const dx = b[0] - a[0];
-    const dy = b[1] - a[1];
-    const len = Math.hypot(dx, dy);
-    const tip: V = [m[0] + (-dy / len) * h, m[1] + (dx / len) * h];
-    d += `M${P(a)} L${P(tip)} L${P(b)} Z `;
-  }
-  return d;
-};
-
-function sharkArt(p: SharkPose): string {
-  const T = tones(C.shark, C.sharkDeep, C.sharkLight);
-  const shut = p.jaw === 'shut';
-  const J = p.jaw === 'shut' ? JAWS.grin : JAWS[p.jaw];
-  const chin = shut ? 208 : J.chin;
-  const sq = p.squash ?? 1;
-  const hT = sq === 1 ? '' : `translate(128 ${chin}) scale(${(2 - sq).toFixed(3)} ${sq.toFixed(3)}) translate(-128 ${-chin})`;
-  const g = (s: string) => (hT ? `<g transform="${hT}">${s}</g>` : s);
-  const head = `M128 58 C184 58 224 98 226 144 C228 ${chin - 26} 188 ${chin} 128 ${chin} C68 ${chin} 28 ${chin - 26} 30 144 C32 98 72 58 128 58 Z`;
-  const fin = 'M96 76 C100 46 126 22 172 12 C158 36 154 56 162 80 Z';
-  const finL = 'M54 174 C30 184 12 204 14 224 C36 216 56 206 72 194 Z';
-  const finR = mirrorX(finL);
-  const belly = `M16 ${shut ? 150 : 158} C62 ${shut ? 132 : 138} 194 ${shut ? 132 : 138} 240 ${shut ? 150 : 158} L240 250 L16 250 Z`;
-  const bellyClip = nextId('sb');
-
-  let mouthArt = '';
-  if (!shut) {
-    const mPath = `M${P(J.top[0])} Q${P(J.top[1])} ${P(J.top[2])} Q${P(J.lip[0])} ${P(J.lip[1])} Q${2 * 128 - J.lip[0][0]} ${J.lip[0][1]} ${P(J.top[0])} Z`;
-    const top = teethRow(J.top, 9, p.jaw === 'wide' ? 18 : 16, 0.04, 0.96);
-    const bot = teethRow([J.bot[2], J.bot[1], J.bot[0]], 6, p.jaw === 'wide' ? 15 : 13, 0, 1);
-    const mid = nextId('sm');
-    mouthArt = `<clipPath id="${mid}"><path d="${mPath}"/></clipPath>
-      <path d="${mPath}" fill="${C.crimsonDeep}"/>
-      <g clip-path="url(#${mid})">
-        <path d="${mPath}" fill="${mix(C.crimsonDeep, C.ink, 0.45)}" transform="translate(0 -10)"/>
-        <ellipse cx="128" cy="${J.tongue}" rx="36" ry="15" fill="${C.crimson}"/>
-        <path d="${lens([[108, J.tongue - 7], [122, J.tongue - 10], [138, J.tongue - 9]], 2.6)}" fill="${C.crimsonLight}" opacity=".8"/>
-        <path d="${top}" fill="${C.white}" stroke="${C.ink}" stroke-width="3.4" stroke-linejoin="round"/>
-        <path d="${bot}" fill="${C.white}" stroke="${C.ink}" stroke-width="3.4" stroke-linejoin="round"/>
-      </g>
-      <path d="${mPath}" fill="none" stroke="${C.ink}" stroke-width="7" stroke-linejoin="round"/>`;
-  } else {
-    // jaws clamped: the two rows of teeth interlock in a wide crescent grin
-    const Qt: [V, V, V] = [[60, 148], [128, 184], [196, 148]];
-    const Qb: [V, V, V] = [[196, 148], [128, 216], [60, 148]];
-    const band = `M${P(Qt[0])} Q${P(Qt[1])} ${P(Qt[2])} Q${P(Qb[1])} ${P(Qb[2])} Z`;
-    const up = teethRow(Qt, 10, 15, 0.03, 0.97);
-    const dn = teethRow(Qb, 9, 14, 0.08, 0.92);
-    const mid = nextId('sm');
-    mouthArt = `<clipPath id="${mid}"><path d="${band}"/></clipPath>
-      <path d="${band}" fill="${C.crimsonDeep}"/>
-      <g clip-path="url(#${mid})"><path d="${dn}" fill="${C.white}" stroke="${C.ink}" stroke-width="3" stroke-linejoin="round"/><path d="${up}" fill="${C.white}" stroke="${C.ink}" stroke-width="3" stroke-linejoin="round"/></g>
-      <path d="${band}" fill="none" stroke="${C.ink}" stroke-width="7" stroke-linejoin="round"/>
-      <path d="M50 138 Q56 146 54 156 M206 138 Q200 146 202 156" stroke="${C.ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
-  }
-  const chomp = p.chomp
-    ? ([
-        [[25, 134], [12, 126]],
-        [[23, 150], [9, 151]],
-      ] as V[][])
-        .flatMap(([a, b]) => [[a, b], [[256 - a[0], a[1]], [256 - b[0], b[1]]] as V[]])
-        .map((pp) => `<path d="${lens(pp, 3.4)}" fill="${C.white}" stroke="${C.ink}" stroke-width="2.4" stroke-linejoin="round"/>`)
-        .join('')
-    : '';
-  const eyeY = shut ? 106 : 108;
-  const eyes =
-    p.eyes === 'open' || p.eyes === 'wide'
-      ? `${eyeWhite(96, eyeY - (p.eyes === 'wide' ? 3 : 0), p.eyes === 'wide' ? 18.5 : 17.5, p.eyes === 'wide' ? 23 : 21, 6)}${eyeWhite(160, eyeY - (p.eyes === 'wide' ? 3 : 0), p.eyes === 'wide' ? 18.5 : 17.5, p.eyes === 'wide' ? 23 : 21, 6)}
-         ${pieEye(100, eyeY + 6, p.eyes === 'wide' ? 7.5 : 8.5, p.eyes === 'wide' ? 11 : 12.5)}${pieEye(157, eyeY + 6, p.eyes === 'wide' ? 7.5 : 8.5, p.eyes === 'wide' ? 11 : 12.5)}`
-      : p.eyes === 'blink'
-        ? closedEye(96, eyeY + 3, 24, false) + closedEye(160, eyeY + 3, 24, false)
-        : closedEye(96, eyeY, 26, true) + closedEye(160, eyeY, 26, true);
-  const bUp = p.eyes === 'wide' ? -8 : 0;
-  const brows = brow(72, 82 + bUp, 114, 96 + bUp, -3, 4.8) + brow(184, 82 + bUp, 142, 96 + bUp, 3, 4.8);
-  const gill = (x: number, s: number) =>
-    [0, 1, 2].map((i) => `<path d="${lens([[x + s * i * 9, 118 - i * 2], [x + s * i * 9 - s * 7, 134 - i * 2], [x + s * i * 9, 150 - i * 2]], 2.4)}" fill="${T.hatch}"/>`).join('');
-  const headF = celForm(head, {
+  const bodyF = celForm(PIGEON_BODY, {
     ...T,
-    cut: [-13, -15],
+    t: bt,
+    cut,
     twist: -3,
     hatch: T.hatch,
-    seed: 9,
-    t: hT || undefined,
-    inner: `<clipPath id="${bellyClip}"><path d="${head}"/></clipPath><g clip-path="url(#${bellyClip})">${cel(belly, { base: C.white, shade: mix(C.sharkLight, C.white, 0.2), cut: [-8, -12], hatch: mix(C.sharkLight, C.shark, 0.4), hatchGap: 6.5, seed: 10 })}</g>`,
+    seed: 101,
+    inner:
+      painted(PIGEON_BODY, cut, band, NECK.base, NECK.shade, bt) +
+      `<g transform="${bt}"><path d="${sheen}" fill="${mix(C.pink, C.pigeon, 0.25)}" opacity=".85"/></g>` +
+      painted(PIGEON_BODY, cut, chest, CHEST.base, CHEST.shade, bt) +
+      `<g transform="${bt}">${featherMarks}</g>`,
   });
-  const finF = celForm(fin, { ...T, cut: [-7, -9], hatch: T.hatch, seed: 12 });
-  const finsLR = [finL, finR].map((d, i) => celForm(d, { base: mix(C.shark, C.sharkDeep, 0.3), shade: T.shade, cut: [-6, -7], seed: 14 + i }));
-
-  return composeSymbol({
-    autoCel: false,
-    texture: { seed: 6 },
-    contour: 0.8,
-    inkShift: [1, 1.2],
-    layers: [
-      { fills: finF.fills, lines: finF.line() },
-      { fills: finsLR.map((f) => f.fills).join(''), lines: finsLR.map((f) => f.line()).join('') },
-      { fills: headF.fills, lines: headF.line() },
-    ],
-    top: `
-      ${shine([[108, 70], [118, 48], [138, 31]], 2.6, 0.55)}
-      ${g(`${shine([[58, 110], [70, 86], [94, 69], [116, 64]], 3.2, 0.6)}
-      ${gill(44, 1)}${gill(212, -1)}
-      ${eyes}${brows}
-      <path d="M78 74 L104 104" stroke="${C.crimsonLight}" stroke-width="5" stroke-linecap="round"/>
-      <path d="M84 86 l7 -5 M90 93 l7 -5 M96 100 l7 -5" stroke="${C.ink}" stroke-width="2.6" stroke-linecap="round"/>
-      <ellipse cx="116" cy="${shut ? 134 : 136}" rx="4" ry="2.6" fill="${C.ink}"/><ellipse cx="140" cy="${shut ? 134 : 136}" rx="4" ry="2.6" fill="${C.ink}"/>
-      ${mouthArt}${chomp}`)}
-      <circle cx="161" cy="48" r="12" fill="none" stroke="${C.ink}" stroke-width="10"/>
-      <circle cx="161" cy="48" r="12" fill="none" stroke="${C.gold}" stroke-width="5"/>
-      <path d="M161 60 A12 12 0 0 0 173 48" fill="none" stroke="${C.goldDeep}" stroke-width="3"/>
-      <path d="M152 42 Q155 37 160 36" stroke="${C.goldLight}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M150 40 C156 44 160 52 160 60" stroke="${C.shark}" stroke-width="7" fill="none" stroke-linecap="round"/>
-      ${sparkle(182, 36, 7, C.goldLight)}`,
-  });
-}
-
-const SHARK: Record<Pose, SharkPose> = {
-  idle: { eyes: 'open', jaw: 'grin' },
-  blink: { eyes: 'blink', jaw: 'grin' },
-  win: { eyes: 'happy', jaw: 'wide' },
-};
-
-export function sharkHead(pose: Pose = 'idle'): string {
-  return sharkArt(SHARK[pose]);
-}
-
-/** Shark win loop: jaws gape, CHOMP shut (the head squashes), gape, chomp. */
-export const sharkWinFrames: (() => string)[] = [
-  () => sharkArt({ eyes: 'wide', jaw: 'wide' }),
-  () => sharkArt({ eyes: 'happy', jaw: 'shut', chomp: true, squash: 0.97 }),
-  () => sharkArt({ eyes: 'open', jaw: 'mid' }),
-  () => sharkArt({ eyes: 'happy', jaw: 'shut', chomp: true, squash: 0.98 }),
-];
-
-/* ------------------------------------------------------------------ */
-/* H1: Sparks the parrot (green, red bandana)                          */
-/* ------------------------------------------------------------------ */
-export type ParrotExpr = 'idle' | 'blink' | 'happy' | 'squawk' | 'worried';
-
-/**
- * Sparks' head, in the house hand-cel style (cut shadows, hatching, cut highlights, grain).
- * `symbol` = standalone symbol art (drop shadow and the paint filter). `part` cuts one layer out
- * for the rig (track C): the base (feathers, bandana, head), one eye's white / ring / pupil / lid,
- * the happy squint, the upper beak, the open lower beak, the worried brows and the sweat drop,
- * each cropped to its own box in the head's 256 coordinates. 'all' (the default) is the whole
- * head; nested unpainted (`symbol` false) it takes the paint of the art it sits in. `painted`
- * forces the paint filter on or off (a standalone portrait without a drop shadow).
- */
-export function parrotHead(
-  expr: ParrotExpr = 'idle',
-  symbol = true,
-  part: 'all' | 'base' | 'eyeWhite' | 'eyeRing' | 'pupil' | 'lid' | 'lidHappy' | 'beak' | 'jaw' | 'browL' | 'browR' | 'tear' = 'all',
-  painted?: boolean,
-): string {
-  const G = celTones(C.parrot, C.parrotDeep, C.parrotLight);
-  const RED = celTones(C.crimson, C.crimsonDeep, C.crimsonLight);
-  const YEL = celTones(C.parrotYellow, C.goldDeep, C.goldLight);
-  const BLUE = celTones(C.parrotBlue, C.navy, C.moonGlow);
-  const head = 'M128 58 C174 58 204 90 206 132 C208 176 174 208 128 208 C82 208 48 176 50 132 C52 90 82 58 128 58 Z';
-  const feathers = [
-    { f: taper([[100, 70], [80, 46], [52, 34]], 17, 5), t: G },
-    { f: taper([[112, 62], [104, 32], [86, 10]], 18, 5), t: YEL },
-    { f: taper([[126, 58], [132, 30], [146, 10]], 17, 5), t: BLUE },
-  ];
-  const bandana = 'M48 122 C42 72 84 36 130 36 C176 36 214 72 208 122 C190 106 160 98 128 98 C96 98 66 106 48 122 Z';
-  const dots: [number, number, number][] = [[86, 62, 6], [124, 50, 6], [162, 58, 6], [190, 84, 5], [66, 94, 5], [104, 80, 5.5], [144, 78, 5.5], [180, 104, 4]];
-  const tail1 = 'M212 100 C224 88 238 90 244 102 C234 102 226 108 218 116 Z';
-  const tail2 = 'M212 118 C226 122 234 134 236 148 C226 140 216 134 204 130 Z';
-  const knot = 'M194 113 A13 13 0 1 0 220 113 A13 13 0 1 0 194 113 Z';
-  const beak = 'M102 158 C100 142 156 140 156 156 C158 180 146 198 120 210 C124 198 120 188 111 182 C104 176 102 168 102 158 Z';
-  const open = expr === 'happy' || expr === 'squawk';
-  const beakT = open ? `rotate(${expr === 'squawk' ? -13 : -8} 128 154)` : '';
-  const lower = expr === 'squawk' ? 'M104 172 C100 216 156 218 156 176 C144 186 116 186 104 172 Z' : 'M106 176 C104 206 152 208 152 178 C140 186 118 186 106 176 Z';
-  const eyesOpen = expr === 'idle' || expr === 'squawk' || expr === 'worried';
-  const up = expr === 'worried' ? -5 : 0;
-  const ey = 130;
-  const er: [number, number] = expr === 'squawk' ? [8.5, 12] : [10, 14];
-  const whites = `<ellipse cx="105" cy="${ey}" rx="21" ry="25" fill="${C.white}" stroke="${C.ink}" stroke-width="6.5"/><ellipse cx="151" cy="${ey}" rx="21" ry="25" fill="${C.white}" stroke="${C.ink}" stroke-width="6.5"/>`;
-  const shutLid = (cx: number) => `${cel(`M${cx - 21} ${ey} A21 25 0 1 0 ${cx + 21} ${ey} A21 25 0 1 0 ${cx - 21} ${ey} Z`, { ...G, cut: [-5, -6] })}<ellipse cx="${cx}" cy="${ey}" rx="21" ry="25" fill="none" stroke="${C.ink}" stroke-width="6.5"/>`;
-  const eyes = eyesOpen
-    ? `${whites}${pieEye(109, ey + 5 + up, er[0], er[1])}${pieEye(149, ey + 5 + up, er[0], er[1])}`
-    : expr === 'blink'
-      ? `${shutLid(105)}${shutLid(151)}${closedEye(105, ey + 3, 28, false)}${closedEye(151, ey + 3, 28, false)}`
-      : closedEye(104, ey + 2, 30, true) + closedEye(152, ey + 2, 30, true);
-  const worry = expr === 'worried' ? brow(84, 106, 116, 100, 3, 3.6) + brow(172, 106, 140, 100, -3, 3.6) : '';
-  // hand-cel forms: feathers with their quills, knot tails, the head, the polka-dot bandana
-  const featherForms = feathers.map(({ f, t }, i) =>
-    celForm(f.d, { ...t, cut: [-4, -5], seed: 90 + i, inner: `<path d="${midrib(f.spine)}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"/>` }),
-  );
-  const tails = [tail1, tail2].map((d, i) => celForm(d, { ...RED, cut: [-4, -5], seed: 94 + i }));
-  const headF = celForm(head, {
-    ...G,
-    cut: [-12, -14],
-    twist: -3,
-    hatch: G.hatch,
-    hatchGap: 5.5,
-    seed: 96,
-    inner: `<path d="M66 152 q8 8 18 6 M72 166 q8 7 18 5 M190 152 q-8 8 -18 6 M184 166 q-8 7 -18 5" stroke="${G.light}" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".9"/>`,
-  });
-  const bandF = celForm(bandana, {
-    ...RED,
-    cut: [-8, -10],
-    hatch: RED.hatch,
-    hatchGap: 5.5,
-    seed: 97,
-    inner: dots.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${C.paper}"/>`).join(''),
-  });
-  const knotF = celForm(knot, { ...RED, cut: [-4, -5], seed: 98 });
-  const layers = [
-    { fills: featherForms.map((x) => x.fills).join(''), lines: featherForms.map((x) => x.line('stroke-width="6"')).join('') },
-    { fills: tails.map((x) => x.fills).join(''), lines: tails.map((x) => x.line()).join('') },
-    { fills: headF.fills, lines: headF.line() },
-    { fills: bandF.fills, lines: bandF.line() },
-    { fills: knotF.fills, lines: knotF.line() },
-  ];
-  const beakArt = (t: string) => `<g${t ? ` transform="${t}"` : ''}>
-        ${cel(beak, { ...YEL, cut: [-5, -7], seed: 99 })}<path d="${beak}" fill="none" stroke="${C.ink}" stroke-width="7" stroke-linejoin="round"/>
-        ${shine([[112, 164], [118, 176], [123, 186]], 2.6, 0.7)}
-        <path d="M106 154 Q128 146 152 153" stroke="${C.goldDeep}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
-        <ellipse cx="119" cy="152" rx="3.2" ry="2.2" fill="${C.ink}"/><ellipse cx="139" cy="152" rx="3.2" ry="2.2" fill="${C.ink}"/>
-      </g>`;
-  const blush = `<ellipse cx="70" cy="178" rx="12" ry="7" fill="${C.parrotRed}" opacity=".5"/><ellipse cx="186" cy="178" rx="12" ry="7" fill="${C.parrotRed}" opacity=".5"/>`;
-  const headShine = shine([[62, 104], [82, 72], [104, 60], [122, 56]], 3.2, 0.5);
-  const tear = `<path d="M196 150 q-8 12 0 18 q8 -6 0 -18 Z" fill="${C.moonGlow}" stroke="${C.ink}" stroke-width="3"/>`;
-  const paint = painted ?? (symbol || part !== 'all');
-  if (part !== 'all') {
-    const crop = (svg: string, b: [number, number, number, number]) => svg.replace(/viewBox="0 0 256 256" width="256" height="256"/, `viewBox="${b[0]} ${b[1]} ${b[2]} ${b[3]}" width="${b[2]}" height="${b[3]}"`);
-    const plain = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">${body}</svg>`;
-    const grain = (body: string) => composeSymbol({ autoCel: false, texture: { seed: 12 }, inkShift: [1, 1.2], noDrop: true, layers: [{ fills: '' }], top: body });
-    const lid = 'M84 128 C84 108 92 104 105 104 C118 104 126 108 126 128 C126 144 118 155 105 155 C92 155 84 144 84 128 Z';
-    switch (part) {
-      case 'base':
-        return crop(composeSymbol({ autoCel: false, texture: { seed: 12 }, contour: 0.8, inkShift: [1, 1.2], noDrop: true, layers, top: `${blush}${headShine}` }), [26, 0, 230, 216]);
-      case 'eyeWhite':
-        return crop(plain(`<ellipse cx="105" cy="${ey}" rx="21" ry="25" fill="${C.white}"/>`), [82, 103, 46, 54]);
-      case 'eyeRing':
-        return crop(plain(`<ellipse cx="105" cy="${ey}" rx="21" ry="25" fill="none" stroke="${C.ink}" stroke-width="6.5"/>`), [78, 99, 54, 62]);
-      case 'pupil':
-        return crop(plain(pieEye(109, ey + 5, 10, 14)), [96, 118, 26, 34]);
-      case 'lid':
-        return crop(grain(`${cel(lid, { ...G, cut: [-4, -5], seed: 100 })}<path d="M85 134 C88 148 96 154 105 154 C114 154 122 148 125 134" fill="none" stroke="${C.ink}" stroke-width="6.5" stroke-linecap="round"/>`), [80, 100, 50, 58]);
-      case 'lidHappy':
-        return crop(plain(closedEye(104, ey + 2, 30, true)), [84, 112, 42, 26]);
-      case 'beak':
-        return crop(grain(beakArt('')), [94, 136, 68, 80]);
-      case 'jaw': {
-        const jaw = 'M104 172 C100 216 156 218 156 176 C144 186 116 186 104 172 Z';
-        return crop(grain(`<path d="${jaw}" fill="${C.inkSoft}" stroke="${C.ink}" stroke-width="6" stroke-linejoin="round"/><ellipse cx="130" cy="200" rx="13" ry="7" fill="${C.pink}"/>`), [96, 166, 68, 54]);
-      }
-      case 'browL':
-        return crop(plain(brow(84, 106, 116, 100, 3, 3.6)), [78, 92, 44, 22]);
-      case 'browR':
-        return crop(plain(brow(172, 106, 140, 100, -3, 3.6)), [134, 92, 44, 22]);
-      case 'tear':
-        return crop(plain(tear), [184, 144, 24, 30]);
-    }
-  }
-  return composeSymbol({
-    autoCel: false,
-    inkShift: [1, 1.2],
-    ...(paint ? { texture: { seed: 12 }, contour: 0.8 } : {}),
-    noDrop: !symbol,
-    layers,
-    top: `
-      ${blush}
-      ${eyes}${worry}
-      ${open ? `<path d="${lower}" fill="${C.inkSoft}" stroke="${C.ink}" stroke-width="6" stroke-linejoin="round"/><ellipse cx="130" cy="${expr === 'squawk' ? 200 : 194}" rx="13" ry="7" fill="${C.pink}"/>` : ''}
-      ${beakArt(beakT)}
-      ${headShine}
-      ${expr === 'worried' ? tear : ''}`,
-  });
-}
-const midrib = (s: V[]) => {
-  const a = Math.floor(s.length * 0.12);
-  const b = Math.floor(s.length * 0.85);
-  return `M${P(s[a])} ${s.slice(a + 1, b).map((p) => `L${P(p)}`).join(' ')}`;
-};
-
-/* ------------------------------------------------------------------ */
-/* H1 symbol: Sparks' head (track C's parrotHead) with flapping wings  */
-/* ------------------------------------------------------------------ */
-/** Left wing, local space: shoulder at the origin, wing reaching left (-x); one bold scalloped silhouette. */
-const WING = `M10 -18 C-16 -38 -72 -38 -100 -22 Q-114 -12 -102 -3${scallops(
-  [
-    [-102, -3],
-    [-94, 14],
-    [-79, 28],
-    [-60, 38],
-    [-40, 41],
-  ],
-  0.32,
-  -1,
-)} C-22 36 -4 26 10 8 Z`;
-/** The green covert over the wing root (the rest of the wing shows blue flight feathers). */
-const WING_COVERT = `M20 -40 L-52 -40 C-62 -20 -58 0 -48 8${scallops(
-  [
-    [-48, 8],
-    [-36, 18],
-    [-22, 22],
-    [-8, 20],
-    [6, 14],
-  ],
-  0.3,
-  -1,
-)} L20 14 Z`;
-const WING_EDGE = 'M10 -18 C-16 -38 -72 -38 -100 -22 L-96 -12 C-70 -26 -18 -26 6 -6 Z';
-const WING_QUILLS = 'M-94 14 Q-72 4 -54 0 M-79 28 Q-62 16 -48 10 M-60 38 Q-48 26 -38 18';
-
-interface ParrotPose {
-  expr: ParrotExpr;
-  /** Wing raise in degrees (negative = down), or null with the wings tucked out of sight. */
-  wing: number | null;
-  /** Foreshortening along the wing (1 = broadside, smaller mid-stroke). */
-  reach?: number;
-  squawk?: boolean;
-}
-
-function parrotArt(p: ParrotPose): string {
-  const G = tones(C.parrot, C.parrotDeep, C.parrotLight);
-  const B = tones(C.parrotBlue, C.navy, C.moonGlow);
-  const reach = p.reach ?? 1;
-  const wingT = (side: 0 | 1) => `translate(${side ? 194 : 62} 150) rotate(${side ? -(p.wing ?? 0) : p.wing ?? 0}) scale(${(0.82 * reach).toFixed(3)} .82)`;
+  // a little cowlick of head feathers
+  const tufts = [
+    taper([[122, 42], [114, 24], [100, 14]], 7, 2.6, 12),
+    taper([[132, 42], [136, 22], [148, 10]], 7.5, 2.6, 12),
+  ].map((tt, i) => celForm(tt.d, { ...T, t: bt, cut: [-3, -4], seed: 102 + i }));
+  // wings: raised in the cheer, pigeon-grey with the two black wing bars
+  const wingT = (side: 0 | 1) => `translate(${side ? 200 : 56} 176) rotate(${side ? -(p.wing ?? 0) : p.wing ?? 0})`;
   const m0 = (d: string, side: 0 | 1) => (side ? mirrorX(d, 0) : d);
   const wings =
     p.wing === null
       ? []
-      : ([0, 1] as const).map((side) => {
-          const t = wingT(side);
-          const covert = cel(m0(WING_COVERT, side), { ...G, t, cut: [-6, -8], hatch: G.hatch, hatchGap: 5, seed: 70 + side });
-          return celForm(m0(WING, side), {
-            ...B,
-            t,
-            cut: [-7, -9],
-            hatch: B.hatch,
-            hatchGap: 5.5,
-            seed: 60 + side,
-            inner: `${covert}<path d="${m0(WING_EDGE, side)}" transform="${t}" fill="${C.parrotRed}"/><path d="${m0(WING_QUILLS, side)}" transform="${t}" fill="none" stroke="${C.navy}" stroke-width="3.6" stroke-linecap="round"/>`,
-          });
-        });
-  const head = parrotHead(p.expr, false).replace(/^<svg /, '<svg x="0" y="0" ');
-  const squawk = p.squawk
-    ? ([
-        [[196, 44], [208, 20]],
-        [[208, 58], [232, 44]],
-        [[214, 76], [240, 74]],
-      ] as V[][])
-        .map((pp) => `<path d="${lens(pp, 3.6)}" fill="${C.white}" stroke="${C.ink}" stroke-width="2.6" stroke-linejoin="round"/>`)
-        .join('')
-    : '';
+      : ([0, 1] as const).map((side) =>
+          celForm(m0(PIGEON_WING, side), {
+            ...T,
+            base: mix(C.pigeon, C.pigeonLight, 0.25),
+            t: wingT(side),
+            cut: [-6, -7],
+            hatch: T.hatch,
+            seed: 104 + side,
+            inner: PIGEON_WING_BARS.map((d) => `<path d="${m0(d, side)}" transform="${wingT(side)}" stroke="${C.ink}" stroke-width="7" fill="none" stroke-linecap="round"/>`).join(''),
+          }),
+        );
+
+  // eyes: orange rings round pie eyes
+  const L: V = [94, 104];
+  const R: V = [162, 104];
+  const ring = (c: V) =>
+    `${cel(ell(c[0], c[1], 25, 28), { base: ORANGE, shade: mix(ORANGE, C.fireDeep, 0.55), light: mix(ORANGE, C.amberLight, 0.6), cut: [-6, -7] })}<path d="${ell(c[0], c[1], 25, 28)}" fill="none" stroke="${C.ink}" stroke-width="6"/>`;
+  const eyes = `${ring(L)}${ring(R)}${eyePair(L, R, 17, 20, p.eyes, ORANGE, { sw: 4.5, lidR: 0 })}`;
+  const browArt = p.eyes === 'wide' ? brow(72, 66, 108, 70, -5, 4) + brow(146, 68, 184, 62, 5, 4) : brow(74, 72, 110, 76, -4, 3.8) + brow(144, 70, 184, 60, 6, 4);
+
+  // beak: dark grey with the white cere on top; open for the coo
+  const BEAK = { base: mix(C.g4, C.pigeonDeep, 0.35), shade: mix(C.g5, C.ink, 0.3), light: C.g3 };
+  const upper = p.beak === 'shut' ? 'M114 122 C116 114 140 114 142 122 L134 152 Q128 160 122 152 Z' : 'M114 122 C116 114 140 114 142 122 L136 142 Q128 148 120 142 Z';
+  const cere = 'M111 121 C110 108 146 108 145 121 C138 128 118 128 111 121 Z';
+  const beakF = cel(upper, { ...BEAK, cut: [-5, -6] });
+  const cereF = cel(cere, { base: C.g1, shade: C.g2, light: C.white, cut: [-4, -4] });
+  const open = p.beak !== 'shut';
+  const jaw = p.beak === 'open' ? 'M116 140 Q128 150 140 140 Q142 170 128 176 Q114 170 116 140 Z' : 'M120 142 Q128 148 136 142 Q137 160 128 164 Q119 160 120 142 Z';
+  const lower = p.beak === 'open' ? 'M114 160 Q128 186 142 160 Q140 178 128 182 Q116 178 114 160 Z' : 'M119 154 Q128 170 137 154 Q136 166 128 168 Q120 166 119 154 Z';
+  const beakArt = `${open ? mouth(jaw, 0, [128, p.beak === 'open' ? 170 : 162, 12, 7], 5) : ''}
+    ${open ? `${cel(lower, { ...BEAK, cut: [-3, -3] })}<path d="${lower}" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>` : ''}
+    ${beakF}<path d="${upper}" fill="none" stroke="${C.ink}" stroke-width="6" stroke-linejoin="round"/>
+    ${cereF}<path d="${cere}" fill="none" stroke="${C.ink}" stroke-width="4.5" stroke-linejoin="round"/>
+    ${shine([[119, 130], [121, 138], [124, 146]], 1.8, 0.6)}`;
+  const notes = p.beak === 'coo' ? cheer([128, 160], [-10, 10, 170, 190], 40, 58, 3) : '';
+  const burst = p.burst ? cheer([128, 112], [-150, -120, -60, -30], 104, 122) : '';
+  const tw = p.twinkle ?? [214, 40];
+
   return composeSymbol({
-    autoCel: false,
-    texture: { seed: 7 },
-    contour: 0.8,
-    inkShift: [1, 1.2],
-    layers: wings.length ? [{ fills: wings.map((w) => w.fills).join(''), lines: wings.map((w) => w.line('stroke-width="6.5"')).join('') }] : [{ fills: '' }],
-    top: `${head}${squawk}`,
+    ...PAINT,
+    texture: { seed: 31 },
+    transform: FIT,
+    layers: [
+      ...(wings.length ? [{ fills: wings.map((w) => w.fills).join(''), lines: wings.map((w) => w.line('stroke-width="6.5"')).join('') }] : []),
+      { fills: tufts.map((f) => f.fills).join(''), lines: tufts.map((f) => f.line('stroke-width="5.5"')).join('') },
+      { fills: bodyF.fills, lines: bodyF.line() },
+    ],
+    top: `<g transform="${bt}">
+      ${shine([[66, 102], [74, 74], [96, 54], [122, 46]], 3.4, 0.6)}
+      ${shine([[48, 196], [64, 178], [86, 172]], 2.4, 0.55)}
+      <ellipse cx="68" cy="146" rx="13" ry="7" fill="${C.pinkLight}" opacity=".45"/><ellipse cx="188" cy="146" rx="13" ry="7" fill="${C.pinkLight}" opacity=".45"/>
+      ${eyes}${browArt}${beakArt}</g>${notes}${burst}${sparkle(tw[0], tw[1], 11, C.white, 0.9)}`,
   });
 }
 
-const PARROT: Record<Pose, ParrotPose> = {
-  idle: { expr: 'idle', wing: null },
-  blink: { expr: 'blink', wing: null },
-  win: { expr: 'happy', wing: 58 },
+const PIGEON: Record<Pose, PigeonPose> = {
+  idle: { eyes: 'open', beak: 'shut', wing: null },
+  blink: { eyes: 'blink', beak: 'shut', wing: null },
+  win: { eyes: 'happy', beak: 'open', wing: 40 },
 };
 
-/** Symbol frames for the parrot (idle / blink / win squawk). */
-export const parrotSymbol = (pose: Pose) => parrotArt(PARROT[pose]);
+export function pigeonHead(pose: Pose = 'idle'): string {
+  return pigeonArt(PIGEON[pose]);
+}
 
-/** Parrot win loop: a full wingbeat (up, down-stroke, down, recovery) while Sparks squawks. */
-export const parrotWinFrames: (() => string)[] = [
-  () => parrotArt({ expr: 'happy', wing: 60 }),
-  () => parrotArt({ expr: 'squawk', wing: 12, reach: 0.62, squawk: true }),
-  () => parrotArt({ expr: 'squawk', wing: -38, reach: 0.7, squawk: true }),
-  () => parrotArt({ expr: 'happy', wing: 30, reach: 0.72 }),
+/** Pigeon win loop: wings up with a coo, a head-bob, a winking flap, and a proud puffed chest. */
+export const pigeonWinFrames: (() => string)[] = [
+  () => pigeonArt({ eyes: 'happy', beak: 'open', wing: 46, puff: 1.03, burst: true, twinkle: [36, 44] }),
+  () => pigeonArt({ eyes: 'wide', beak: 'coo', wing: 6, bob: 8, twinkle: [214, 52] }),
+  () => pigeonArt({ eyes: 'wink', beak: 'open', wing: 58, puff: 1.05, burst: true, twinkle: [40, 60] }),
+  () => pigeonArt({ eyes: 'happy', beak: 'coo', wing: 22, puff: 1.02, twinkle: [212, 40] }),
+];
+
+/* ------------------------------------------------------------------ */
+/* H3: the alley cat (orange tabby, bent ear, bandage)                 */
+/* ------------------------------------------------------------------ */
+interface CatPose {
+  eyes: Eyes;
+  mouth: 'grin' | 'laugh' | 'tongue';
+  /** The bent ear springs straight up (the cheer). */
+  earUp?: boolean;
+  /** Head tilt (degrees). */
+  tilt?: number;
+  burst?: boolean;
+  twinkle?: V;
+}
+
+const CAT_HEAD =
+  'M128 70 C168 70 198 88 208 118 L224 126 L212 138 L232 148 L214 158 L228 174 L206 180 C196 214 166 234 128 234 C90 234 60 214 50 180 L28 174 L42 158 L24 148 L44 138 L32 126 L48 118 C58 88 88 70 128 70 Z';
+const CAT_EAR_L = 'M46 130 L50 82 L62 76 L52 66 L56 30 Q58 22 66 26 L122 78 Z';
+const CAT_EAR_L_IN = 'M64 112 L64 46 L104 84 Z';
+const CAT_EAR_R_UP = mirrorX('M46 130 L56 30 Q58 22 66 26 L122 78 Z');
+const CAT_EAR_R_IN_UP = mirrorX(CAT_EAR_L_IN);
+/** The bent ear: it stands to a crease, then the tip flops over to the side. */
+const CAT_EAR_R = 'M134 78 L184 46 Q190 44 194 48 L212 130 Z';
+const CAT_EAR_R_IN = 'M150 84 L186 58 L198 112 Z';
+const CAT_EAR_FLAP = 'M180 50 Q190 40 200 48 L238 82 Q240 92 230 92 L196 80 Z';
+const CAT_TUFT = 'M104 80 L108 60 L118 72 L126 52 L134 70 L146 58 L150 80 Z';
+
+function catArt(p: CatPose): string {
+  const T = tones(C.cat, C.catDeep, C.catLight);
+  const PINK = { base: C.ratPink, shade: mix(C.ratPink, C.pinkDeep, 0.45) };
+  const CREAM = { base: C.cream, shade: mix(C.cream, C.catLight, 0.7), light: C.white };
+  const stripe = mix(C.catDeep, C.ink, 0.15);
+  const cut: V = [-12, -14];
+  const ht = `rotate(${p.tilt ?? 0} 128 234)`;
+
+  const earL = celForm(CAT_EAR_L, { ...T, t: ht, cut: [-7, -9], hatch: T.hatch, seed: 111, inner: painted(CAT_EAR_L, [-7, -9], CAT_EAR_L_IN, PINK.base, PINK.shade, ht) });
+  const earR = p.earUp
+    ? celForm(CAT_EAR_R_UP, { ...T, t: ht, cut: [-7, -9], hatch: T.hatch, seed: 112, inner: painted(CAT_EAR_R_UP, [-7, -9], CAT_EAR_R_IN_UP, PINK.base, PINK.shade, ht) })
+    : celForm(CAT_EAR_R, { ...T, t: ht, cut: [-7, -9], hatch: T.hatch, seed: 112, inner: painted(CAT_EAR_R, [-7, -9], CAT_EAR_R_IN, PINK.base, PINK.shade, ht) });
+  const flap = celForm(CAT_EAR_FLAP, { ...T, base: mix(C.cat, C.catDeep, 0.2), t: ht, cut: [-4, -5], seed: 113, inner: `<path d="M196 56 L230 84" transform="${ht}" stroke="${T.light}" stroke-width="3" stroke-linecap="round"/>` });
+  const tuft = celForm(CAT_TUFT, { ...T, t: ht, cut: [-4, -5], seed: 114 });
+
+  // tabby stripes: an M on the brow, bars on the cheeks
+  const st = (pts: V[], w: number) => `<path d="${lens(pts, w)}" fill="${stripe}"/>`;
+  const stripes = `<g transform="${ht}">
+      ${st([[128, 74], [129, 90], [127, 106]], 5)}${st([[108, 78], [111, 92], [116, 102]], 4)}${st([[148, 78], [145, 92], [140, 102]], 4)}
+      ${st([[88, 88], [94, 96], [98, 104]], 3)}${st([[168, 88], [162, 96], [158, 104]], 3)}
+      ${st([[34, 150], [50, 152], [66, 158]], 3.6)}${st([[40, 166], [54, 168], [68, 172]], 3)}
+      ${st([[222, 150], [206, 152], [192, 158]], 3.6)}
+      ${st([[196, 104], [204, 114], [208, 124]], 3.2)}${st([[60, 104], [52, 114], [48, 124]], 3.2)}
+    </g>`;
+  const muzzle = 'M128 170 C114 156 82 158 82 180 C82 202 108 208 128 196 C148 208 174 202 174 180 C174 158 142 156 128 170 Z';
+  const chin = 'M104 206 Q128 226 152 206 Q146 228 128 230 Q110 228 104 206 Z';
+  const headF = celForm(CAT_HEAD, {
+    ...T,
+    t: ht,
+    cut,
+    twist: -3,
+    hatch: T.hatch,
+    seed: 115,
+    inner: painted(CAT_HEAD, cut, chin, CREAM.base, CREAM.shade, ht),
+  });
+  const muzzleF = celForm(muzzle, { ...CREAM, t: ht, cut: [-7, -8], band: [3, 3], seed: 116 });
+
+  const L: V = [96, 128];
+  const R: V = [160, 128];
+  const eyes = eyePair(L, R, 18, 21, p.eyes, C.cat, { lidL: 14, lidR: 9, look: 4 });
+  const nose = 'M116 160 Q128 152 140 160 Q136 170 128 173 Q120 170 116 160 Z';
+  const m =
+    p.mouth === 'laugh'
+      ? mouth('M98 184 Q128 200 158 184 Q154 226 128 228 Q102 226 98 184 Z', 195, [128, 222, 18, 10])
+      : p.mouth === 'tongue'
+        ? `${mouth('M102 186 Q128 200 154 184 Q150 210 128 212 Q106 210 102 186 Z', 194, [128, 212, 14, 6])}
+           <path d="M120 206 Q118 228 132 230 Q146 228 142 204 Z" fill="${C.pink}" stroke="${C.ink}" stroke-width="4.5" stroke-linejoin="round"/><path d="M131 210 L131 222" stroke="${C.pinkDeep}" stroke-width="2.4" stroke-linecap="round"/>`
+        : `${mouth('M98 184 Q128 198 160 180 Q154 212 128 214 Q104 212 98 184 Z', 194, [128, 214, 16, 7])}
+           <path d="M138 194 L141 206 L145 193 Z" fill="${C.white}" stroke="${C.ink}" stroke-width="2.6" stroke-linejoin="round"/>`;
+  const whisk = (side: -1 | 1) =>
+    ([
+      [[100, 182], [68, 174], [30, 178]],
+      [[102, 190], [68, 192], [34, 202]],
+    ] as V[][])
+      .map((pts) => pts.map(([x, y]): V => [side < 0 ? x : 256 - x, y]))
+      .map(([a, b, c]) => `<path d="M${P(a)} Q${P(b)} ${P(c)}" fill="none" stroke="${C.ink}" stroke-width="3" stroke-linecap="round"/>`)
+      .join('');
+  // bandage cross on the right cheek
+  const strip = (rot: number) =>
+    `<g transform="rotate(${rot} 186 148)"><rect x="166" y="141" width="40" height="14" rx="4" fill="${C.paperWarm}" stroke="${C.ink}" stroke-width="3.6"/><rect x="180" y="142.5" width="12" height="11" fill="${mix(C.paperWarm, C.tileDeep, 0.45)}"/>
+      <circle cx="172" cy="145.5" r="1.1" fill="${C.tileDeep}"/><circle cx="172" cy="150.5" r="1.1" fill="${C.tileDeep}"/><circle cx="200" cy="145.5" r="1.1" fill="${C.tileDeep}"/><circle cx="200" cy="150.5" r="1.1" fill="${C.tileDeep}"/></g>`;
+  const bandage = `${strip(38)}${strip(-38)}`;
+  const browArt = p.eyes === 'wide' ? brow(76, 96, 112, 100, -5, 4.2) + brow(144, 100, 180, 94, -5, 4.2) : brow(78, 104, 114, 108, -2, 4.2) + brow(142, 106, 178, 98, -6, 4.2);
+  const burst = p.burst ? cheer([128, 128], [-160, -130, -50, -20], 108, 126) : '';
+  const tw = p.twinkle ?? [40, 40];
+
+  return composeSymbol({
+    ...PAINT,
+    texture: { seed: 32 },
+    transform: FIT,
+    layers: [
+      { fills: earL.fills + earR.fills, lines: earL.line() + earR.line() },
+      ...(p.earUp ? [] : [{ fills: flap.fills, lines: flap.line('stroke-width="6.5"') }]),
+      { fills: tuft.fills, lines: tuft.line('stroke-width="6"') },
+      { fills: headF.fills, lines: headF.line() },
+    ],
+    top: `${stripes}<g transform="${ht}">
+      ${shine([[60, 120], [72, 98], [94, 82], [116, 76]], 3.2, 0.6)}
+      ${muzzleF.fills}<path d="${muzzle}" fill="none" stroke="${C.ink}" stroke-width="5.5"/>
+      ${bump(104, 176, 2.2, C.white, CREAM.shade)}${bump(96, 184, 2, C.white, CREAM.shade)}${bump(152, 176, 2.2, C.white, CREAM.shade)}${bump(160, 184, 2, C.white, CREAM.shade)}
+      ${whisk(-1)}${whisk(1)}
+      ${m}
+      ${cel(nose, { ...PINK, cut: [-4, -4] })}<path d="${nose}" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>
+      <path d="${lens([[122, 158], [128, 156], [134, 158]], 1.6)}" fill="${C.white}" opacity=".8"/>
+      ${eyes}${browArt}${bandage}
+      <ellipse cx="70" cy="174" rx="11" ry="6" fill="${C.crimson}" opacity=".25"/></g>${burst}${sparkle(tw[0], tw[1], 11, C.white, 0.9)}`,
+  });
+}
+
+const CAT: Record<Pose, CatPose> = {
+  idle: { eyes: 'open', mouth: 'grin' },
+  blink: { eyes: 'blink', mouth: 'grin' },
+  win: { eyes: 'happy', mouth: 'laugh', earUp: true },
+};
+
+export function catHead(pose: Pose = 'idle'): string {
+  return catArt(CAT[pose]);
+}
+
+/** Cat win loop: a belly laugh as the bent ear springs up, a cheeky wink with the tongue out, laugh, grin. */
+export const catWinFrames: (() => string)[] = [
+  () => catArt({ eyes: 'happy', mouth: 'laugh', earUp: true, tilt: -5, burst: true, twinkle: [218, 44] }),
+  () => catArt({ eyes: 'wink', mouth: 'tongue', tilt: 4, twinkle: [36, 52] }),
+  () => catArt({ eyes: 'wide', mouth: 'laugh', earUp: true, tilt: -3, burst: true, twinkle: [214, 60] }),
+  () => catArt({ eyes: 'happy', mouth: 'grin', tilt: 5, twinkle: [40, 40] }),
+];
+
+/* ------------------------------------------------------------------ */
+/* H2: Officer Bulldog (tan, navy police cap with a gold badge)        */
+/* ------------------------------------------------------------------ */
+interface DogPose {
+  eyes: Eyes;
+  mouth: 'grump' | 'laugh' | 'whistle';
+  /** Cap lift (units) and extra tilt (degrees): the hat-tip cheer. */
+  cap?: number;
+  capTilt?: number;
+  burst?: boolean;
+  twinkle?: V;
+}
+
+const DOG_FACE =
+  'M128 84 C178 84 216 106 222 148 C228 176 222 202 208 218 C194 234 168 240 128 240 C88 240 62 234 48 218 C34 202 28 176 34 148 C40 106 78 84 128 84 Z';
+const DOG_EAR = 'M46 126 C28 112 10 120 6 142 C18 140 30 146 38 160 Z';
+const DOG_MUZZLE = 'M64 172 C64 148 192 148 192 172 C196 216 172 242 128 242 C84 242 60 216 64 172 Z';
+const DOG_JOWL = 'M128 172 C106 166 72 168 64 192 C58 212 80 224 102 218 C116 214 124 202 128 192 Z';
+const DOG_JAW = 'M78 204 C72 242 184 242 178 204 C160 218 96 218 78 204 Z';
+const DOG_FANG = 'M90 214 L96 186 L106 212 Z';
+const DOG_NOSE = 'M104 160 C104 146 152 146 152 160 C152 174 140 182 128 182 C116 182 104 174 104 160 Z';
+const CAP_CROWN = 'M40 98 C30 58 76 22 128 20 C180 22 226 58 216 98 Q128 84 40 98 Z';
+const CAP_BAND = 'M44 94 Q128 80 212 94 L210 114 Q128 100 46 114 Z';
+const CAP_VISOR = 'M46 110 Q128 96 210 110 C212 124 184 134 128 134 C72 134 44 124 46 110 Z';
+const BADGE = 'M128 40 L148 47 Q149 72 128 84 Q107 72 108 47 Z';
+
+function dogArt(p: DogPose): string {
+  const T = tones(C.dog, C.dogDeep, C.dogLight);
+  const LITE = { base: C.dogLight, shade: mix(C.dogLight, C.dog, 0.75) };
+  const COP = tones(C.cop, C.copDeep, C.copLight);
+  const cut: V = [-12, -14];
+  const capT = `translate(0 ${-(p.cap ?? 0)}) rotate(${-6 + (p.capTilt ?? 0)} 128 110)`;
+  const laugh = p.mouth === 'laugh';
+  const jawT = laugh ? 'translate(0 9)' : '';
+
+  const ears = [DOG_EAR, mirrorX(DOG_EAR)].map((d, i) => celForm(d, { base: mix(C.dog, C.dogDeep, 0.35), shade: T.shade, cut: [-5, -6], seed: 121 + i }));
+  const faceF = celForm(DOG_FACE, {
+    ...T,
+    cut,
+    twist: -3,
+    hatch: T.hatch,
+    seed: 123,
+    inner: painted(DOG_FACE, cut, `${DOG_MUZZLE} M114 96 Q128 92 142 96 L146 152 Q128 158 110 152 Z`, LITE.base, LITE.shade),
+  });
+  const jawF = celForm(DOG_JAW, { ...T, base: mix(C.dog, C.dogLight, 0.35), t: jawT || undefined, cut: [-7, -8], hatch: T.hatch, seed: 124 });
+  const jowls = [DOG_JOWL, mirrorX(DOG_JOWL)].map((d, i) => celForm(d, { base: C.dogLight, shade: LITE.shade, light: C.cream, cut: [-7, -8], band: [3, 3], seed: 125 + i }));
+  const fangs = [DOG_FANG, mirrorX(DOG_FANG)].map((d) => `<path d="${d}" ${jawT ? `transform="${jawT}"` : ''} fill="${C.white}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>`).join('');
+  const crownF = celForm(CAP_CROWN, { ...COP, t: capT, cut: [-11, -12], hatch: COP.hatch, seed: 127 });
+  const bandF = celForm(CAP_BAND, { base: C.copDeep, shade: mix(C.copDeep, C.ink, 0.4), t: capT, cut: [-6, -5], seed: 128, inner: `<path d="M46 98 Q128 84 210 98" transform="${capT}" stroke="${C.gold}" stroke-width="3" fill="none"/>` });
+  const visorF = celForm(CAP_VISOR, { base: C.iron, shade: C.ironDeep, light: C.ironLight, t: capT, cut: [-8, -7], band: [3, 3], seed: 129 });
+  const badgeF = celForm(BADGE, {
+    ...GOLD_TONES,
+    t: capT,
+    cut: [-5, -6],
+    seed: 130,
+    inner: `<path d="M128 50 L131.5 59 L141 59 L133.5 65 L136.5 74 L128 68.5 L119.5 74 L122.5 65 L115 59 L124.5 59 Z" transform="${capT}" fill="${C.goldDeep}"/>`,
+  });
+
+  const L: V = [96, 146];
+  const R: V = [160, 146];
+  const eyes = eyePair(L, R, 15, 17, p.eyes, C.dog, { lidL: 7, lidR: 7, sw: 6 });
+  const bags = p.eyes === 'open' || p.eyes === 'wide' ? `<path d="M82 164 Q96 172 110 164 M146 164 Q160 172 174 164" stroke="${T.hatch}" stroke-width="3" fill="none" stroke-linecap="round"/>` : '';
+  const brows = p.eyes === 'wide' ? brow(74, 124, 112, 126, -5, 4.6) + brow(144, 126, 182, 124, -5, 4.6) : brow(76, 126, 114, 134, -2, 4.8) + brow(180, 126, 142, 134, 2, 4.8);
+  const mouthIn = laugh ? mouth('M70 192 Q128 214 186 192 L184 216 Q128 236 72 216 Z', 0, [128, 222, 34, 12]) : '';
+  const whistle = p.mouth === 'whistle';
+  const whistleArt = whistle
+    ? `<g transform="rotate(-14 160 206)">
+        <path d="M148 200 L184 200 L184 214 L148 214 Z" fill="${C.gold}" stroke="${C.ink}" stroke-width="4.5" stroke-linejoin="round"/>
+        <circle cx="192" cy="212" r="13" fill="${C.gold}" stroke="${C.ink}" stroke-width="4.5"/>
+        <circle cx="194" cy="214" r="5" fill="${C.goldDeep}"/>
+        <path d="M152 203 L180 203" stroke="${C.goldLight}" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M184 206 Q188 201 194 201" stroke="${C.goldLight}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      </g>${cheer([214, 196], [-60, -20, 20], 18, 36)}`
+    : '';
+  const burst = p.burst ? cheer([128, 70 - (p.cap ?? 0)], [-160, -130, -50, -20], 96, 114) : '';
+  const tw = p.twinkle ?? [218, 52];
+
+  return composeSymbol({
+    ...PAINT,
+    texture: { seed: 33 },
+    transform: FIT,
+    layers: [
+      { fills: ears.map((e) => e.fills).join(''), lines: ears.map((e) => e.line('stroke-width="6.5"')).join('') },
+      { fills: faceF.fills, lines: faceF.line() },
+      { fills: mouthIn, lines: '' },
+      { fills: jawF.fills, lines: jawF.line() },
+      { fills: fangs + jowls.map((j) => j.fills).join(''), lines: jowls.map((j) => j.line('stroke-width="6.5"')).join('') },
+      { fills: crownF.fills + bandF.fills, lines: crownF.line() + bandF.line('stroke-width="5"') },
+      { fills: visorF.fills + badgeF.fills, lines: visorF.line() + badgeF.line('stroke-width="4.5"') },
+    ],
+    top: `
+      ${fangs.replace(/fill="[^"]+" stroke/g, `fill="${C.white}" stroke`)}
+      <path d="M100 140 Q96 132 100 126" stroke="none"/>
+      ${eyes}${bags}${brows}
+      <path d="M108 142 Q128 134 148 142" stroke="${T.hatch}" stroke-width="3" fill="none" stroke-linecap="round"/>
+      ${cel(DOG_NOSE, { base: C.inkSoft, shade: C.ink, light: C.g4, cut: [-5, -6] })}<path d="${DOG_NOSE}" fill="none" stroke="${C.ink}" stroke-width="5"/>
+      <ellipse cx="117" cy="168" rx="5" ry="3.4" fill="${C.ink}"/><ellipse cx="139" cy="168" rx="5" ry="3.4" fill="${C.ink}"/>
+      ${shine([[114, 156], [124, 151], [136, 151]], 3, 0.7)}
+      ${[[84, 196], [92, 204], [80, 206], [172, 196], [164, 204], [176, 206]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="${T.hatch}"/>`).join('')}
+      ${whistleArt}
+      <g transform="${capT}">
+        ${shine([[56, 82], [64, 56], [90, 36], [116, 28]], 3.4, 0.55)}
+        ${shine([[66, 120], [100, 114], [140, 112]], 2.6, 0.55)}
+        <circle cx="122" cy="52" r="2.6" fill="${C.white}" opacity=".9"/>
+      </g>
+      ${burst}${sparkle(tw[0], tw[1], 11, C.white, 0.9)}`,
+  });
+}
+
+const DOG: Record<Pose, DogPose> = {
+  idle: { eyes: 'open', mouth: 'grump' },
+  blink: { eyes: 'blink', mouth: 'grump' },
+  win: { eyes: 'happy', mouth: 'laugh', cap: 8, capTilt: -6 },
+};
+
+export function bulldogHead(pose: Pose = 'idle'): string {
+  return dogArt(DOG[pose]);
+}
+
+/** Bulldog win loop: a jowly laugh, a blast on the whistle, the cap tipped up off his head, a wink. */
+export const bulldogWinFrames: (() => string)[] = [
+  () => dogArt({ eyes: 'happy', mouth: 'laugh', cap: 4, twinkle: [36, 48] }),
+  () => dogArt({ eyes: 'happy', mouth: 'whistle', twinkle: [40, 60] }),
+  () => dogArt({ eyes: 'wide', mouth: 'laugh', cap: 18, capTilt: -12, burst: true, twinkle: [222, 40] }),
+  () => dogArt({ eyes: 'wink', mouth: 'grump', cap: 6, capTilt: 4, twinkle: [218, 52] }),
 ];

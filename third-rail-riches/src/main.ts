@@ -99,7 +99,7 @@ async function start() {
   await bootPhase('lang');
   await loadLanguage();
   // the loading screen's rotating tips, in the player's language (swapped in at once, no English first)
-  const tips = (['tip1', 'tip6', 'tip2', 'tip3', 'tip4', 'tip5'] as const).map((k) => t(k, { max: num(MAX_WIN) }));
+  const tips = (['tip1', 'tip2', 'tip3', 'tip4', 'tip6', 'tip5'] as const).map((k) => t(k, { max: num(MAX_WIN), mult: 10 }));
   if (bootWin.__setTips) bootWin.__setTips(tips);
   else bootWin.__tips = tips;
   void sound.load();
@@ -154,7 +154,7 @@ async function start() {
     stopAuto: () => ctrl.stopAuto(),
     cycleTurbo: () => ctrl.cycleTurbo(),
     disableFeature: () => undefined,
-    // Powder Boost switch (track H's HUD, which plays boostOn / boostOff): the Controller answers with hud.setBoost
+    // Express Pass switch (track H's HUD, which plays boostOn / boostOff): the Controller answers with hud.setBoost
     boost: (on) => ctrl.setBoost(on),
   });
   // replay on short landscape screens: the results column at the right (the scene is laid out left of it)
@@ -165,8 +165,8 @@ async function start() {
     const b = sound.beat();
     return b ? { phase: b.phase, bpm: b.bpm } : { phase: (performance.now() / 1000 / (60 / 90)) % 1, bpm: 90 };
   };
-  scene.captain.getBeat = beat;
-  scene.parrot.getBeat = beat;
+  scene.conductor.getBeat = beat;
+  scene.rat.getBeat = beat;
 
   // session: authenticate (or load a replay) before the player sees anything playable
   let resumeRound = null;
@@ -180,7 +180,7 @@ async function start() {
       resumeRound = await ctrl.start(hud);
       // Stake.us is English only: a social jurisdiction from authenticate switches the loaded language to English
       if (setSocial(ctrl.jur.socialCasino || env.social)) {
-        const tips = (['tip1', 'tip6', 'tip2', 'tip3', 'tip4', 'tip5'] as const).map((k) => t(k, { max: num(MAX_WIN) }));
+        const tips = (['tip1', 'tip2', 'tip3', 'tip4', 'tip6', 'tip5'] as const).map((k) => t(k, { max: num(MAX_WIN), mult: 10 }));
         bootWin.__setTips?.(tips);
         await scene.relayout(true); // the scene's lettering (the fuse meter's plank) in English
       }
@@ -215,9 +215,9 @@ async function start() {
   };
   // Cap'n Kaboom and Sparks step up onto the splash above its shade, and go home at the handoff;
   // the splash's lockup flies into the game's logo spot, so the game's own logo waits hidden
-  const cast = quick ? undefined : { captain: scene.captain, parrot: scene.parrot };
-  const castHome = scene.captain.parent;
-  const castIdx = castHome ? [castHome.getChildIndex(scene.captain), castHome.getChildIndex(scene.parrot)] : [0, 1];
+  const cast = quick ? undefined : { conductor: scene.conductor, rat: scene.rat };
+  const castHome = scene.conductor.parent;
+  const castIdx = castHome ? [castHome.getChildIndex(scene.conductor), castHome.getChildIndex(scene.rat)] : [0, 1];
   // the win bar and the fuse meter wait too, so nothing of the HUD shows through behind the lockup
   const backstage = cast ? [scene.logo, scene.winBar, scene.meter] : [];
   for (const o of backstage) o.visible = false;
@@ -231,7 +231,6 @@ async function start() {
     const next = new IntroSplash({
       // (the replay column: the scene keeps left of it, the splash still covers the screen)
       L: column() ? { ...scene.L, W: scene.stage.app.screen.width } : scene.L,
-      wheelTex: scene.wheelTex,
       symTex: scene.symTex,
       renderer: scene.stage.app.renderer,
       quick,
@@ -328,20 +327,20 @@ async function start() {
   const attract = playRound({ kind: 'base', rng: createRng((Math.random() * 2 ** 31) | 0), record: true });
   // the board drops in as the shade lifts (with its sounds, once audio is up)
   await Promise.race([audioReady, new Promise((r) => setTimeout(r, 150))]);
-  if (!env.replay) await scene.grid.dropIn(attract.trigger.initial, { onColumnLanded: (c, last) => sound.play(last ? 'reelStop' : 'reelDrop', { index: c }) }, false);
+  if (!env.replay) await scene.grid.spinIn(attract.trigger.grid, new Set(), { onColumnLanded: (c, last) => sound.play(last ? 'reelStop' : 'reelDrop', { index: c }) }, false);
   await fade;
   // the crew and the logo are the game's again
   if (s0) {
     s0.releaseCast();
     if (cast && castHome && !castHome.destroyed) {
-      castHome.addChildAt(scene.captain, Math.min(castIdx[0], castHome.children.length));
-      castHome.addChildAt(scene.parrot, Math.min(castIdx[1], castHome.children.length));
+      castHome.addChildAt(scene.conductor, Math.min(castIdx[0], castHome.children.length));
+      castHome.addChildAt(scene.rat, Math.min(castIdx[1], castHome.children.length));
     }
     leaving = null;
     s0.destroy({ children: true });
   }
-  scene.captain.fx = scene.fx;
-  scene.parrot.fx = scene.fx;
+  scene.conductor.fx = scene.fx;
+  scene.rat.fx = scene.fx;
   for (const o of backstage) {
     // (in case the flight was cut short)
     o.visible = true;

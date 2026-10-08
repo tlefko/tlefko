@@ -4,12 +4,13 @@
 //   node tools/audio-lab/render.mjs                 render everything and rebuild public/audio
 //   node tools/audio-lab/render.mjs --only=howl,base  re-render just these ids (others reuse WAVs)
 //   node tools/audio-lab/render.mjs --skip-render    rebuild banks/MP3/manifest from existing WAVs
+//   node tools/audio-lab/render.mjs --only=x --strict --no-build   render just x, nothing else, no packing
 //
 // Outputs: public/audio/*.mp3, src/audio/manifest.ts, tools/audio-lab/out/{wav,build-report.json}
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { chromium } from 'playwright';
+import { launchChromium } from './lib/browser.mjs';
 import { startLabServer, OUT_DIR, ROOT } from './lib/server.mjs';
 import { readWav, writeWav, loudness, encodeMp3, samplePeak, db, undb, decodeToChannels } from './lib/audio-io.mjs';
 
@@ -43,16 +44,13 @@ fs.mkdirSync(PUBLIC_AUDIO, { recursive: true });
 // ------------------------------------------------------------------ 1. render
 async function render() {
   const { url, close } = await startLabServer();
-  const browser = await chromium.launch({
-    args: [
-      '--autoplay-policy=no-user-gesture-required',
-      // Tone.Offline yields with setTimeout while rendering; never let Chromium throttle those timers
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-features=IntensiveWakeUpThrottling,CalculateNativeWinOcclusion',
-    ],
-  });
+  const browser = await launchChromium([
+    // Tone.Offline yields with setTimeout while rendering; never let Chromium throttle those timers
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-features=IntensiveWakeUpThrottling,CalculateNativeWinOcclusion',
+  ]);
   try {
     const page = await browser.newPage();
     page.on('pageerror', (e) => console.error('[page error]', e.message));
@@ -67,7 +65,8 @@ async function render() {
     console.log(`render page ready in ${((Date.now() - tLoad) / 1000).toFixed(1)} s`);
     fs.writeFileSync(path.join(OUT_DIR, 'catalog.json'), JSON.stringify(catalog, null, 2));
     const t0 = Date.now();
-    const missing = (sub, id) => !fs.existsSync(path.join(WAV_DIR, sub, `${id}.wav`));
+    // with --only, anything without a WAV yet is rendered too (unless --strict)
+    const missing = (sub, id) => !args.strict && !fs.existsSync(path.join(WAV_DIR, sub, `${id}.wav`));
     for (const tr of catalog.tracks) {
       if (only && !only.has(tr.id) && !missing('music', tr.id)) continue;
       const r = await page.evaluate((id) => window.__lab.renderTrack(id), tr.id);

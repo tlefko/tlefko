@@ -325,3 +325,41 @@ export function bosunCall(s: Studio, dest: Dest, pts: GlidePoint[], vel: number,
   s.noise('white', t0, tEnd + 0.2, s.gain(0.05, bp));
   return tEnd + 0.2;
 }
+
+/**
+ * Saxophone (alto/tenor section voice): conical-bore saw + a little pulse through a vocal formant
+ * pair, breathy attack, scoop (flag b), growl (flag g) and a late, lazy vibrato.
+ */
+export function sax(s: Studio, dest: Dest, t: number, f: number, dur: number, vel: number, flags = ''): number {
+  const g = s.gain(0, dest);
+  const end = s.adsr(g.gain, t, dur, 0.03, 0.12, 0.82, 0.08, vel * 0.2);
+  const lp = s.filter('lowpass', Math.min(6000, f * (5 + 4 * vel)), 0.7, g);
+  const f2 = s.filter('peaking', 1450, 1.6, lp, 6);
+  const f1 = s.filter('peaking', 560, 1.3, f2, 5);
+  const hp = s.filter('highpass', 140, 0.7, f1);
+  const src = flags.includes('g') ? s.shaper(s.softClip(3), hp) : hp;
+  const osc = s.osc('sawtooth', f, t, end, src);
+  const osc2 = s.osc('square', f, t, end, s.gain(0.25, src), 4);
+  for (const o of [osc, osc2]) {
+    const base = o.detune.value;
+    o.detune.setValueAtTime(base - (flags.includes('b') ? 140 : 25), t);
+    o.detune.linearRampToValueAtTime(base, t + (flags.includes('b') ? 0.1 : 0.04));
+  }
+  if (flags.includes('g')) s.osc('sine', 38, t, end, s.gain(f * 0.02, osc.frequency));
+  if (dur > 0.3) {
+    const vib = s.gain(0);
+    vib.connect(osc.detune);
+    vib.connect(osc2.detune);
+    vib.gain.setValueAtTime(0, t + 0.15);
+    vib.gain.linearRampToValueAtTime(18, t + Math.min(0.6, dur));
+    s.osc('sine', 5.2, t, end, vib);
+  }
+  const nb = s.filter('bandpass', 2600, 0.9, g);
+  const ng = s.gain(0, nb);
+  ng.gain.setValueAtTime(0, t);
+  ng.gain.linearRampToValueAtTime(0.06 * vel, t + 0.012);
+  ng.gain.setTargetAtTime(0.012 * vel, t + 0.02, 0.04);
+  ng.gain.setTargetAtTime(0, t + dur, 0.03);
+  s.noise('white', t, end, ng);
+  return end;
+}

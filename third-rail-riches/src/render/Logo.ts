@@ -6,12 +6,14 @@ import type { Rect } from './layout';
 let seq = 0;
 
 /**
- * Title lockup (track H): POWDER arched over a bigger KEG in carved wooden block letters with a
- * brass rim and a fire face, a lit fuse curling off the G, COVE burned into the parchment scroll and
- * the LIGHT THE FUSE tagline. Hand-built lettering (art/lettering.ts), no font: the whole lockup is
- * one SVG rasterised at the exact display size, so it is crisp at every size and nothing can be
- * clipped (the SVG's box holds every outline, extrusion and shadow). Small sizes get a simplified
- * variant with heavier outlines and no tagline, readable down to the portrait HUD logo.
+ * Title lockup: THIRD RAIL in leaning deco capitals (cream over maroon enamel, brass bevel and
+ * extrusion), the glowing third rail with a bolt crackling along it, RICHES in gold on an emerald and
+ * brass deco plate with speed lines and sparkles, and the ALL ABOARD! enamel sign strip. Hand-built
+ * lettering (art/lettering.ts), no font: the whole lockup is one SVG rasterised at the exact display
+ * size, so it is crisp at every size and nothing can be clipped (the SVG's box, LOGO_BOX 1000 x 620,
+ * holds every outline, extrusion, glow and shadow). Small sizes (< 250 px) get a simplified variant
+ * with heavier outlines, bigger livery bands, no bevel detail and no tagline (< 320 px), readable down
+ * to the ~160 px portrait HUD logo.
  */
 export class Logo extends Container {
   private sprite = new Sprite();

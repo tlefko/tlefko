@@ -1,46 +1,83 @@
 /**
- * The symbol set, keyed by symbol id (see math/types Sym). Powder Keg Cove: four sea lows, four
- * crew highs, the captain, the powder keg wild, the treasure chest scatter and the Kaboom Bomb
- * (docs/ART.md, docs/POLISH.md). `win` is the keg's lit state and the chest's open state;
- * creatures blink and cheer.
+ * The symbol set, keyed by ART KEY: 0..10 are the Sym ids (docs/ART.md), the variants of the
+ * special symbols follow (Fare Coin metals, the Locomotive and the Golden Locomotive, the Junction).
+ * `win` is the lit / thrown / flipped state; creatures blink and cheer.
  *
  * Every frame of a symbol shares the 256 viewBox and anchor, so frames swap without jumping.
  */
-import { anchor, anchorWinFrames, shell, shellWinFrames, treasureMap, mapWinFrames, compass, compassWinFrames } from './sea';
-import { crabHead, crabWinFrames, octoHead, octoWinFrames, sharkHead, sharkWinFrames, parrotSymbol, parrotWinFrames, type Pose } from './critters';
-import { captainHead } from './captain';
-import { powderKeg, treasureChest, treasureChestOpen } from './keg';
-import { bombIdle, bombHot, bombIdleFrames, bombHotFrames } from './bomb';
+import { pretzel, pretzelWinFrames, coffee, coffeeWinFrames, newspaper, newspaperWinFrames, umbrella, umbrellaWinFrames } from './lows';
+import { pigeonHead, pigeonWinFrames, catHead, catWinFrames, bulldogHead, bulldogWinFrames, type Pose } from './critters';
+import { ratSymbol, ratWinFrames } from './rat';
+import { conductorHead, conductorWinFrames } from './conductor';
+import { liveWire, liveWireFrames, goldenTicket, goldenTicketWin, goldenTicketFrames, fareCoin, fareCoinShine, locoFront, junction, type CoinTier } from './specials';
+import { Sym, type Cell } from '../math/types';
 
 export type { Pose };
 
 export interface SymbolArt {
   idle: () => string;
   blink?: () => string;
-  /** A single win pose (keg: lit, chest: open, creatures: cheer). */
+  /** A single win pose (Live Wire lit, ticket flipped, Locomotive headlamp on, Junction thrown). */
   win?: () => string;
-  /** 3-4 frames looped during the win highlight (paying symbols). */
+  /** 3-4 frames looped during the win highlight. */
   winFrames?: (() => string)[];
-  /** Optional frames looped while the symbol sits idle (the bomb's fuse flicker). */
+  /** Optional frames looped while the symbol sits idle. */
   idleFrames?: (() => string)[];
-  /** Kaboom Bomb only: about to blow (red-hot iron, glowing cracks), and its optional pulse. */
-  hot?: () => string;
-  hotFrames?: (() => string)[];
+}
+
+/** Art keys beyond the Sym ids. */
+export const ART = {
+  COIN_BRONZE: 11,
+  COIN_SILVER: 12,
+  COIN_GOLD: 13,
+  COIN_PLATINUM: 14,
+  LOCO: 15,
+  LOCO_GOLD: 16,
+  SWITCH: 17,
+} as const;
+export const ART_KEYS = 18;
+
+export const COIN_TIERS: readonly CoinTier[] = ['bronze', 'silver', 'gold', 'platinum'];
+
+/** Coin metal for a value in bet multiples: bronze < 1x, silver 1-5x, gold 10-50x, platinum 100x+. */
+export function coinTier(value: number): number {
+  return value < 1 ? 0 : value <= 5 ? 1 : value <= 50 ? 2 : 3;
+}
+
+/** The art key a cell draws with. */
+export function artKey(cell: Pick<Cell, 'sym' | 'value' | 'golden'>): number {
+  switch (cell.sym) {
+    case Sym.COIN:
+      return ART.COIN_BRONZE + coinTier(cell.value ?? 0);
+    case Sym.LOCO:
+      return cell.golden ? ART.LOCO_GOLD : ART.LOCO;
+    case Sym.SWITCH:
+      return ART.SWITCH;
+    default:
+      return cell.sym;
+  }
 }
 
 const poses = (fn: (p: Pose) => string) => ({ idle: () => fn('idle'), blink: () => fn('blink'), win: () => fn('win') });
+const coinArt = (tier: CoinTier): SymbolArt => ({ idle: () => fareCoin(tier), win: () => fareCoinShine(tier) });
 
 export const SYMBOL_ART: Record<number, SymbolArt> = {
-  0: { idle: anchor, winFrames: anchorWinFrames },
-  1: { idle: shell, winFrames: shellWinFrames },
-  2: { idle: treasureMap, winFrames: mapWinFrames },
-  3: { idle: compass, winFrames: compassWinFrames },
-  4: { ...poses(crabHead), winFrames: crabWinFrames },
-  5: { ...poses(octoHead), winFrames: octoWinFrames },
-  6: { ...poses(sharkHead), winFrames: sharkWinFrames },
-  7: { ...poses(parrotSymbol), winFrames: parrotWinFrames },
-  8: { idle: () => captainHead('idle', true), blink: () => captainHead('blink', true), win: () => captainHead('laugh', true) },
-  9: { idle: () => powderKeg(false), win: () => powderKeg(true) },
-  10: { idle: treasureChest, win: treasureChestOpen },
-  11: { idle: bombIdle, hot: bombHot, idleFrames: bombIdleFrames, hotFrames: bombHotFrames },
+  0: { idle: pretzel, winFrames: pretzelWinFrames },
+  1: { idle: coffee, winFrames: coffeeWinFrames },
+  2: { idle: newspaper, winFrames: newspaperWinFrames },
+  3: { idle: umbrella, winFrames: umbrellaWinFrames },
+  4: { ...poses(pigeonHead), winFrames: pigeonWinFrames },
+  5: { ...poses(catHead), winFrames: catWinFrames },
+  6: { ...poses(bulldogHead), winFrames: bulldogWinFrames },
+  7: { ...poses(ratSymbol), winFrames: ratWinFrames },
+  8: { idle: () => conductorHead('idle', true), blink: () => conductorHead('blink', true), win: () => conductorHead('laugh', true), winFrames: conductorWinFrames },
+  9: { idle: () => liveWire(false), win: () => liveWire(true), winFrames: liveWireFrames },
+  10: { idle: goldenTicket, win: goldenTicketWin, winFrames: goldenTicketFrames },
+  [ART.COIN_BRONZE]: coinArt('bronze'),
+  [ART.COIN_SILVER]: coinArt('silver'),
+  [ART.COIN_GOLD]: coinArt('gold'),
+  [ART.COIN_PLATINUM]: coinArt('platinum'),
+  [ART.LOCO]: { idle: () => locoFront(false, false), win: () => locoFront(true, false) },
+  [ART.LOCO_GOLD]: { idle: () => locoFront(false, true), win: () => locoFront(true, true) },
+  [ART.SWITCH]: { idle: () => junction(false), win: () => junction(true) },
 };

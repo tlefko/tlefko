@@ -1208,6 +1208,28 @@ table.kv.desc td:nth-child(2) {
   pointer-events: none;
 }
 
+.diagram.one {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dg-step.wide .dg-board {
+  aspect-ratio: 5 / 3;
+}
+
+.dg-route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(63, 200, 255, 0.9));
+}
+
+.rule-row.coins {
+  display: flex;
+  gap: 6px;
+}
+
 .dg-step figcaption {
   font-size: 13.5px;
   line-height: 1.45;

@@ -3,7 +3,7 @@ import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import gsap from 'gsap';
 import { displayText, type DisplayText, type NumTone } from '../text';
 import { svgTexture, softDotTexture, canvasTexture, freeTexture } from '../textures';
-import { coin } from '../../art/props';
+import { fareCoin } from '../../art/specials';
 import { computeLayout, sceneLayout } from '../layout';
 
 /** The scene's own layout when this is its size (in the replay column, W is the scene's part of the screen). */
@@ -107,7 +107,7 @@ export class BigWin extends Container {
     if (BigWin.kit?.key === key) return own();
     const U = Math.min(W, H);
     const px = Math.round(U * 0.085 * res);
-    const coins = await Promise.all((['gold', 'silver', 'bronze'] as const).map((m) => svgTexture(`bw-coin-${m}`, coin(m), px)));
+    const coins = await Promise.all((['gold', 'silver', 'bronze'] as const).map((m) => svgTexture(`bw-coin-${m}`, fareCoin(m), px)));
     if (BigWin.kit?.key === key) return own();
     const titles = TIERS.map((tier) => displayText(tier.label(), { size: U * 0.13, tone: tier.tone, treatment: 'banner', res }));
     const shade = BigWin.paintShade(W, H);
@@ -291,8 +291,8 @@ export class BigWin extends Container {
     this.track(gsap.fromTo(this.amountBox.scale, { x: pop, y: pop }, { x: 1, y: 1, duration: T(0.45), ease: 'back.out(3)' }));
     this.impact(W / 2, H * 0.555, 0.6);
     this.burst(W / 2, H * 0.56, Math.round(22 * motion.fx), Math.min(2, tierIdx + 1));
-    cast.captain?.accent('whoop');
-    cast.parrot?.accent('hop');
+    cast.conductor?.accent('whoop');
+    cast.rat?.accent('hop');
     await new Promise<void>((res) => {
       this.skip = res;
       this.track(gsap.delayedCall(hooks.auto ? 1.2 : 2.2, res));
@@ -345,8 +345,8 @@ export class BigWin extends Container {
         this.track(gsap.fromTo(this.rays.scale, { x: 1.18, y: 1.18 }, { x: 1, y: 1, duration: T(0.5), ease: 'power2.out' }));
         for (const s of this.spots) this.track(gsap.fromTo(s, { alpha: 0.6 }, { alpha: 0.28, duration: T(0.6) }));
         if (!first) {
-          cast.captain?.accent('whoop');
-          cast.parrot?.accent(i % 2 ? 'squawk' : 'hop');
+          cast.conductor?.accent('whoop');
+          cast.rat?.accent(i % 2 ? 'squeak' : 'hop');
           hooks.onTier?.(i);
         }
       }, [], T(0.16))

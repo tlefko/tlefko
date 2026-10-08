@@ -6,10 +6,10 @@ import { quality } from '../render/quality';
 import { warmGlyphs } from '../render/text';
 import { sound } from '../game/sound';
 import { copy } from './copy';
-import { installUiArt, kegSvg, uri } from './art';
+import { installUiArt, passSvg, uri } from './art';
 import { setNumerals, numeralsHtml, type NumFace } from './numerals';
 import { modalState } from './Modal';
-import { BOOST_COST, CHARGE_MAX, CHARGE_MAX_BOOST } from '../math/types';
+import { BOOST_COST } from '../math/types';
 import type { SpeedMode } from '../render/timing';
 import type { BonusKind } from '../math/types';
 
@@ -23,11 +23,11 @@ export interface HudHandlers {
   stopAuto(): void;
   cycleTurbo(): void;
   disableFeature(): void;
-  /** Powder Boost toggle: main.ts wires it to `ctrl.setBoost(on)`; the Controller answers with hud.setBoost. */
+  /** Express Pass toggle: main.ts wires it to `ctrl.setBoost(on)`; the Controller answers with hud.setBoost. */
   boost?(on: boolean): void;
 }
 
-const BONUS_LABEL: Record<BonusKind, () => string> = { witching: () => t('witchingHour') };
+const BONUS_LABEL: Record<BonusKind, () => string> = { rush: () => t('rushHour'), last: () => t('lastTrain') };
 const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
@@ -46,7 +46,7 @@ function wrappedHtml(text: string, face: NumFace): string {
  * Bottom control bar (DOM), themed as the ship's rail: deck planks under a brass rail, the spin
  * button a ship's helm that turns while a round plays, the bonus buy a crimson wax seal, carved
  * brass-bezel knobs for the menu, autoplay and speed, brass studs for the stake, and the Powder
- * Boost keg switch beside the helm. Balance, win and stake are set in the game's own numerals.
+ * Express Pass switch beside the spin button. Balance, win and stake are set in the game's own numerals.
  * State changes animate; nothing moves while idle.
  */
 export class Hud {
@@ -101,7 +101,7 @@ export class Hud {
             </div>
           </div>
           <button class="boost-btn" type="button" role="switch" aria-checked="false" hidden>
-            <img class="boost-art" alt="" src="${uri(kegSvg(false))}"/>
+            <img class="boost-art" alt="" src="${uri(passSvg(false))}"/>
             <span class="boost-text"><b class="boost-name"></b><span class="boost-cost"></span><span class="boost-x"></span></span>
             <i class="boost-lamp"></i>
           </button>
@@ -209,7 +209,7 @@ export class Hud {
 
   /**
    * Replay mode (Stake bet replay): the betting controls go (balance, spin, stake, autoplay, buy,
-   * Powder Boost, speed) and the bar becomes the replay panel: the REPLAY tag, the round's results
+   * Express Pass, speed) and the bar becomes the replay panel: the REPLAY tag, the round's results
    * (replayStats), the win reading, the menu (sound, rules) and one Play / Play again control.
    * Space plays or replays; nothing here can start normal play.
    */
@@ -570,7 +570,7 @@ export class Hud {
   }
 
   /**
-   * Powder Boost state from the Controller (track M calls this at start, in replay and after every
+   * Express Pass state from the Controller (track M calls this at start, in replay and after every
    * change). Hidden where boost is not allowed (jurisdictions without bonus buys, replay).
    */
   setBoost(on: boolean, allowed: boolean) {
@@ -581,7 +581,7 @@ export class Hud {
     this.el.classList.toggle('boost-on', this.boostOn);
     this.el.classList.toggle('has-boost', allowed);
     b.setAttribute('aria-checked', String(this.boostOn));
-    (b.querySelector('.boost-art') as HTMLImageElement).src = uri(kegSvg(this.boostOn));
+    (b.querySelector('.boost-art') as HTMLImageElement).src = uri(passSvg(this.boostOn));
     this.boostTexts();
     if (this.boostOn && !was) {
       if (!reduced) gsap.fromTo(b, { scale: 1.16, rotation: -4 }, { scale: 1, rotation: 0, duration: 0.55, ease: 'elastic.out(1, .4)' });
@@ -597,7 +597,7 @@ export class Hud {
     const b = this.q('.boost-btn');
     if (!b) return;
     const cost = t('boostCost', { x: BOOST_COST });
-    const tip = t('boostTip', { x: BOOST_COST, amount: fmtWin(Math.round(this.betApi * BOOST_COST)), bet: copy.betLower, boost: CHARGE_MAX_BOOST, charge: CHARGE_MAX });
+    const tip = t('boostTip', { x: BOOST_COST, amount: fmtWin(Math.round(this.betApi * BOOST_COST)), bet: copy.betLower });
     this.q('.boost-name').textContent = t('boostName');
     this.q('.boost-cost').textContent = cost;
     setNumerals(this.q('.boost-x'), `${BOOST_COST}x`, 'fire');
@@ -607,7 +607,7 @@ export class Hud {
     this.q('.bt-text').textContent = tip;
   }
 
-  /** A short note by the switch when Powder Boost goes on: what it costs and what it does. */
+  /** A short note by the switch when Express Pass goes on: what it costs and what it does. */
   private showBoostTip() {
     const tip = this.q('.boost-tip');
     tip.hidden = false;

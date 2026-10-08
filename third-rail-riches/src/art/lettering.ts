@@ -1,8 +1,8 @@
 /**
- * Hand-built lettering for Powder Keg Cove (docs/ART.md). No font is involved anywhere in here:
- * every letterform (the logo words POWDER KEG, COVE, the LIGHT THE FUSE tagline) and every numeral
- * the game shows (win amounts, multipliers, counters) is constructed in this file from stems,
- * bracketed slab serifs, bowls, brush strokes and ball terminals. The parts of a glyph are merged
+ * Hand-built lettering for Third Rail Riches (docs/ART.md). No font is involved anywhere in here:
+ * every letterform (a full A-Z of 1930s deco subway capitals for THIRD RAIL, RICHES and the
+ * ALL ABOARD! tagline) and every numeral the game shows (win amounts, multipliers, counters) is
+ * constructed in this file from stems, bars, squared superellipse bowls and brush strokes. The parts of a glyph are merged
  * into one clean outline (a small anti-aliased raster union traced back to vectors), so outlines,
  * brass rims and inlines follow the true silhouette.
  *
@@ -12,8 +12,7 @@
  *   - `glyph()` / `NUMERALS`: the outlines text.ts bakes into the numeral bitmap font;
  *   - `wordSvg()`: any word from the glyph set in one of the house treatments.
  */
-import { C } from './kit';
-import { ribbon } from './props';
+import { C, mix, rng } from './kit';
 
 export type Pt = [number, number];
 type Loop = Pt[];
@@ -573,7 +572,7 @@ const pathOf = (loops: Loop[]) => loops.map((l) => `M${l.map(([x, y]) => `${n2(x
 
 /* ================================== glyphs ================================== */
 
-/** Serif proportions: slab height, bracket length. */
+/** Serif proportions: slab height, bracket length (kept for the few bracketed numeral feet). */
 interface SerifK {
   h: number;
   b: number;
@@ -581,17 +580,24 @@ interface SerifK {
 const SERIF: SerifK = { h: 10, b: 12 };
 const NSERIF: SerifK = { h: 9, b: 10 };
 
-/** Logo letter weights. */
-const SW = 25; // stem
-const SR = 9; // serif reach
+/**
+ * Deco capital weights: a condensed streamline sans, monoline and chunky, with squared-off
+ * superellipse rounds (the 1930s subway enamel sign letter), flat-topped A and M, straight-legged
+ * R and K, horizontal terminals on C, G, J and S.
+ */
+const SW = 27; // stem
+const BH = 17; // arm / bar height (thinner than the stems: the deco thick-thin)
 const RS = 27; // round side
-const RT = 18; // round top / bottom
-const OV = 2.5; // overshoot of rounds
+const RT = 17; // round top / bottom
+const OV = 1.5; // overshoot of rounds
+const RE = 2.9; // round squareness (outer)
+const CE = 3.3; // counter squareness
 
 /** Numeral weights (a touch lighter so the counters stay open at small sizes). */
 const NW = 21;
-const NRS = 19.5;
-const NRT = 14.5;
+const NRS = 20;
+const NRT = 16;
+const NE = 2.9;
 /** Tabular advance of every digit. */
 export const DIGIT_ADV = 78;
 
@@ -602,336 +608,252 @@ interface Def {
 
 const below = cut(rect(-60, 100, 400, 60));
 const above = cut(rect(-60, -60, 400, 60));
+const ring = (cx: number, cy: number, rx: number, ry: number, sx: number, sy: number, e = RE, ce = CE): Part => ({ loops: [oval(cx, cy, rx, ry, e), oval(cx, cy, rx - sx, ry - sy, ce)] });
+/** Upper bowl (P, R, B): from the stem at x0 to a squared round on the right, y0..y1 tall. */
+function bowl(x0: number, y0: number, y1: number, right: number, t = BH, side = RS - 2): Part[] {
+  const h = y1 - y0;
+  const r = h / 2;
+  const cx = right - r;
+  const inL = 8 + SW;
+  return [shape(rect(x0, y0, cx - x0, h)), shape(halfOval(cx, y0 + r, r, r, 'right', RE)), cut(rect(inL, y0 + t, cx - inL, h - 2 * t), halfOval(cx, y0 + r, r - side, r - t, 'right', CE))];
+}
+const vstem = (x: number, y0 = 0, y1 = 100, w = SW) => shape(rect(x, y0, w, y1 - y0));
 
-/* ---- logo capitals ---- */
+/* ---- logo capitals (A-Z, !) ---- */
 const LETTERS: Record<string, Def> = {
-  P: {
+  A: {
     adv: 86,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, bl: SR, br: SR }),
-      shape(rect(22, 0, 34, 62)),
-      shape(halfOval(56, 31, 27, 31, 'right', 2.3)),
-      fillet(10 + SW, 62, 1, 1, 9),
-      cut(rect(10 + SW, 18, 18, 26), halfOval(53, 31, 4, 13, 'right', 2)),
-    ],
+    parts: () => [shape(bar([14, 100], [36, 0], SW, 16)), shape(bar([72, 100], [50, 0], SW, 16)), shape(rect(30, 0, 26, 16)), shape(rect(18, 62, 50, 17)), below, above],
   },
-  O: {
-    adv: 92,
-    parts: () => [{ loops: [oval(46, 50, 43, 50 + OV, 2.35), oval(46, 50, 43 - RS, 50 + OV - RT, 2.7)] }],
-  },
-  W: {
-    adv: 124,
-    parts: () => {
-      const t = 25;
-      const h = 15;
-      const s1: [Pt, Pt] = [[20, 0], [41, 100]];
-      const s2: [Pt, Pt] = [[41, 100], [61, 0]];
-      const s3: [Pt, Pt] = [[64, 0], [85, 100]];
-      const s4: [Pt, Pt] = [[85, 100], [105, 0]];
-      return [
-        shape(bar(s1[0], s1[1], t, 14)),
-        shape(bar(s2[0], s2[1], h, 14)),
-        shape(bar(s3[0], s3[1], t, 14)),
-        shape(bar(s4[0], s4[1], h, 14)),
-        shape(rect(1, 0, 38, SERIF.h)),
-        shape(rect(46, 0, 37, SERIF.h)),
-        shape(rect(91, 0, 29, SERIF.h)),
-        below,
-        above,
-      ];
-    },
-  },
-  D: {
-    adv: 92,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, bl: SR }),
-      shape(rect(22, 0, 26, 100)),
-      shape(halfOval(48, 50, 38, 50, 'right', 2.3)),
-      cut(rect(10 + SW, RT, 13, 100 - 2 * RT), halfOval(48, 50, 11, 50 - RT, 'right', 2.5)),
-    ],
-  },
-  E: {
-    adv: 80,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, bl: SR }),
-      shape(rect(30, 0, 38, 20)),
-      shape(rect(58, 0, 11, 35)),
-      fillet(58, 20, -1, 1, 8),
-      fillet(10 + SW, 20, 1, 1, 9),
-      shape(rect(30, 42, 25, 17)),
-      shape(rect(49, 37, 8, 27)),
-      fillet(49, 42, -1, -1, 4),
-      fillet(49, 59, -1, 1, 4),
-      fillet(10 + SW, 42, 1, -1, 6),
-      fillet(10 + SW, 59, 1, 1, 6),
-      shape(rect(30, 80, 40, 20)),
-      shape(rect(60, 63, 11, 37)),
-      fillet(60, 80, -1, -1, 8),
-      fillet(10 + SW, 80, 1, -1, 9),
-    ],
-  },
-  R: {
-    adv: 92,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, bl: SR, br: 6 }),
-      shape(rect(22, 0, 32, 58)),
-      shape(halfOval(54, 29, 27, 29, 'right', 2.3)),
-      cut(rect(10 + SW, 17, 18, 24), halfOval(53, 29, 4, 12, 'right', 2)),
-      brush(
-        [
-          [46, 50],
-          [58, 62],
-          [66, 80],
-          [72, 104],
-        ],
-        (t) => 22 + 5 * t,
-        true,
-      ),
-      shape(rect(62, 90, 29, 10)),
-      fillet(62, 90, -1, -1, 5),
-      below,
-    ],
-  },
-  K: {
-    adv: 94,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, bl: SR, tr: 5, br: 5 }),
-      shape(bar([34, 64], [80, 0], 19, 12)),
-      shape(rect(62, 0, 31, SERIF.h)),
-      shape(bar([44, 44], [82, 100], 25, 12)),
-      shape(rect(66, 90, 28, 10)),
-      fillet(66, 90, -1, -1, 5),
-      below,
-      above,
-    ],
-  },
-  G: {
-    adv: 94,
-    parts: () => [
-      { loops: [oval(47, 50, 43, 50 + OV, 2.35), oval(47, 50, 43 - RS, 50 + OV - RT, 2.7)] },
-      cut(rect(60, 27, 50, 26)),
-      shape(rect(76, 4, 11, 30)),
-      shape(rect(50, 53, 42, 15)),
-      shape(rect(64, 53, 24, 41)),
-    ],
+  B: {
+    adv: 84,
+    parts: () => [vstem(8), ...bowl(20, 0, 50, 71, 17, 21), ...bowl(20, 35, 100, 78, 17)],
   },
   C: {
-    adv: 88,
-    parts: () => [
-      { loops: [oval(46, 50, 42, 50 + OV, 2.35), oval(46, 50, 42 - RS, 50 + OV - RT, 2.7)] },
-      cut(rect(60, 29, 50, 42)),
-      shape(rect(74, 4, 11, 30)),
-      shape(rect(74, 66, 11, 30)),
-    ],
+    adv: 82,
+    parts: () => [ring(43, 50, 40, 50 + OV, RS, RT), cut(rect(56, 37, 40, 26))],
   },
-  V: {
-    adv: 94,
-    parts: () => {
-      const a: [Pt, Pt] = [[22, 0], [46, 100]];
-      const b: [Pt, Pt] = [[46, 100], [72, 0]];
-      return [shape(bar(a[0], a[1], 26, 14)), shape(bar(b[0], b[1], 16, 14)), plate(22, 22, true), plate(72, 17, true), below, above];
-    },
+  D: {
+    adv: 86,
+    parts: () => [vstem(8), shape(rect(20, 0, 26, 100)), shape(halfOval(42, 50, 38, 50, 'right', RE)), cut(rect(35, RT, 7, 100 - 2 * RT), halfOval(42, 50, 38 - RS, 50 - RT, 'right', CE))],
   },
-  L: {
+  E: {
     adv: 74,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, tr: SR, bl: SR }),
-      shape(rect(30, 80, 38, 20)),
-      shape(rect(58, 62, 11, 38)),
-      fillet(58, 80, -1, -1, 8),
-      fillet(10 + SW, 80, 1, -1, 9),
-    ],
-  },
-  I: {
-    adv: 45,
-    parts: () => [stem(10, 10 + SW, 0, 100, { tl: SR, tr: SR, bl: SR, br: SR })],
-  },
-  H: {
-    adv: 100,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, tr: 6, bl: SR, br: 6 }),
-      stem(65, 65 + SW, 0, 100, { tl: 6, tr: SR, bl: 6, br: SR }),
-      shape(rect(30, 41, 40, 18)),
-    ],
-  },
-  T: {
-    adv: 84,
-    parts: () => [
-      shape(rect(4, 0, 76, 20)),
-      shape(rect(4, 0, 11, 34)),
-      shape(rect(69, 0, 11, 34)),
-      fillet(15, 20, 1, 1, 7),
-      fillet(69, 20, -1, 1, 7),
-      stem(29.5, 29.5 + SW, 0, 100, { bl: SR, br: SR }),
-      fillet(29.5, 20, -1, 1, 8),
-      fillet(29.5 + SW, 20, 1, 1, 8),
-    ],
+    parts: () => [vstem(8), shape(rect(20, 0, 50, BH)), shape(rect(20, 40, 38, BH)), shape(rect(20, 100 - BH, 52, BH))],
   },
   F: {
-    adv: 76,
-    parts: () => [
-      stem(10, 10 + SW, 0, 100, { tl: SR, bl: SR, br: SR }),
-      shape(rect(30, 0, 38, 20)),
-      shape(rect(58, 0, 11, 35)),
-      fillet(58, 20, -1, 1, 8),
-      fillet(10 + SW, 20, 1, 1, 9),
-      shape(rect(30, 43, 25, 17)),
-      shape(rect(49, 38, 8, 27)),
-      fillet(49, 43, -1, -1, 4),
-      fillet(49, 60, -1, 1, 4),
-      fillet(10 + SW, 43, 1, -1, 6),
-      fillet(10 + SW, 60, 1, 1, 6),
-    ],
+    adv: 70,
+    parts: () => [vstem(8), shape(rect(20, 0, 50, BH)), shape(rect(20, 42, 38, BH))],
   },
-  U: {
-    adv: 96,
-    parts: () => [
-      stem(10, 10 + SW, 0, 64, { tl: SR, tr: 6 }),
-      stem(64, 64 + 22, 0, 64, { tl: 6, tr: SR }),
-      shape(halfOval(48, 58, 38, 42 + OV, 'bottom', 2.3)),
-      cut(halfOval(49.5, 58, 14.5, 42 + OV - RT, 'bottom', 2.5), rect(35, -10, 29, 68.2)),
-    ],
+  G: {
+    adv: 86,
+    parts: () => [ring(44, 50, 41, 50 + OV, RS, RT), cut(rect(57, 30, 40, 22)), shape(rect(46, 50, 39, 17)), shape(rect(60, 50, 25, 40))],
+  },
+  H: {
+    adv: 86,
+    parts: () => [vstem(8), vstem(53), shape(rect(20, 40, 40, BH))],
+  },
+  I: {
+    adv: 43,
+    parts: () => [vstem(8)],
+  },
+  J: {
+    adv: 70,
+    parts: () => [shape(rect(38, 0, SW, 62)), { loops: [halfOval(37, 60, 28, 40 + OV, 'bottom', RE), halfOval(37, 60, 28 - SW + 2, 40 + OV - RT, 'bottom', CE)] }, cut(rect(-10, 0, 37, 74)), shape(rect(26, 0, 37, BH))],
+  },
+  K: {
+    adv: 84,
+    parts: () => [vstem(8), shape(bar([28, 64], [70, 0], 23, 16)), shape(bar([38, 44], [72, 100], SW, 16)), below, above],
+  },
+  L: {
+    adv: 68,
+    parts: () => [vstem(8), shape(rect(20, 100 - BH, 48, BH))],
+  },
+  M: {
+    adv: 106,
+    parts: () => [vstem(8, 0, 100, 23), vstem(75, 0, 100, 23), shape(bar([22, -4], [53, 74], 22, 0)), shape(bar([84, -4], [53, 74], 22, 0)), shape(rect(8, 0, 26, 10)), shape(rect(72, 0, 26, 10)), above],
+  },
+  N: {
+    adv: 88,
+    parts: () => [vstem(8, 0, 100, 23), vstem(57, 0, 100, 23), shape(bar([21, 0], [67, 100], 25, 16)), cut(rect(-40, 0, 48, 100), rect(80, 0, 48, 100)), below, above],
+  },
+  O: {
+    adv: 88,
+    parts: () => [ring(44, 50, 40, 50 + OV, RS, RT)],
+  },
+  P: {
+    adv: 82,
+    parts: () => [vstem(8), ...bowl(20, 0, 62, 79, BH, 23)],
+  },
+  Q: {
+    adv: 90,
+    parts: () => [ring(44, 50, 40, 50 + OV, RS, RT), shape(bar([52, 68], [84, 106], 21, 0))],
+  },
+  R: {
+    adv: 86,
+    parts: () => [vstem(8), ...bowl(20, 0, 58, 79, BH, 23), shape(bar([50, 56], [77, 106], SW + 1, 0)), below],
   },
   S: {
-    adv: 80,
-    parts: () => sShape(0, 0, 1, { w: 27, thin: 17 }),
+    adv: 76,
+    parts: () => sShape(0, 0, 1, { w: 26, thin: 22 }),
+  },
+  T: {
+    adv: 76,
+    parts: () => [shape(rect(2, 0, 72, BH)), vstem(25.5)],
+  },
+  U: {
+    adv: 86,
+    parts: () => [vstem(8, 0, 60), vstem(53, 0, 60), { loops: [halfOval(44, 58, 36, 42 + OV, 'bottom', RE), halfOval(44, 58, 36 - SW, 42 + OV - RT, 'bottom', CE)] }],
+  },
+  V: {
+    adv: 84,
+    parts: () => [shape(bar([16, 0], [42, 100], SW + 1, 16)), shape(bar([68, 0], [42, 100], SW - 2, 16)), below, above],
+  },
+  W: {
+    adv: 120,
+    parts: () => [shape(bar([12, 0], [32, 100], 24, 16)), shape(bar([58, 8], [32, 100], 20, 16)), shape(bar([62, 8], [88, 100], 24, 16)), shape(bar([108, 0], [88, 100], 20, 16)), below, above],
+  },
+  X: {
+    adv: 84,
+    parts: () => [shape(bar([14, 0], [70, 100], SW + 1, 16)), shape(bar([70, 0], [14, 100], SW - 3, 16)), below, above],
+  },
+  Y: {
+    adv: 84,
+    parts: () => [shape(bar([14, 0], [42, 54], SW + 1, 16)), shape(bar([70, 0], [42, 54], SW - 3, 16)), vstem(29.5, 46, 100), above],
+  },
+  Z: {
+    adv: 76,
+    parts: () => [shape(rect(4, 0, 66, BH)), shape(rect(4, 100 - BH, 68, BH)), shape(bar([62, 12], [14, 88], SW + 2, 0))],
+  },
+  '!': {
+    adv: 41,
+    parts: () => [new Pen().M(8, 0).L(33, 0).L(28, 70).L(13, 70).part, shape(oval(20.5, 89, 12, 11, 3))],
+  },
+  '&': {
+    adv: 88,
+    parts: () => [
+      brush(
+        [
+          [78, 100],
+          [30, 48],
+          [24, 24],
+          [40, 6],
+          [56, 22],
+          [48, 42],
+          [18, 62],
+          [16, 86],
+          [38, 98],
+          [62, 86],
+          [76, 60],
+        ],
+        20,
+        true,
+        120,
+      ),
+      below,
+    ],
+  },
+  "'": {
+    adv: 34,
+    parts: () => [new Pen().M(7, 0).L(27, 0).L(22, 34).L(12, 34).part],
   },
 };
 
 /**
- * The S (and the $): one brush stroke along an S spine, thick through the diagonal and thin in
- * the arcs. Both terminals are cut to a vertical face that grows into a beak serif (the logo S), or
- * end in balls (the numeral $). Drawn in a 80 x 100 box, placed at (x, y) and scaled by k.
+ * The S (and the $): one brush stroke along an S spine, a touch heavier through the diagonal than
+ * in the arcs, both ends sheared to a flat horizontal terminal (the deco S). Drawn in a 76 x 100
+ * box, placed at (x, y) and scaled by k.
  */
-function sShape(x: number, y: number, k: number, o: { w: number; thin: number; balls?: boolean }): Part[] {
+function sShape(x: number, y: number, k: number, o: { w: number; thin: number }): Part[] {
   const P = (px: number, py: number): Pt => [x + px * k, y + py * k];
-  const spine: Pt[] = [P(61, 27), P(54, 13), P(40, 8.5), P(25, 12.5), P(18, 27), P(26, 41), P(40, 49), P(55, 57), P(63, 72), P(57, 87), P(41, 91.5), P(25, 88), P(16, 74)];
-  const w = (t: number) => (o.thin + (o.w - o.thin) * Math.exp(-(((t - 0.5) / 0.17) ** 2))) * k;
+  const spine: Pt[] = [P(66, 30), P(63, 14), P(40, 9.5), P(18, 13), P(14, 30), P(26, 44), P(40, 49), P(54, 55), P(64, 70), P(60, 87), P(38, 90.5), P(14, 86), P(10, 68)];
+  const w = (t: number) => (o.thin + (o.w - o.thin) * Math.exp(-(((t - 0.5) / 0.2) ** 2))) * k;
   const R = (a: number, b: number, c: number, d: number) => rect(x + a * k, y + b * k, c * k, d * k);
-  if (o.balls) {
-    return [brush(spine, w, false, 96), shape(oval(x + 60 * k, y + 25 * k, 10.5 * k, 10.5 * k)), shape(oval(x + 17 * k, y + 75 * k, 11 * k, 11 * k))];
-  }
-  return [
-    brush(spine, w, true, 96),
-    // square the terminals off vertically, then grow the beaks from those faces
-    cut(R(64, 12, 30, 30)),
-    cut(R(-20, 60, 34, 30)),
-    shape(R(53, 1, 11, 33)),
-    shape(R(14, 66, 11, 33)),
-    fillet(x + 53 * k, y + 16 * k, -1, 1, 4 * k),
-    fillet(x + 25 * k, y + 84 * k, 1, -1, 4 * k),
-  ];
+  return [brush(spine, w, false, 110), cut(R(46, 30, 40, 11)), cut(R(-12, 58, 34, 12))];
 }
 
-/* ---- numerals and signs (tabular digits) ---- */
+/* ---- numerals and signs (tabular digits, the same deco family) ---- */
 const D0 = (DIGIT_ADV - 64) / 2; // left edge of a 64-wide digit body
+const nring = (cx: number, cy: number, rx: number, ry: number, sx = NW, sy = NRT) => ring(cx, cy, rx, ry, sx, sy, NE, 3.2);
 
 const NUMS: Record<string, Def> = {
   '0': {
     adv: DIGIT_ADV,
-    parts: () => [{ loops: [oval(39, 50, 32, 50 + OV, 2.3), oval(39, 50, 32 - NRS, 50 + OV - NRT, 2.7)] }],
+    parts: () => [nring(39, 50, 32, 50 + OV, NRS + 1)],
   },
   '1': {
     adv: DIGIT_ADV,
-    parts: () => [
-      stem(31, 31 + NW, 0, 100, { bl: 15, br: 15 }, NSERIF),
-      brush(
-        [
-          [14, 27],
-          [24, 19],
-          [34, 6],
-        ],
-        (t) => 13 + 5 * t,
-      ),
-      shape(rect(31, 0, NW, 12)),
-    ],
+    parts: () => [shape(rect(36, 0, NW + 1, 100)), shape(bar([40, 5], [14, 26], 17, 0)), shape(rect(15, 84, 50, 16))],
   },
   '2': {
     adv: DIGIT_ADV,
     parts: () => [
       brush(
         [
-          [16, 28],
-          [22, 11],
-          [39, 4],
-          [57, 12],
-          [62, 29],
-          [53, 48],
-          [34, 66],
-          [19, 90],
+          [11, 30],
+          [16, 10],
+          [39, 2.5],
+          [60, 9],
+          [66, 28],
+          [56, 48],
+          [32, 66],
+          [15, 88],
         ],
-        (t) => (t < 0.35 ? NRT + 1 : NRT + 1 + (NW - NRT) * Math.min(1, (t - 0.35) * 3)),
+        (t) => (t < 0.45 ? NW - 2 : NW - 2 + 4 * Math.min(1, (t - 0.45) * 3)),
         true,
+        96,
       ),
-      shape(oval(18, 29, 11.5, 11.5)),
-      shape(rect(D0 + 2, 83, 60, 17)),
-      shape(rect(D0 + 53, 70, 10, 30)),
-      fillet(D0 + 53, 83, -1, -1, 6),
+      cut(rect(-10, 30, 18, 30)),
+      shape(rect(D0 + 2, 84, 61, 16)),
     ],
   },
   '3': {
     adv: DIGIT_ADV,
     parts: () => [
+      shape(rect(D0 + 3, 0, 57, NRT + 1)),
+      shape(bar([62, 6], [30, 46], NW - 1, 0)),
       brush(
         [
-          [17, 22],
-          [26, 8],
-          [42, 4],
-          [58, 11],
-          [61, 27],
-          [52, 41],
-          [30, 46.5],
+          [28, 40],
+          [52, 43],
+          [67, 62],
+          [62, 86],
+          [40, 97.5],
+          [18, 93],
+          [9, 78],
         ],
-        (t) => NRT + 1 + 6 * Math.sin(Math.PI * Math.min(1, t * 1.25)),
+        (t) => NW - 1 + 3 * Math.sin(Math.PI * t),
+        true,
+        96,
       ),
-      brush(
-        [
-          [30, 45.5],
-          [55, 51],
-          [64, 69],
-          [57, 88],
-          [39, 96],
-          [21, 91],
-          [13, 78],
-        ],
-        (t) => NRT + 1 + 7 * Math.sin(Math.PI * Math.max(0, t * 1.2 - 0.1)),
-      ),
-      shape(oval(17, 23, 11, 11)),
-      shape(oval(15, 77, 11.5, 11.5)),
+      cut(rect(-10, 60, 16.5, 16)),
     ],
   },
   '4': {
     adv: DIGIT_ADV,
-    parts: () => [
-      stem(44, 44 + NW, 0, 100, { bl: 11, br: 11 }, NSERIF),
-      shape(bar([54, -2], [9, 70], 17, 0)),
-      shape(rect(6, 64, 68, 16)),
-      cut(new Pen().M(-10, 64).L(4, 64).L(-10, 90).part.loops[0]),
-      shape(rect(64, 58, 10, 28)),
-      above,
-    ],
+    parts: () => [shape(rect(45, 0, NW + 1, 100)), shape(bar([50, -4], [8, 72], 19, 0)), shape(rect(5, 63, 68, NRT + 1)), cut(rect(-20, 0, 25, 100)), above],
   },
   '5': {
     adv: DIGIT_ADV,
     parts: () => [
-      shape(rect(21, 0, 42, 16)),
-      shape(rect(55, 0, 10, 24)),
-      shape(rect(17, 2, 19, 45)),
+      shape(rect(15, 0, 52, NRT + 1)),
+      shape(rect(14, 0, NW, 50)),
       brush(
         [
-          [24, 45],
-          [42, 37],
-          [58, 45],
-          [65, 65],
-          [58, 86],
-          [40, 96],
-          [22, 91],
-          [13, 78],
+          [22, 46],
+          [44, 37],
+          [62, 46],
+          [68, 68],
+          [60, 88],
+          [39, 97.5],
+          [18, 93],
+          [9, 78],
         ],
-        (t) => NRT + 1 + 7 * Math.sin(Math.PI * Math.min(1, t * 1.15)),
+        (t) => NW - 1 + 3 * Math.sin(Math.PI * t),
+        true,
+        96,
       ),
-      shape(oval(15, 77, 11.5, 11.5)),
-      shape(rect(17, 30, 19, 24)),
+      cut(rect(-10, 60, 16.5, 16)),
     ],
   },
   '6': {
@@ -940,30 +862,11 @@ const NUMS: Record<string, Def> = {
   },
   '7': {
     adv: DIGIT_ADV,
-    parts: () => [
-      shape(rect(10, 0, 56, 17)),
-      shape(rect(9, 0, 10, 30)),
-      fillet(19, 17, 1, 1, 6),
-      brush(
-        [
-          [58, 8],
-          [50, 30],
-          [39, 58],
-          [33, 84],
-          [33, 104],
-        ],
-        (t) => NW - 1 + 3 * t,
-        true,
-      ),
-      below,
-    ],
+    parts: () => [shape(rect(8, 0, 62, NRT + 1)), shape(bar([64, 6], [32, 104], NW + 2, 0)), shape(rect(52, 0, 18, 20)), below],
   },
   '8': {
     adv: DIGIT_ADV,
-    parts: () => [
-      { loops: [oval(39, 27, 25, 27 + OV, 2.2), oval(39, 27.5, 25 - NRS + 2, 27 + OV - NRT, 2.4)] },
-      { loops: [oval(39, 71, 29, 29 + OV, 2.2), oval(39, 71, 29 - NRS, 29 + OV - NRT, 2.4)] },
-    ],
+    parts: () => [nring(39, 25.5, 26, 25.5 + OV, NW - 2, NRT - 1), nring(39, 71, 31, 29 + OV, NW, NRT)],
   },
   '9': {
     adv: DIGIT_ADV,
@@ -971,84 +874,50 @@ const NUMS: Record<string, Def> = {
   },
   $: {
     adv: 72,
-    parts: () => [...sShape(0, 5, 0.9, { w: 24, thin: 15, balls: true }), shape(rect(31, -12, 10, 26)), shape(rect(31, 86, 10, 26))],
+    parts: () => [...sShape(1, 6, 0.88, { w: 23, thin: 19 }), shape(rect(31, -12, 10, 26)), shape(rect(31, 86, 10, 26))],
   },
   '€': {
     adv: 80,
-    parts: () => [
-      { loops: [oval(46, 50, 34, 50 + OV, 2.3), oval(46, 50, 34 - NRS, 50 + OV - NRT, 2.6)] },
-      cut(rect(58, 30, 40, 40)),
-      shape(rect(68, 5, 10, 27)),
-      shape(rect(68, 68, 10, 27)),
-      shape(rect(3, 33, 50, 11)),
-      shape(rect(3, 54, 46, 11)),
-    ],
+    parts: () => [nring(46, 50, 34, 50 + OV), cut(rect(58, 32, 40, 36)), shape(rect(3, 33, 50, 11)), shape(rect(3, 54, 46, 11))],
   },
   '£': {
     adv: 78,
     parts: () => [
       brush(
         [
-          [58, 22],
-          [52, 7],
-          [38, 3],
-          [26, 11],
+          [62, 26],
+          [56, 7],
+          [40, 2],
+          [26, 10],
           [22, 30],
           [22, 60],
           [20, 84],
         ],
-        (t) => (t < 0.3 ? NRT : NRT + (NW - NRT) * Math.min(1, (t - 0.3) * 4)),
+        (t) => (t < 0.3 ? NRT + 1 : NRT + 1 + (NW - NRT) * Math.min(1, (t - 0.3) * 4)),
+        true,
       ),
-      shape(oval(58, 23, 10.5, 10.5)),
+      cut(rect(52, 26, 30, 20)),
       shape(rect(7, 44, 46, 13)),
-      new Pen().M(6, 84).Q(20, 76, 40, 86).Q(56, 93, 72, 82).L(72, 100).L(6, 100).part,
+      shape(rect(6, 84, 66, 16)),
     ],
   },
   '¥': {
     adv: 80,
-    parts: () => [
-      shape(bar([15, 0], [40, 52], 19, 10)),
-      shape(bar([65, 0], [40, 52], 16, 10)),
-      shape(rect(1, 0, 31, NSERIF.h)),
-      shape(rect(50, 0, 29, NSERIF.h)),
-      stem(29.5, 29.5 + NW, 46, 100, { bl: 12, br: 12 }, NSERIF),
-      shape(rect(10, 57, 60, 10)),
-      shape(rect(10, 73, 60, 10)),
-      above,
-    ],
+    parts: () => [shape(bar([12, 0], [40, 52], 20, 12)), shape(bar([68, 0], [40, 52], 17, 12)), shape(rect(29.5, 46, NW, 54)), shape(rect(10, 57, 60, 10)), shape(rect(10, 73, 60, 10)), above],
   },
   '.': {
     adv: 32,
-    parts: () => [shape(oval(16, 88, 12, 12))],
+    parts: () => [shape(oval(16, 88, 11.5, 11.5, 3))],
   },
   ',': {
     adv: 32,
-    parts: () => [
-      shape(oval(16, 86, 12, 12)),
-      brush(
-        [
-          [22, 88],
-          [20, 102],
-          [9, 113],
-        ],
-        (t) => 13 - 8 * t,
-      ),
-    ],
+    parts: () => [shape(oval(16, 86, 11.5, 11.5, 3)), new Pen().M(16, 86).L(27.5, 86).L(18, 114).L(8, 114).part],
   },
   x: {
     adv: 64,
     parts: () => {
       const top = 38;
-      return [
-        shape(bar([12, top], [52, 100], 18, 8)),
-        shape(bar([52, top], [12, 100], 13, 8)),
-        shape(rect(3, top, 24, 8)),
-        shape(rect(40, top, 22, 8)),
-        shape(rect(2, 92, 22, 8)),
-        shape(rect(38, 92, 25, 8)),
-        cut(rect(-40, top - 40, 200, 40)),
-        below,
-      ];
+      return [shape(bar([12, top], [52, 100], 18, 10)), shape(bar([52, top], [12, 100], 15, 10)), cut(rect(-40, top - 40, 200, 40)), below];
     },
   },
   '+': {
@@ -1061,32 +930,35 @@ const NUMS: Record<string, Def> = {
   },
   '%': {
     adv: 92,
-    parts: () => [
-      { loops: [oval(22, 25, 17, 25, 2.2), oval(22, 25, 6.5, 13, 2.4)] },
-      { loops: [oval(70, 75, 17, 25, 2.2), oval(70, 75, 6.5, 13, 2.4)] },
-      shape(bar([72, -2], [20, 102], 11, 0)),
-    ],
+    parts: () => [nring(22, 25, 17, 25, 10, 9), nring(70, 75, 17, 25, 10, 9), shape(bar([72, -2], [20, 102], 11, 0))],
   },
 };
 
-/** The 6 (and, turned, the 9): a round bowl below and a hooked stroke with a ball terminal. */
+/** The 6 (and, turned, the 9): a squared bowl below and a straight-shouldered stroke above. */
 function six(): Part[] {
   return [
-    { loops: [oval(39, 66, 29, 34 + OV, 2.2), oval(39, 67, 29 - NRS, 34 + OV - NRT, 2.4)] },
+    nring(39, 65, 30, 35 + OV, NW, NRT),
     brush(
       [
-        [19.75, 68],
-        [19.5, 44],
-        [25, 20],
-        [39, 7.5],
-        [55, 10],
+        [19.5, 66],
+        [19, 40],
+        [27, 16],
+        [44, 3.5],
+        [64, 4],
       ],
-      (t) => NRS - 6.5 * t,
+      (t) => NW - 4 * t,
       true,
     ),
-    shape(oval(55.5, 18, 9.5, 9.5)),
+    cut(rect(60, -10, 30, 30)),
+    shape(rect(42, 0, 18, NRT - 1)),
   ];
 }
+
+void SERIF;
+void NSERIF;
+void fillet;
+void plate;
+void stem;
 
 const DEFS: Record<string, Def> = { ...LETTERS, ...NUMS };
 
@@ -1103,7 +975,7 @@ export interface GlyphOutline {
 
 const cache = new Map<string, GlyphOutline>();
 
-/** The outline of one glyph (letters of the logo set, digits, signs), or null if not drawn here. */
+/** The outline of one glyph (letters A-Z, digits, signs), or null if not drawn here. */
 export function glyph(ch: string): GlyphOutline | null {
   const hit = cache.get(ch);
   if (hit) return hit;
@@ -1140,27 +1012,30 @@ export const NUMERALS = '0123456789$€£¥.,x+-%';
 /** Space advance (units). */
 export const SPACE_ADV = 34;
 
-/** Pair kerning for the logo words (units). */
+/** Pair kerning (units). */
 const KERN: Record<string, number> = {
-  PO: -6,
-  OW: -10,
-  WD: -8,
-  DE: -2,
-  ER: -2,
-  KE: -4,
-  EG: -2,
-  CO: -4,
-  OV: -12,
-  VE: -8,
-  LI: -2,
-  IG: -2,
-  GH: -2,
-  HT: -6,
-  TH: -6,
-  HE: -2,
-  FU: -4,
-  US: -2,
-  SE: -2,
+  TH: -2,
+  RD: 0,
+  RA: -4,
+  AI: -2,
+  AL: -2,
+  LL: -6,
+  'L ': -6,
+  AB: -3,
+  BO: -2,
+  OA: -6,
+  AR: -3,
+  'D!': 0,
+  CH: -1,
+  ES: -2,
+  LT: -10,
+  LA: -8,
+  TA: -8,
+  AT: -8,
+  AV: -10,
+  VA: -10,
+  AY: -8,
+  YA: -8,
   x1: -2,
   '1,': -4,
 };
@@ -1244,30 +1119,57 @@ let uid = 0;
 const nid = (p: string) => `${p}${(uid++).toString(36)}`;
 const BIG = 'x="-9000" y="-9000" width="18000" height="18000"';
 
+/** Face finishes: maroon + cream train-livery enamel, polished gold, cream enamel. */
+export type Face = 'enamel' | 'gold' | 'cream';
+
 export interface Treat {
   /** Ink outline width, in glyph units (cap 100). */
   ink: number;
   /** Extrusion depth (glyph units) and direction. */
   depth: number;
   dir?: Pt;
-  /** Brass rim inside the glyph edge (0 = none). */
+  /** Brass bevel inside the glyph edge (0 = none). */
   rim: number;
-  /** Fine detail: flame licks, embers, glints (off for tiny sizes). */
+  /** Fine detail: pinstripe, glints (off for tiny sizes). */
   detail: boolean;
+  /** Face finish (default 'enamel'). */
+  face?: Face;
+  /** Small-size face: fewer, bigger bands (default false). */
+  small?: boolean;
+  /** Extrusion body colours [near, far] (default polished brass). */
+  body?: [string, string];
 }
 
+/** Per-letter face bands (glyph units), back to front, for each finish. */
+function faceBands(face: Face, w: number, detail: boolean, small = false): string {
+  const band = (y0: number, y1: number, fill: string, extra = '') => `<rect x="-20" y="${y0}" width="${w + 40}" height="${y1 - y0}" fill="${fill}" ${extra}/>`;
+  if (face === 'gold') {
+    return `${band(-20, 36, C.goldLight)}${band(36, 40, mix(C.goldLight, C.gold, 0.5))}${band(76, 130, mix(C.gold, C.goldDeep, 0.5))}${detail ? band(-20, 9, C.white, 'opacity=".55"') : ''}`;
+  }
+  if (face === 'cream') {
+    return `${band(-20, 44, C.white)}${band(74, 130, C.tileDeep)}`;
+  }
+  // enamel: the train livery: a cream window band over the maroon body, a brass pinstripe between
+  if (small) return `${band(-20, 60, C.cream)}${band(60, 67, C.goldDeep)}${band(88, 130, C.maroonDeep)}`;
+  return `${band(-20, 47, C.cream)}${band(-20, 12, C.white, 'opacity=".8"')}${band(47, 54, detail ? C.gold : C.goldDeep)}${detail ? band(52, 54, C.goldDeep) : ''}${band(80, 130, C.maroonDeep)}${detail ? band(54, 59, C.maroonLight, 'opacity=".55"') : ''}`;
+}
+
+const FACE_BASE: Record<Face, string> = { enamel: C.maroon, gold: C.gold, cream: C.tile };
+
 /**
- * Carved wooden block letters with a brass rim and a fire face: the POWDER KEG treatment.
- * The extrusion is the wood block (two tones, inked), the rim is cel-shaded brass inlaid round the
- * face, and the face burns in hard bands: hot yellow on top, orange, red flames licking up from
- * the foot, embers and a hand-cut glint. Every layer follows the true glyph outline.
+ * Enamel sign letters on a brass block: the THIRD RAIL treatment. The extrusion is polished brass
+ * (two tones, inked), a brass bevel runs round the face (cel-shaded, lit from the upper left), and
+ * the face is hard-banded enamel: cream over maroon with a brass pinstripe (the train livery),
+ * or polished gold, or cream. Every layer follows the true glyph outline.
  */
 export function carvedSvg(placed: Placed[], t: Treat): string {
   const id = nid('cv');
   const k = placed[0]?.scale ?? 1;
   const ink = t.ink * k;
   const rim = t.rim * k;
-  const [dx, dy] = t.dir ?? [0.22, 1];
+  const face = t.face ?? 'enamel';
+  const [near, far] = t.body ?? [mix(C.gold, C.goldDeep, 0.55), mix(C.goldDeep, C.ink, 0.35)];
+  const [dx, dy] = t.dir ?? [0.18, 1];
   const depth = t.depth * k;
   const word = placed.map((p) => `<path transform="${tf(p)}" d="${p.g.d}"/>`).join('');
   const steps = Math.max(3, Math.round(depth / Math.max(0.5, k * 1.4)));
@@ -1276,43 +1178,13 @@ export function carvedSvg(placed: Placed[], t: Treat): string {
     for (let i = from; i <= to; i++) s += `<use href="#${id}w" transform="translate(${n2((dx * depth * i) / steps)} ${n2((dy * depth * i) / steps)})"/>`;
     return s;
   };
-  // per-letter face bands, in glyph units
-  const bands = placed
-    .map((p) => {
-      const w = p.g.adv;
-      const seed = p.ch.charCodeAt(0);
-      const hot = `M-20 -20 L${w + 20} -20 L${w + 20} 35 Q${n2(w * 0.72)} 42 ${n2(w * 0.48)} 37 Q${n2(w * 0.22)} 32 -20 39 Z`;
-      if (!t.detail) return `<g transform="${tf(p)}"><path d="${hot}" fill="${C.fireHot}"/><path d="M-20 72 Q${n2(w * 0.5)} 66 ${w + 20} 72 L${w + 20} 130 L-20 130 Z" fill="${C.fireDeep}"/></g>`;
-      let lick = `M-20 130 L-20 80`;
-      const n = Math.max(3, Math.round(w / 17));
-      for (let i = 0; i < n; i++) {
-        const x0 = -20 + ((w + 40) * i) / n;
-        const x1 = -20 + ((w + 40) * (i + 1)) / n;
-        const peak = 58 + ((i * 37 + seed) % 11);
-        lick += ` Q${n2(x0 + (x1 - x0) * 0.22)} ${n2(peak + 17)} ${n2(x0 + (x1 - x0) * 0.46)} ${n2(peak)} Q${n2(x0 + (x1 - x0) * 0.62)} ${n2(peak + 15)} ${n2(x1)} 80`;
-      }
-      lick += ` L${w + 20} 130 Z`;
-      let embers = '';
-      for (let i = 0; i < 4; i++) {
-        const x = ((i * 53 + seed * 7) % Math.max(20, w - 20)) + 10;
-        const y = 44 + ((i * 29 + seed * 3) % 22);
-        embers += `<circle cx="${x}" cy="${y}" r="${n2(1.6 + (i % 2) * 0.9)}"/>`;
-      }
-      return `<g transform="${tf(p)}">
-        <path d="${hot}" fill="${C.fireHot}"/>
-        <path d="M-20 -20 L${w + 20} -20 L${w + 20} 15 Q${n2(w * 0.5)} 21 -20 17 Z" fill="${C.fireCore}" opacity=".75"/>
-        <path d="${lick}" fill="${C.fireDeep}"/>
-        <path d="${lick}" transform="translate(0 14)" fill="${C.ember}" opacity=".6"/>
-        <g fill="${C.fireCore}" opacity=".7">${embers}</g>
-      </g>`;
-    })
-    .join('');
-  // glint: a hand-cut highlight slash on each letter's upper left, clipped to the face
+  const bands = placed.map((p) => `<g transform="${tf(p)}">${faceBands(face, p.g.adv, t.detail, t.small)}</g>`).join('');
+  // glint: a short enamel-gloss slash on each letter's upper left, clipped to the face
   const glints = t.detail
-    ? placed.map((p) => `<g transform="${tf(p)}"><path d="M${n2(p.g.box.x + 9)} 30 Q${n2(p.g.box.x + 10)} 13 ${n2(p.g.box.x + 24)} 10" fill="none" stroke="${C.white}" stroke-width="5.5" stroke-linecap="round" opacity=".8"/></g>`).join('')
+    ? placed.map((p) => `<g transform="${tf(p)}"><path d="M${n2(p.g.box.x + 7)} 32 L${n2(p.g.box.x + 7)} 20 Q${n2(p.g.box.x + 8)} 9 ${n2(p.g.box.x + 20)} 8" fill="none" stroke="${C.white}" stroke-width="5" stroke-linecap="round" opacity=".9"/></g>`).join('')
     : '';
-  const sh = Math.max(1.6, 2.6 * k);
-  const faceIn = rim > 0 ? rim + 1.4 * k : 0;
+  const sh = Math.max(1.4, 2.4 * k);
+  const faceIn = rim > 0 ? rim + 1.2 * k : 0;
   const mask = (mid: string, inset: number) =>
     `<mask id="${mid}" maskUnits="userSpaceOnUse" ${BIG}><use href="#${id}w" fill="#fff"/>${inset > 0 ? `<use href="#${id}w" fill="none" stroke="#000" stroke-width="${n2(2 * inset)}" stroke-linejoin="round"/>` : ''}</mask>`;
   return `<g>
@@ -1326,8 +1198,9 @@ export function carvedSvg(placed: Placed[], t: Treat): string {
   </defs>
   <use href="#${id}w" transform="translate(${n2(dx * depth + 4 * k)} ${n2(dy * depth + 7 * k)})" fill="#000" opacity=".45" filter="url(#${id}s)"/>
   <g fill="${C.ink}" stroke="${C.ink}" stroke-width="${n2(ink * 2)}" stroke-linejoin="round">${ext(1, steps)}</g>
-  <g fill="${C.woodDeep}">${ext(Math.ceil(steps * 0.6), steps)}</g>
-  <g fill="${C.woodDark}">${ext(1, Math.ceil(steps * 0.6) - 1)}</g>
+  <g fill="${far}">${ext(Math.ceil(steps * 0.55), steps)}</g>
+  <g fill="${near}">${ext(1, Math.ceil(steps * 0.55) - 1)}</g>
+  ${t.detail && depth > 3 ? `<g fill="${C.goldLight}" opacity=".5">${ext(1, 1)}</g><use href="#${id}w" transform="translate(${n2(dx * depth * 0.3)} ${n2(dy * depth * 0.3)})" fill="${near}"/>` : ''}
   <use href="#${id}w" fill="${C.ink}" stroke="${C.ink}" stroke-width="${n2(ink * 2)}" stroke-linejoin="round"/>
   ${
     rim > 0
@@ -1337,36 +1210,21 @@ export function carvedSvg(placed: Placed[], t: Treat): string {
   <g mask="url(#${id}d)"><rect ${BIG} fill="${C.inkSoft}"/></g>`
       : ''
   }
-  <g mask="url(#${id}f)"><rect ${BIG} fill="${C.fire}"/>${bands}${rim > 0 ? '' : `<rect ${BIG} fill="${C.fireCore}" mask="url(#${id}h)" opacity=".85"/>`}<g clip-path="url(#${id}c)">${glints}</g></g>
+  <g mask="url(#${id}f)"><rect ${BIG} fill="${FACE_BASE[face]}"/>${bands}${rim > 0 ? '' : `<rect ${BIG} fill="${face === 'enamel' ? C.white : C.goldLight}" mask="url(#${id}h)" opacity=".7"/>`}<g clip-path="url(#${id}c)">${glints}</g></g>
 </g>`;
 }
 
 /**
- * Wood-burned letters for the parchment scroll (COVE): deep brown faces with a scorched halo, a
- * soft inner edge and a thin parchment inline, pressed into the paper with a slight ink edge.
+ * Gilded letters (RICHES on its plate): polished gold faces in hard bands, a short dark-brass
+ * extrusion, a heavy ink outline and a gloss glint. (The name is the engine's; the finish is gold.)
  */
 export function burnedSvg(placed: Placed[], t: { ink: number; detail: boolean }): string {
-  const id = nid('bn');
-  const k = placed[0]?.scale ?? 1;
-  const word = placed.map((p) => `<path transform="${tf(p)}" d="${p.g.d}"/>`).join('');
-  const inl = 4.5 * k;
-  return `<g>
-  <defs>
-    <g id="${id}w" fill-rule="evenodd">${word}</g>
-    <mask id="${id}i" maskUnits="userSpaceOnUse" ${BIG}><use href="#${id}w" fill="none" stroke="#fff" stroke-width="${n2(inl * 2 + 3 * k)}"/><use href="#${id}w" fill="none" stroke="#000" stroke-width="${n2(inl * 2)}"/></mask>
-    <clipPath id="${id}c">${clipOf(placed)}</clipPath>
-    <filter id="${id}b" x="-15%" y="-25%" width="130%" height="150%"><feGaussianBlur stdDeviation="${n2(3 * k)}"/></filter>
-  </defs>
-  <use href="#${id}w" fill="none" stroke="${C.woodMid}" stroke-width="${n2(12 * k)}" stroke-linejoin="round" opacity=".4" filter="url(#${id}b)"/>
-  <use href="#${id}w" fill="${C.woodDeep}" stroke="${C.ink}" stroke-width="${n2(t.ink * k)}" stroke-linejoin="round"/>
-  <g clip-path="url(#${id}c)"><use href="#${id}w" fill="${C.woodDark}" transform="translate(${n2(-3 * k)} ${n2(-3 * k)})"/></g>
-  ${t.detail ? `<g clip-path="url(#${id}c)"><rect ${BIG} fill="${C.paperWarm}" mask="url(#${id}i)" opacity=".7"/></g>` : ''}
-</g>`;
+  return carvedSvg(placed, { ink: t.ink, depth: 9, rim: 0, detail: t.detail, face: 'gold', body: [C.goldDeep, mix(C.goldDeep, C.ink, 0.5)] });
 }
 
-/** The tagline: small carved letters, no rim, a two-band fire face. */
+/** The tagline: small cream enamel letters with a shallow maroon extrusion (for the sign strip). */
 export function taglineSvg(placed: Placed[], t: { ink: number }): string {
-  return carvedSvg(placed, { ink: t.ink, depth: 9, rim: 0, detail: false });
+  return carvedSvg(placed, { ink: t.ink, depth: 6, rim: 0, detail: false, face: 'cream', body: [C.maroonDeep, mix(C.maroonDeep, C.ink, 0.5)] });
 }
 
 /* ================================= the logo ================================= */
@@ -1375,7 +1233,7 @@ export interface LogoOptions {
   /** Output size in CSS px (the lockup is drawn in a 1000 x 620 design box scaled to fit). */
   width: number;
   height?: number;
-  /** Include the LIGHT THE FUSE tagline (default: only when the logo is big enough to read it). */
+  /** Include the ALL ABOARD! tagline (default: only when the logo is big enough to read it). */
   tagline?: boolean;
 }
 
@@ -1384,102 +1242,187 @@ export const LOGO_BOX = { w: 1000, h: 620 };
 
 /** Four-point spark star. */
 function star(cx: number, cy: number, r: number, fill: string, extra = ''): string {
-  const q = r * 0.24;
-  return `<path d="M${n2(cx)} ${n2(cy - r)} L${n2(cx + q)} ${n2(cy - q)} L${n2(cx + r)} ${n2(cy)} L${n2(cx + q)} ${n2(cy + q)} L${n2(cx)} ${n2(cy + r)} L${n2(cx - q)} ${n2(cy + q)} L${n2(cx - r)} ${n2(cy)} L${n2(cx - q)} ${n2(cy - q)} Z" fill="${fill}" ${extra}/>`;
+  const q = r * 0.22;
+  return `<path d="M${n2(cx)} ${n2(cy - r)} Q${n2(cx + q)} ${n2(cy - q)} ${n2(cx + r)} ${n2(cy)} Q${n2(cx + q)} ${n2(cy + q)} ${n2(cx)} ${n2(cy + r)} Q${n2(cx - q)} ${n2(cy + q)} ${n2(cx - r)} ${n2(cy)} Q${n2(cx - q)} ${n2(cy - q)} ${n2(cx)} ${n2(cy - r)} Z" fill="${fill}" ${extra}/>`;
+}
+
+/** A sparkle: inked star with a light core. */
+function sparkle(cx: number, cy: number, r: number, ink: number): string {
+  return `${star(cx, cy, r, C.goldLight, `stroke="${C.ink}" stroke-width="${n2(ink)}" stroke-linejoin="round"`)}${star(cx, cy, r * 0.55, C.white)}`;
+}
+
+/** Jagged lightning polyline from x0 to x1 around y (deterministic). */
+function zigzag(x0: number, x1: number, y: number, amp: number, seed: number, step = 46): Pt[] {
+  const r = rng(seed);
+  const pts: Pt[] = [[x0, y]];
+  let x = x0;
+  let s = r() < 0.5 ? 1 : -1;
+  while (x < x1 - step * 0.8) {
+    // irregular strokes: mostly long leaps, now and then a short kink back
+    const kink = r() < 0.3;
+    x += kink ? step * (0.25 + 0.2 * r()) : step * (0.7 + 0.9 * r());
+    pts.push([Math.min(x, x1), y + s * amp * (kink ? 0.3 + 0.3 * r() : 0.6 + 0.4 * r())]);
+    s = -s;
+  }
+  pts.push([x1, y]);
+  return pts;
+}
+const poly = (p: Pt[]) => `M${p.map(([x, y]) => `${n2(x)} ${n2(y)}`).join('L')}`;
+
+/**
+ * The third rail: a cast-iron conductor rail on brass insulators, glowing electric blue, with a
+ * jagged bolt crackling along it and arcs jumping off it, a spark burst at the leading end.
+ */
+function thirdRail(x0: number, x1: number, y: number, o: { detail: boolean; ink: number; id: string }): string {
+  const h = 18;
+  const ink = o.ink;
+  const bolt = zigzag(x0 + 18, x1 - 26, y, o.detail ? 22 : 20, 7, o.detail ? 58 : 120);
+  const arcs = o.detail ? [zigzag(x0 + 150, x0 + 250, y + 22, 9, 5, 26), zigzag(x1 - 330, x1 - 240, y + 24, 8, 9, 24), zigzag(x0 + 40, x0 + 110, y - 18, 7, 2, 22)] : [];
+  const posts = o.detail ? [0.16, 0.5, 0.84].map((u) => x0 + (x1 - x0) * u) : [];
+  const post = (x: number) =>
+    `<path d="M${n2(x - 13)} ${n2(y + h / 2 - 2)} L${n2(x + 13)} ${n2(y + h / 2 - 2)} L${n2(x + 9)} ${n2(y + h / 2 + 16)} L${n2(x - 9)} ${n2(y + h / 2 + 16)} Z" fill="${C.goldDeep}" stroke="${C.ink}" stroke-width="${n2(ink * 0.8)}" stroke-linejoin="round"/><rect x="${n2(x - 9)}" y="${n2(y + h / 2)}" width="7" height="12" fill="${C.gold}"/>`;
+  return `<g>
+    <defs><filter id="${o.id}g" x="-10%" y="-200%" width="120%" height="500%"><feGaussianBlur stdDeviation="${o.detail ? 9 : 6}"/></filter></defs>
+    <rect x="${x0}" y="${y - 22}" width="${x1 - x0}" height="44" rx="22" fill="${C.volt}" opacity=".55" filter="url(#${o.id}g)"/>
+    ${posts.map(post).join('')}
+    <rect x="${x0}" y="${n2(y - h / 2)}" width="${x1 - x0}" height="${h}" rx="${h / 2}" fill="${C.voltDeep}" stroke="${C.ink}" stroke-width="${n2(ink)}"/>
+    <rect x="${x0 + 8}" y="${n2(y - h / 2 + 3)}" width="${x1 - x0 - 16}" height="${n2(h * 0.38)}" rx="3" fill="${C.voltLight}"/>
+    <path d="${poly(bolt)}" fill="none" stroke="${C.ink}" stroke-width="${n2(ink + 11)}" stroke-linejoin="miter" stroke-miterlimit="8" stroke-linecap="round"/>
+    <path d="${poly(bolt)}" fill="none" stroke="${C.volt}" stroke-width="11" stroke-linejoin="miter" stroke-miterlimit="8" stroke-linecap="round"/>
+    <path d="${poly(bolt)}" fill="none" stroke="${C.voltCore}" stroke-width="4.5" stroke-linejoin="miter" stroke-miterlimit="8" stroke-linecap="round"/>
+    ${arcs.map((a) => `<path d="${poly(a)}" fill="none" stroke="${C.volt}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="${poly(a)}" fill="none" stroke="${C.voltCore}" stroke-width="2" stroke-linejoin="round"/>`).join('')}
+  </g>`;
+}
+
+/** Spark burst at the rail's end. */
+function burst(cx: number, cy: number, r: number, ink: number, detail: boolean): string {
+  return `${star(cx, cy, r, C.voltLight, `stroke="${C.ink}" stroke-width="${n2(ink)}" stroke-linejoin="round"`)}${star(cx, cy, r * 0.55, C.voltCore)}${
+    detail ? `${star(cx - r * 0.1, cy, r * 0.75, C.voltCore, `transform="rotate(45 ${n2(cx)} ${n2(cy)})" opacity=".7"`)}<circle cx="${n2(cx + r * 0.9)}" cy="${n2(cy - r * 0.7)}" r="4" fill="${C.voltCore}"/><circle cx="${n2(cx + r * 1.1)}" cy="${n2(cy + r * 0.5)}" r="3" fill="${C.voltLight}"/>` : ''
+  }`;
+}
+
+/** Deco plate outline: notched corners and chevron points at both ends. */
+function platePath(x0: number, y0: number, x1: number, y1: number, n: number, tip: number): string {
+  const m = (y0 + y1) / 2;
+  return `M${n2(x0 + n)} ${n2(y0)} L${n2(x1 - n)} ${n2(y0)} L${n2(x1 - n)} ${n2(y0 + n)} L${n2(x1)} ${n2(y0 + n)} L${n2(x1 + tip)} ${n2(m)} L${n2(x1)} ${n2(y1 - n)} L${n2(x1 - n)} ${n2(y1 - n)} L${n2(x1 - n)} ${n2(y1)} L${n2(x0 + n)} ${n2(y1)} L${n2(x0 + n)} ${n2(y1 - n)} L${n2(x0)} ${n2(y1 - n)} L${n2(x0 - tip)} ${n2(m)} L${n2(x0)} ${n2(y0 + n)} L${n2(x0 + n)} ${n2(y0 + n)} Z`;
+}
+
+/** The RICHES banner plate: brass frame, emerald enamel panel, brass pinline and rivets. */
+function richesPlate(cx: number, cy: number, w: number, h: number, o: { detail: boolean; ink: number; id: string }): string {
+  const x0 = cx - w / 2;
+  const x1 = cx + w / 2;
+  const y0 = cy - h / 2;
+  const y1 = cy + h / 2;
+  const n = h * 0.16;
+  const tip = h * 0.24;
+  const f = h * 0.085; // brass frame width
+  const outer = platePath(x0, y0, x1, y1, n, tip);
+  const inner = platePath(x0 + f, y0 + f, x1 - f, y1 - f, n * 0.75, tip * 0.75);
+  const pin = platePath(x0 + f * 1.9, y0 + f * 1.9, x1 - f * 1.9, y1 - f * 1.9, n * 0.6, tip * 0.6);
+  const rivet = (x: number, y: number) => `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.03)}" fill="${C.goldLight}" stroke="${C.ink}" stroke-width="${n2(o.ink * 0.5)}"/>`;
+  const rivets = o.detail ? [rivet(x0 + n * 0.55, y0 + n * 0.6), rivet(x1 - n * 0.55, y0 + n * 0.6), rivet(x0 + n * 0.55, y1 - n * 0.6), rivet(x1 - n * 0.55, y1 - n * 0.6)].join('') : '';
+  return `<g>
+    <defs>
+      <filter id="${o.id}s" x="-10%" y="-20%" width="120%" height="160%"><feGaussianBlur stdDeviation="7"/></filter>
+      <clipPath id="${o.id}c"><path d="${inner}"/></clipPath>
+      <clipPath id="${o.id}o"><path d="${outer}"/></clipPath>
+    </defs>
+    <path d="${outer}" transform="translate(6 14)" fill="#000" opacity=".5" filter="url(#${o.id}s)"/>
+    <path d="${outer}" transform="translate(0 ${n2(h * 0.07)})" fill="${C.goldDeep}" stroke="${C.ink}" stroke-width="${n2(o.ink * 2)}" stroke-linejoin="round"/>
+    <path d="${outer}" fill="${C.gold}" stroke="${C.ink}" stroke-width="${n2(o.ink * 2)}" stroke-linejoin="round"/>
+    <g clip-path="url(#${o.id}o)">
+      <rect x="${n2(x0 - tip)}" y="${n2(cy)}" width="${n2(w + tip * 2)}" height="${n2(h / 2)}" fill="${mix(C.gold, C.goldDeep, 0.45)}"/>
+      ${o.detail ? `<rect x="${n2(x0 - tip)}" y="${n2(y0)}" width="${n2(w + tip * 2)}" height="${n2(f * 0.45)}" fill="${C.goldLight}"/>` : ''}
+    </g>
+    <path d="${inner}" fill="${C.emerald}" stroke="${C.ink}" stroke-width="${n2(o.ink * 1.1)}" stroke-linejoin="round"/>
+    <g clip-path="url(#${o.id}c)">
+      <rect x="${n2(x0)}" y="${n2(cy + h * 0.12)}" width="${n2(w)}" height="${n2(h)}" fill="${C.emeraldDeep}"/>
+      <rect x="${n2(x0)}" y="${n2(y0)}" width="${n2(w)}" height="${n2(f * 2.2)}" fill="${C.emeraldLight}" opacity=".35"/>
+      ${o.detail ? `<path d="${pin}" fill="none" stroke="${C.gold}" stroke-width="3"/>` : ''}
+    </g>
+    ${rivets}
+  </g>`;
+}
+
+/** Deco speed lines: three rounded brass bars, the longest nearest the plate. */
+function speedLines(x: number, y: number, dir: 1 | -1, len: number, gap: number, ink: number): string {
+  return [0, 1, 2]
+    .map((i) => {
+      const l = len * (1 - i * 0.28);
+      const yy = y + (i - 1) * gap;
+      const xa = dir > 0 ? x : x - l;
+      return `<rect x="${n2(xa)}" y="${n2(yy - 5.5)}" width="${n2(l)}" height="11" rx="5.5" fill="${i === 1 ? C.goldLight : C.gold}" stroke="${C.ink}" stroke-width="${n2(ink)}"/>`;
+    })
+    .join('');
+}
+
+/** The tagline's enamel sign strip: maroon, brass border, cream pinline, rivets at the ends. */
+function signStrip(cx: number, cy: number, w: number, h: number, ink: number): string {
+  const x = cx - w / 2;
+  const y = cy - h / 2;
+  const r = h * 0.22;
+  return `<g>
+    <rect x="${n2(x + 4)}" y="${n2(y + 9)}" width="${n2(w)}" height="${n2(h)}" rx="${n2(r)}" fill="#000" opacity=".4"/>
+    <rect x="${n2(x)}" y="${n2(y)}" width="${n2(w)}" height="${n2(h)}" rx="${n2(r)}" fill="${C.gold}" stroke="${C.ink}" stroke-width="${n2(ink * 2)}"/>
+    <rect x="${n2(x)}" y="${n2(cy)}" width="${n2(w)}" height="${n2(h / 2)}" rx="${n2(r)}" fill="${C.goldDeep}" opacity=".6"/>
+    <rect x="${n2(x + 7)}" y="${n2(y + 7)}" width="${n2(w - 14)}" height="${n2(h - 14)}" rx="${n2(r * 0.7)}" fill="${C.maroon}" stroke="${C.ink}" stroke-width="${n2(ink)}"/>
+    <rect x="${n2(x + 8)}" y="${n2(cy + h * 0.12)}" width="${n2(w - 16)}" height="${n2(h / 2 - h * 0.12 - 8)}" rx="${n2(r * 0.6)}" fill="${C.maroonDeep}"/>
+    <rect x="${n2(x + 14)}" y="${n2(y + 13)}" width="${n2(w - 28)}" height="${n2(h - 26)}" rx="${n2(r * 0.5)}" fill="none" stroke="${C.cream}" stroke-width="2" opacity=".75"/>
+    ${[x + 26, x + w - 26].map((rx) => `<circle cx="${n2(rx)}" cy="${n2(cy)}" r="5" fill="${C.goldLight}" stroke="${C.ink}" stroke-width="2"/>`).join('')}
+  </g>`;
 }
 
 /**
- * The title lockup: POWDER arched over a bigger KEG (carved wood, brass rim, fire face) with a
- * lit fuse curling off the G, COVE burned into the parchment scroll below, and the tagline.
- * Small sizes get heavier outlines relative to the letters, lose the rim, the tagline and the fine
- * detail, and give COVE a bigger scroll, so the words stay readable down to the portrait logo.
+ * The title lockup: THIRD RAIL in chunky deco capitals leaning forward like a streamliner (cream
+ * over maroon enamel faces, brass bevel and extrusion, ink outline), the glowing third rail with a
+ * bolt crackling along it underneath, RICHES in gold on an emerald and brass deco plate flanked by
+ * speed lines and sparkles, and ALL ABOARD! on a small enamel sign strip. Small sizes get heavier
+ * outlines relative to the letters and lose the bevel, the tagline and the fine detail, so the
+ * words stay readable down to the ~160 px portrait logo.
  */
 export function logoSvg(o: LogoOptions): string {
   const W = LOGO_BOX.w;
   const H = LOGO_BOX.h;
   const small = o.width < 250;
-  const tiny = o.width < 160;
+  const tiny = o.width < 170;
   const tagline = o.tagline ?? o.width >= 320;
   const detail = !small;
-  const treat: Treat = { ink: tiny ? 8.5 : small ? 7 : 5.5, depth: tiny ? 11 : 13, rim: tiny ? 0 : small ? 4.5 : 5.5, detail };
-
-  const top = setLine('POWDER', W / 2, tagline ? 178 : 194, {
-    cap: tagline ? 132 : 146,
-    arch: 26,
-    track: 2,
-    bounce: [
-      [0, -2],
-      [-2, 1.5],
-      [1.5, -1],
-      [-1.5, 1.5],
-      [1, -1.5],
-      [-1, 1],
-    ],
-  });
-  const keg = setLine('KEG', W / 2 - 40, tagline ? 370 : 404, {
-    cap: tagline ? 164 : 186,
-    track: 4,
-    bounce: [
-      [1, -2.5],
-      [-1.5, 1],
-      [1, 2.5],
-    ],
-  });
-  // the fuse: out of the G's shoulder, one curl, and a spark in the open space on the right
-  const g = keg.placed[keg.placed.length - 1];
-  const gx = g.x + g.g.adv * g.scale * 0.9;
-  const gy = g.y + 26 * g.scale;
-  const fuse = `M${n2(gx - 6)} ${n2(gy + 4)} C${n2(gx + 50)} ${n2(gy - 30)} ${n2(gx + 104)} ${n2(gy + 4)} ${n2(gx + 88)} ${n2(gy + 50)} C${n2(gx + 76)} ${n2(gy + 84)} ${n2(gx + 118)} ${n2(gy + 104)} ${n2(gx + 146)} ${n2(gy + 72)}`;
-  const sx = gx + 150;
-  const sy = gy + 66;
-  const fw = tiny ? 20 : 15;
-  const fuseSvg = `<g>
-    <path d="${fuse}" fill="none" stroke="${C.ink}" stroke-width="${fw}" stroke-linecap="round"/>
-    <path d="${fuse}" fill="none" stroke="${C.paperWarm}" stroke-width="${fw - 7}" stroke-linecap="round"/>
-    ${detail ? `<path d="${fuse}" fill="none" stroke="${C.woodLight}" stroke-width="${fw - 7}" stroke-dasharray="4 7"/>` : ''}
-    ${star(sx, sy, 36, C.fireHot, `stroke="${C.ink}" stroke-width="5.5" stroke-linejoin="round"`)}
-    ${star(sx, sy, 21, C.fireCore)}
-    <circle cx="${n2(sx)}" cy="${n2(sy)}" r="6" fill="${C.white}"/>
-    ${detail ? `${star(sx - 40, sy - 34, 10, C.fireCore)}${star(sx + 36, sy + 34, 8, C.fireHot)}${star(sx + 40, sy - 30, 6.5, C.fireCore)}` : ''}
-  </g>`;
-
-  // parchment scroll with COVE, lettered on the scroll's own arch
-  const rw = tagline ? 620 : 700;
-  const rh = rw * (120 / 440);
-  const ry = tagline ? 478 : 520;
-  const scroll = embed(ribbon(440), W / 2, ry, rw, rh);
-  const bandMid = ry - rh * 0.1; // the scroll band's centre line at its middle (it arches up)
-  const coveCap = tagline ? 74 : 88;
-  const cove = setLine('COVE', W / 2, bandMid + coveCap * 0.5, {
-    cap: coveCap,
-    track: tagline ? 18 : 12,
-    arch: -rh * 0.05,
-    bounce: [
-      [0, -1.5],
-      [-1, 1],
-      [1, -1],
-      [0, 1.5],
-    ],
-  });
-  const tag = tagline ? setLine('LIGHT THE FUSE', W / 2, 604, { cap: 36, track: 9 }) : null;
+  const ink = tiny ? 9.5 : small ? 7.5 : 5.5;
+  const treat: Treat = { ink, depth: tiny ? 10 : 13, rim: tiny ? 0 : small ? 3.5 : 4.2, detail, small };
+  const id = nid('lg');
+  // vertical plan (design units); without the tagline everything grows into its room
+  const P = tagline
+    ? { top: 58, rail: 238, pc: 352, ph: 180, rc: 120, tag: 512 }
+    : { top: small ? 52 : 64, rail: small ? 252 : 256, pc: small ? 420 : 410, ph: small ? 236 : 214, rc: small ? 158 : 142, tag: 0 };
+  // THIRD RAIL as big as the width allows (it leans forward, so keep room for the lean)
+  const track = small ? 4 : 3;
+  const cap = Math.min(140, (900 / setLine('THIRD RAIL', 0, 0, { cap: 100, track }).width) * 100);
+  const base = P.top + cap;
+  const skew = -9;
+  const top = setLine('THIRD RAIL', W / 2 - 8, base, { cap, track });
+  const rich = setLine('RICHES', W / 2, P.pc + P.rc / 2 - 2, { cap: P.rc, track: small ? 10 : 8 });
+  const pw = rich.width + P.rc * (small ? 0.75 : 0.95);
+  const rx0 = W / 2 - Math.min(470, top.width / 2 + 10);
+  const rx1 = W / 2 + Math.min(470, top.width / 2 + 10);
+  const sparks = detail
+    ? `${sparkle(W / 2 - pw / 2 + 10, P.pc - P.ph / 2 + 4, 24, 4)}${sparkle(W / 2 + pw / 2 - 26, P.pc + P.ph / 2 - 8, 18, 3.5)}${sparkle(W / 2 + pw / 2 + 30, P.pc - P.ph / 2 + 24, 12, 3)}${star(W / 2 - pw / 2 - 26, P.pc + P.ph / 2 - 20, 9, C.goldLight)}`
+    : sparkle(W / 2 + pw / 2 - 20, P.pc - P.ph / 2 + 8, small ? 30 : 22, ink * 0.7);
+  const lines = detail ? `${speedLines(W / 2 - pw / 2 - P.ph * 0.3, P.pc, -1, 130, 26, 3.5)}${speedLines(W / 2 + pw / 2 + P.ph * 0.3, P.pc, 1, 130, 26, 3.5)}` : '';
+  let tag = '';
+  if (tagline) {
+    const t = setLine('ALL ABOARD!', W / 2, P.tag + 19, { cap: 40, track: 9 });
+    tag = `${signStrip(W / 2, P.tag, t.width + 96, 74, 4)}${taglineSvg(t.placed, { ink: 8 })}`;
+  }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${n2(o.width)}" height="${n2(o.height ?? o.width * (H / W))}">
-  ${scroll}
-  ${burnedSvg(cove.placed, { ink: tiny ? 7 : small ? 5 : 4, detail })}
-  ${carvedSvg(top.placed, treat)}
-  ${fuseSvg}
-  ${carvedSvg(keg.placed, treat)}
-  ${tag ? taglineSvg(tag.placed, { ink: 8 }) : ''}
+  ${lines}
+  ${richesPlate(W / 2, P.pc, pw, P.ph, { detail, ink, id: `${id}p` })}
+  ${burnedSvg(rich.placed, { ink: ink + 1, detail })}
+  ${sparks}
+  ${tag}
+  ${thirdRail(rx0, rx1, P.rail, { detail, ink: ink * 0.9, id: `${id}r` })}
+  ${burst(rx1 + 6, P.rail, detail ? 34 : 40, ink * 0.8, detail)}
+  <g transform="translate(0 ${base}) skewX(${skew}) translate(0 ${-base})">${carvedSvg(top.placed, treat)}</g>
 </svg>`;
-}
-
-/** Inline a standalone SVG string into another SVG, centred on (cx, cy) at w x h. */
-function embed(svg: string, cx: number, cy: number, w: number, h: number): string {
-  const open = svg.match(/<svg[^>]*>/)![0];
-  const fixed = open
-    .replace(/ width="[\d.]+"/, '')
-    .replace(/ height="[\d.]+"/, '')
-    .replace('<svg ', `<svg x="${n2(cx - w / 2)}" y="${n2(cy - h / 2)}" width="${n2(w)}" height="${n2(h)}" preserveAspectRatio="none" overflow="visible" `);
-  return svg.replace(open, fixed);
 }
 
 /** A word in one of the treatments as a standalone SVG (tile titles, review sheets). */
@@ -1488,7 +1431,7 @@ export function wordSvg(text: string, cap: number, style: 'carved' | 'burned' | 
   const w = probe.width + cap * pad * 2;
   const h = cap * (1 + pad * 2) + cap * 0.2;
   const line = setLine(text, w / 2, cap * pad + cap, { cap });
-  const body = style === 'carved' ? carvedSvg(line.placed, { ink: 6, depth: 10, rim: 5.5, detail: cap > 60 }) : style === 'burned' ? burnedSvg(line.placed, { ink: 4, detail: cap > 40 }) : taglineSvg(line.placed, { ink: 7 });
+  const body = style === 'carved' ? carvedSvg(line.placed, { ink: 6, depth: 10, rim: 5.5, detail: cap > 60 }) : style === 'burned' ? burnedSvg(line.placed, { ink: 5, detail: cap > 40 }) : taglineSvg(line.placed, { ink: 7 });
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n2(w)} ${n2(h)}" width="${n2(w)}" height="${n2(h)}">${body}</svg>`;
 }
 
@@ -1503,11 +1446,11 @@ export function specimenSvg(chars: string, cap = 100, perRow = 10): string {
     const x = (i % perRow) * cell * 1.1 + cap * 0.2;
     const y = Math.floor(i / perRow) * cell + cap * 0.3;
     const k = cap / 100;
-    body += `<g transform="translate(${n2(x)} ${n2(y)}) scale(${k})"><rect x="0" y="0" width="${g.adv}" height="100" fill="none" stroke="#5fd6cc" stroke-width="1" opacity=".5"/><path d="${g.d}" fill="${C.paper}" fill-rule="evenodd" stroke="${C.ink}" stroke-width="1"/></g>`;
+    body += `<g transform="translate(${n2(x)} ${n2(y)}) scale(${k})"><rect x="0" y="0" width="${g.adv}" height="100" fill="none" stroke="${C.volt}" stroke-width="1" opacity=".5"/><path d="${g.d}" fill="${C.cream}" fill-rule="evenodd" stroke="${C.ink}" stroke-width="1"/></g>`;
   });
   const w = perRow * cell * 1.1 + cap * 0.4;
   const h = rows * cell + cap * 0.3;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n2(w)} ${n2(h)}" width="${n2(w)}" height="${n2(h)}"><rect width="100%" height="100%" fill="${C.night}"/>${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n2(w)} ${n2(h)}" width="${n2(w)}" height="${n2(h)}"><rect width="100%" height="100%" fill="${C.ironDeep}"/>${body}</svg>`;
 }
 
 void xAt;

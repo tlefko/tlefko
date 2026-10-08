@@ -4,10 +4,9 @@ import { ICON } from './icons';
 import { copy } from './copy';
 import { numeralsHtml } from './numerals';
 import type { Controller } from '../game/Controller';
-import { MAX_WIN, TANTRUM_SIZE, LIT_MULT, BOMB_FUSE, BOMB_START_SIZE, BOMB_MAX_SIZE, BOMB_BIG_SIZE, BLAST_SPARKS, CHARGE_MAX, CHARGE_MAX_BOOST, BOOST_COST } from '../math/types';
-import { BOMB_WHEEL_SIZES } from '../math/model';
-import { SYMBOL_ART } from '../art/symbols';
-import { puff, spark } from '../art/fx';
+import { MAX_WIN, BOOST_COST, POWER_STEPS, POWER_MULTS } from '../math/types';
+import { COIN_VALUES, LAST_TRAIN } from '../math/model';
+import { SYMBOL_ART, ART } from '../art/symbols';
 import { uri } from './art';
 import { speed, type SpeedMode } from '../render/timing';
 import { quality, type QualityMode } from '../render/quality';
@@ -19,91 +18,51 @@ const statsMod = import.meta.glob('../stake/stats.json', { eager: true }) as Rec
 const STATS = Object.values(statsMod)[0]?.default ?? {};
 const rtp = (mode: string) => {
   const v = STATS[mode]?.rtp;
-  return typeof v === 'number' ? `${(v > 1.5 ? v : v * 100).toFixed(2)}%` : '96.20%';
+  return typeof v === 'number' ? `${(v > 1.5 ? v : v * 100).toFixed(2)}%` : '96.30%';
 };
 const maxWin = (mode: string) => num(STATS[mode]?.maxWin ?? MAX_WIN);
-const payMod = import.meta.glob('../math/paytable.ts', { eager: true }) as Record<string, { PAYTABLE?: readonly (readonly number[])[]; SIZE_LABELS?: readonly string[]; TIER_LABELS?: readonly string[] }>;
+const payMod = import.meta.glob('../math/paytable.ts', { eager: true }) as Record<string, { PAYTABLE?: readonly (readonly number[])[]; REEL_LABELS?: readonly string[] }>;
 const PT = Object.values(payMod)[0] ?? {};
 const art = (svg: string, cls = '') => `<span class="art ${cls}">${svg}</span>`;
 /**
- * Step-by-step blast diagrams for the rules (Stake asked for the chain reaction to be spelled
- * out): three little boards drawn with the game's own symbols. Cells are [row][col] codes:
- * s0..s3 lows, K cold keg, L lit keg, B bomb (hot), . empty, and each step lists the blast
- * areas (fire outline), the cells that are exploding (burst), clearing (smoke) or newly lit.
+ * The train diagram for the rules: a little 4 x 3 board drawn with the game's own symbols, with the
+ * route a Locomotive takes (its row, then the branches a Junction sends up and down) drawn over it,
+ * and the coins it collects ringed.
  */
-type Step = { area: [number, number, number, number][]; burst: [number, number][]; puff: [number, number][]; lit: [number, number][]; empty: [number, number][]; badge?: [number, number, string][] };
-const DIAGRAMS: Record<'keg' | 'bomb', { board: string[][]; steps: Step[] }> = {
-  keg: {
-    board: [
-      ['K', 's1', 's2', 's3'],
-      ['s1', 'L', 's0', 's0'],
-      ['s2', 's3', 'L', 's1'],
-    ],
-    steps: [
-      { area: [], burst: [[1, 1]], puff: [], lit: [], empty: [] },
-      { area: [[0, 0, 3, 3]], burst: [[2, 2]], puff: [[0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1]], lit: [[0, 0]], empty: [], badge: [[0, 0, `x${LIT_MULT}`]] },
-      { area: [[1, 1, 2, 3]], burst: [], puff: [[1, 2], [1, 3], [2, 2], [2, 3]], lit: [[0, 0]], empty: [[0, 1], [0, 2], [1, 0], [1, 1], [2, 0], [2, 1]] },
-    ],
-  },
-  bomb: {
-    // a hot bomb catches a cold keg (it lights), a lit keg and a second bomb (both go off); their
-    // blasts never reach the keg that just lit, which explodes on a later cascade
-    board: [
-      ['K', 's1', 's2', 's3'],
-      ['s1', 'B', 'B', 's0'],
-      ['s2', 'L', 's3', 's1'],
-    ],
-    steps: [
-      { area: [], burst: [[1, 1]], puff: [], lit: [], empty: [] },
-      { area: [[0, 0, 3, 3]], burst: [[1, 2], [2, 1]], puff: [[0, 1], [0, 2], [1, 0], [1, 1], [2, 0], [2, 2]], lit: [[0, 0]], empty: [], badge: [[1, 1, '+1'], [0, 0, `x${LIT_MULT}`]] },
-      { area: [[0, 1, 3, 3], [1, 0, 2, 3]], burst: [], puff: [[0, 3], [1, 3], [2, 3]], lit: [[0, 0]], empty: [[0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]], badge: [[1, 2, '+1']] },
-    ],
-  },
-};
-let diagramArt: Record<string, string> | null = null;
-function blastDiagram(kind: 'keg' | 'bomb', captions: string[]): string {
-  const A = (diagramArt ??= {
+const TRAIN_BOARD = [
+  ['s0', 'c', 's1', 'c', 's2'],
+  ['L', 's3', 'J', 'c', 'c'],
+  ['s1', 'c', 's0', 's2', 'c'],
+];
+let trainArt: Record<string, string> | null = null;
+function trainDiagram(caption: string): string {
+  const A = (trainArt ??= {
     s0: uri(SYMBOL_ART[0].idle()),
     s1: uri(SYMBOL_ART[1].idle()),
     s2: uri(SYMBOL_ART[2].idle()),
     s3: uri(SYMBOL_ART[3].idle()),
-    K: uri(SYMBOL_ART[9].idle()),
-    L: uri(SYMBOL_ART[9].win!()),
-    B: uri((SYMBOL_ART[11]?.hot ?? SYMBOL_ART[11]?.idle ?? (() => SYMBOL_ART[9].win!()))()),
-    puff: uri(puff()),
-    burst: uri(spark()),
+    c: uri(SYMBOL_ART[ART.COIN_SILVER].idle()),
+    L: uri(SYMBOL_ART[ART.LOCO].win!()),
+    J: uri(SYMBOL_ART[ART.SWITCH].win!()),
   });
-  const D = DIAGRAMS[kind];
-  const has = (list: [number, number][], r: number, c: number) => list.some(([a, b]) => a === r && b === c);
-  const img = (src: string, cls: string) => `<img class="${cls}" src="${src}" alt=""/>`;
-  const steps = D.steps.map((st, i) => {
-    const cells = D.board
-      .map((row, r) =>
-        row
-          .map((code, c) => {
-            if (has(st.empty, r, c)) return '<span class="dg-cell gone"></span>';
-            if (has(st.puff, r, c) && !has(st.burst, r, c)) return `<span class="dg-cell">${img(A.puff, 'dg-puff')}</span>`;
-            const src = has(st.lit, r, c) ? A.L : A[code] ?? '';
-            const lit = has(st.lit, r, c) ? ' lit' : '';
-            return `<span class="dg-cell${lit}">${src ? img(src, 'dg-sym') : ''}${has(st.burst, r, c) ? img(A.burst, 'dg-burst') : ''}</span>`;
-          })
-          .join(''),
-      )
-      .join('');
-    const areas = st.area.map(([r, c, h, w]) => `<i class="dg-area" style="left:${(c / 4) * 100}%;top:${(r / 3) * 100}%;width:${(w / 4) * 100}%;height:${(h / 3) * 100}%"></i>`).join('');
-    const badges = (st.badge ?? []).map(([r, c, txt]) => `<span class="dg-badge" style="left:${((c + 0.5) / 4) * 100}%;top:${(r / 3) * 100}%">${numeralsHtml(txt, 'fire')}</span>`).join('');
-    return `<figure class="dg-step"><div class="dg-board">${cells}${areas}${badges}</div><figcaption><b>${num(i + 1)}</b>${captions[i]}</figcaption></figure>`;
-  });
-  return `<div class="diagram" role="img" aria-label="${captions.map((c, i) => `${i + 1}. ${c}`).join(' ')}">${steps.join('')}</div>`;
+  const cols = TRAIN_BOARD[0].length;
+  const rows = TRAIN_BOARD.length;
+  const collected = new Set(['1,3', '1,4', '0,3', '2,4']);
+  const cells = TRAIN_BOARD.map((row, r) =>
+    row.map((code, c) => `<span class="dg-cell${collected.has(`${r},${c}`) ? ' lit' : ''}"><img class="dg-sym" src="${A[code]}" alt=""/></span>`).join(''),
+  ).join('');
+  // route: row 1 from the locomotive to the right edge; from the junction's column, up to row 0 and down to row 2
+  const x = (c: number) => ((c + 0.5) / cols) * 100;
+  const y = (r: number) => ((r + 0.5) / rows) * 100;
+  const route = `<svg class="dg-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M${x(0)} ${y(1)} H100 M${x(2)} ${y(1)} V${y(0)} H100 M${x(2)} ${y(1)} V${y(2)} H100" fill="none" stroke="#3fc8ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity=".9"/></svg>`;
+  return `<div class="diagram one" role="img" aria-label="${caption}"><figure class="dg-step wide"><div class="dg-board" style="grid-template-columns:repeat(${cols},1fr)">${cells}${route}</div><figcaption>${caption}</figcaption></figure></div>`;
 }
-
-/** "2, 3 or 5" in the player's language. */
-const orList = (xs: readonly number[]) => (xs.length < 2 ? xs.map(num).join('') : t('sizesOr', { list: xs.slice(0, -1).map(num).join(', '), last: num(xs[xs.length - 1]) }));
 
 type Offer = { mode: 'WITCHING' | 'INFERNO'; title: StringKey; blurb: StringKey; vol: StringKey; cls: string; sym: number };
 const OFFERS: Offer[] = [
-  { mode: 'WITCHING', title: 'witchingHour', blurb: 'witchingBlurb', vol: 'volVeryHigh', cls: 'o-witching', sym: 10 },
-  { mode: 'INFERNO', title: 'infernoHour', blurb: 'infernoBlurb', vol: 'volExtreme', cls: 'o-tantrum', sym: 9 },
+  { mode: 'WITCHING', title: 'rushHour', blurb: 'rushBlurb', vol: 'volVeryHigh', cls: 'o-witching', sym: 10 },
+  { mode: 'INFERNO', title: 'lastTrain', blurb: 'lastBlurb', vol: 'volExtreme', cls: 'o-tantrum', sym: ART.LOCO_GOLD },
 ];
 
 export function openBuy(c: Controller) {
@@ -117,7 +76,7 @@ export function openBuy(c: Controller) {
         <button class="step" data-a="up" type="button" aria-label="${copy.raiseBet}">${ICON.plus}</button></div>
       <div class="offers two">${OFFERS.map((o) => `<article class="offer ${o.cls}">
           <div class="offer-art">${art(SYMBOL_ART[o.sym].win!(), 'big')}</div>
-          <h3>${t(o.title)}</h3><p>${t(o.blurb)}</p>
+          <h3>${t(o.title)}</h3><p>${t(o.blurb, { mult: POWER_MULTS[LAST_TRAIN.level] })}</p>
           <div class="offer-foot"><span class="price" aria-label="${fmtBet(MODE_COST[o.mode] * bet)}">${numeralsHtml(fmtBet(MODE_COST[o.mode] * bet), 'gold')}</span><span class="vol">${t(o.vol)} · RTP ${rtp(o.mode)}</span></div>
           <button class="offer-cta" type="button" data-id="${o.mode}">${copy.buy}</button></article>`).join('')}</div>`;
     m.body.querySelector('[data-a="down"]')!.addEventListener('click', () => (c.changeBet(-1), render()));
@@ -237,12 +196,12 @@ export function openInfo(c: Controller) {
   // exact symbol wins at the current stake: every decimal the win needs, never rounded (fmtWin)
   const v = (x: number) => fmtWin(winApi(x, c.betApi));
   const table = PT.PAYTABLE ?? [];
-  const labels = PT.SIZE_LABELS ?? PT.TIER_LABELS ?? ['5', '6', '7', '8', '9-10', '11-12', '13-15', '16+'];
+  const labels = PT.REEL_LABELS ?? ['3', '4', '5', '6'];
   const order = [8, 7, 6, 5, 4, 3, 2, 1, 0];
-  const head = `<tr><th></th>${[...labels].reverse().map((t) => `<th>${t}</th>`).join('')}</tr>`;
+  const head = `<tr><th></th>${[...labels].reverse().map((l) => `<th>${l}</th>`).join('')}</tr>`;
   const rows = order.map((s) => `<tr><td class="sym">${art(SYMBOL_ART[s].idle())}</td>${[...(table[s] ?? [])].reverse().map((p) => `<td class="tabular">${v(p)}</td>`).join('')}</tr>`).join('');
   const cards = order
-    .map((s) => `<div class="pay-card"><div class="pc-art">${art(SYMBOL_ART[s].idle())}</div><dl>${[...labels].reverse().map((t, i) => `<div><dt>${t}</dt><dd class="tabular">${v([...(table[s] ?? [])].reverse()[i] ?? 0)}</dd></div>`).join('')}</dl></div>`)
+    .map((s) => `<div class="pay-card"><div class="pc-art">${art(SYMBOL_ART[s].idle())}</div><dl>${[...labels].reverse().map((l, i) => `<div><dt>${l}</dt><dd class="tabular">${v([...(table[s] ?? [])].reverse()[i] ?? 0)}</dd></div>`).join('')}</dl></div>`)
     .join('');
   const B = copy.betLower;
   const boostOn = !!c.boostAllowed;
@@ -255,47 +214,40 @@ export function openInfo(c: Controller) {
     ...(c.speeds().length > 1 ? ([[ICON.turbo, t('turbo'), t('gSpeed')]] as [string, string, string][]) : []),
     [ICON.menu, t('menu'), t('gMenu')],
   ];
-  const bomb = SYMBOL_ART[11];
-  const bombArt = (hot: boolean) => (bomb ? art((hot && bomb.hot ? bomb.hot : bomb.idle)(), 'mini') : `<span class="art mini icon">${ICON.bomb}</span>`);
+  const power = { s1: POWER_STEPS[0], s2: POWER_STEPS[1], s3: POWER_STEPS[2], s4: POWER_STEPS[3], m1: POWER_MULTS[1], m2: POWER_MULTS[2], m3: POWER_MULTS[3], m4: POWER_MULTS[4] };
+  const coinRow = [ART.COIN_BRONZE, ART.COIN_SILVER, ART.COIN_GOLD, ART.COIN_PLATINUM].map((k) => art(SYMBOL_ART[k].idle(), 'mini')).join('');
   m.body.innerHTML = `<article class="rules" dir="auto">
     <section><h3>${t('rHowTitle')}</h3><p>${t('rHow', { max: maxWin('BASE'), bet: B })}</p></section>
-    <section><h3>${t('rBrimTitle')}</h3>
-      <div class="rule-row">${art(SYMBOL_ART[9].idle(), 'mini')}<p>${t('rBrim1')}</p></div>
-      <div class="rule-row">${art(SYMBOL_ART[9].win!(), 'mini')}<p>${t('rBrim2', { lit: LIT_MULT })}</p></div>
-      <h4>${t('rChainTitle')}</h4>
-      <p class="rule-key">${t('rChain')}</p>
-      ${blastDiagram('keg', [t('rChainStep1', { lit: LIT_MULT }), t('rChainStep2'), t('rChainStep3', { lit: LIT_MULT })])}</section>
-    <section><h3>${t('rBombTitle')}</h3>
-      <div class="rule-row">${bombArt(false)}<p>${t('rBomb1', { start: BOMB_START_SIZE, fuse: BOMB_FUSE })}</p></div>
-      <p>${t('rBomb2', { charge: CHARGE_MAX })}</p>
-      <p>${t('rBomb3', { max: BOMB_MAX_SIZE })}</p>
-      <div class="rule-row">${bombArt(true)}<p>${t('rBomb4', { big: BOMB_BIG_SIZE, sparks: BLAST_SPARKS })}</p></div>
-      <h4>${t('rChainTitle')}</h4>
-      <p class="rule-key">${t('rBombChain')}</p>
-      ${blastDiagram('bomb', [t('rBombStep1'), t('rBombStep2', { big: BOMB_BIG_SIZE }), t('rBombStep3')])}
-      <p>${t('rBomb5')}</p></section>
-    <section><h3>${t('rTantrumTitle')}</h3><p>${t('rTantrum', { size: TANTRUM_SIZE })}</p>
-      <table class="kv desc"><tr><td>${t('rHounds')}</td><td>${t('rHoundsText')}</td></tr>
-      <tr><td>${t('rInferno')}</td><td>${t('rInfernoText')}</td></tr>
-      <tr><td>${t('rBoost')}</td><td>${t('rBoostText')}</td></tr>
-      <tr><td>${t('rCash')}</td><td>${t('rCashText', { bet: B })}</td></tr>
-      <tr><td>${t('rBombWheel')}</td><td>${t('rBombWheelText', { sizes: orList(BOMB_WHEEL_SIZES) })}</td></tr></table>
-      <p>${t('rTantrumReset')}</p></section>
-    ${boostOn ? `<section><h3>${t('rPowderTitle')}</h3><div class="rule-row"><span class="art mini icon">${ICON.boost}</span><p>${t('rPowderText', { x: BOOST_COST, bet: B, boost: CHARGE_MAX_BOOST, charge: CHARGE_MAX, rtp: rtp('BOOST') })}</p></div></section>` : ''}
+    <section><h3>${t('rWaysTitle')}</h3><p>${t('rWays')}</p>
+      <div class="rule-row">${art(SYMBOL_ART[9].idle(), 'mini')}<p><b>${t('rWildTitle')}.</b> ${t('rWild')}</p></div></section>
+    <section><h3>${t('rTrainTitle')}</h3>
+      <div class="rule-row">${art(SYMBOL_ART[ART.LOCO].win!(), 'mini')}<p>${t('rTrain')}</p></div>
+      <h4>${t('rCoinTitle')}</h4>
+      <div class="rule-row coins">${coinRow}</div>
+      <p>${t('rCoin', { min: num(COIN_VALUES[0]), maxc: num(COIN_VALUES[COIN_VALUES.length - 1]), bet: B })}</p>
+      <h4>${t('rJunctionTitle')}</h4>
+      <div class="rule-row">${art(SYMBOL_ART[ART.SWITCH].win!(), 'mini')}<p>${t('rJunction')}</p></div>
+      ${trainDiagram(t('rJunction'))}</section>
     <section><h3>${t('rFsTitle')}</h3>
       <div class="rule-row">${art(SYMBOL_ART[10].idle(), 'mini')}<p>${t('rFs1')}</p></div>
-      <p>${t('rFs2')}</p></section>
+      <p>${t('rFs2')}</p>
+      <h4>${t('rPowerTitle')}</h4><p>${t('rPower', power)}</p>
+      <h4>${t('rLastTitle')}</h4>
+      <div class="rule-row">${art(SYMBOL_ART[ART.LOCO_GOLD].win!(), 'mini')}<p>${t('rLast', power)}</p></div></section>
+    ${boostOn ? `<section><h3>${t('rExpressTitle')}</h3><div class="rule-row"><span class="art mini icon">${ICON.boost}</span><p>${t('rExpress', { x: BOOST_COST, bet: B, rtp: rtp('BOOST') })}</p></div></section>` : ''}
     <section><h3>${copy.payouts}</h3><p class="muted">${t('rPayNote', { bet: B, amount: fmtBet(c.betApi) })}</p>
       <div class="pay-scroll"><table class="pay">${head}${rows}</table></div><div class="pay-cards">${cards}</div>
       <h4>${t('rPaySpecial')}</h4>
-      <div class="rule-row special">${art(SYMBOL_ART[9].idle(), 'mini')}<p>${t('rPayKeg', { lit: LIT_MULT })}</p></div>
-      <div class="rule-row special">${art(SYMBOL_ART[10].idle(), 'mini')}<p>${t('rPayChest')}</p></div>
-      <div class="rule-row special">${bombArt(false)}<p>${t('rPayBomb')}</p></div></section>
+      <div class="rule-row special">${art(SYMBOL_ART[9].idle(), 'mini')}<p>${t('rPayWild')}</p></div>
+      <div class="rule-row special">${art(SYMBOL_ART[10].idle(), 'mini')}<p>${t('rPayTicket')}</p></div>
+      <div class="rule-row special">${art(SYMBOL_ART[ART.COIN_GOLD].idle(), 'mini')}<p>${t('rPayCoin')}</p></div>
+      <div class="rule-row special">${art(SYMBOL_ART[ART.LOCO].idle(), 'mini')}<p>${t('rPayLoco')}</p></div>
+      <div class="rule-row special">${art(SYMBOL_ART[ART.SWITCH].idle(), 'mini')}<p>${t('rPaySwitch')}</p></div></section>
     <section><h3>${t('rModesTitle')}</h3><table class="kv">
       <tr><td>${t('rBaseGame')}</td><td class="tabular">${t('rCost', { x: 1, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('BASE') })}</td><td class="tabular">${t('rMax', { max: maxWin('BASE') })}</td></tr>
       ${boostOn ? `<tr><td>${t('boostName')}</td><td class="tabular">${t('rCost', { x: BOOST_COST, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('BOOST') })}</td><td class="tabular">${t('rMax', { max: maxWin('BOOST') })}</td></tr>` : ''}
-      ${c.jur?.disabledBuyFeature ? '' : `<tr><td>${t('witchingHour')}</td><td class="tabular">${t('rCost', { x: MODE_COST.WITCHING, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('WITCHING') })}</td><td class="tabular">${t('rMax', { max: maxWin('WITCHING') })}</td></tr>
-      <tr><td>${t('infernoHour')}</td><td class="tabular">${t('rCost', { x: MODE_COST.INFERNO, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('INFERNO') })}</td><td class="tabular">${t('rMax', { max: maxWin('INFERNO') })}</td></tr>`}</table>
+      ${c.jur?.disabledBuyFeature ? '' : `<tr><td>${t('rushHour')}</td><td class="tabular">${t('rCost', { x: MODE_COST.WITCHING, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('WITCHING') })}</td><td class="tabular">${t('rMax', { max: maxWin('WITCHING') })}</td></tr>
+      <tr><td>${t('lastTrain')}</td><td class="tabular">${t('rCost', { x: MODE_COST.INFERNO, bet: B })}</td><td class="tabular">${t('rRtp', { rtp: rtp('INFERNO') })}</td><td class="tabular">${t('rMax', { max: maxWin('INFERNO') })}</td></tr>`}</table>
       <p>${t('rModesNote', { bet: B })}</p></section>
     <section><h3>${t('rButtonsTitle')}</h3><div class="guide">${guide.map(([ic, tt, d]) => `<div class="g-row"><span class="g-ic">${ic}</span><div><b>${tt}</b><p>${d}</p></div></div>`).join('')}</div></section>
     <section><h3>${t('rGeneralTitle')}</h3><p>${t('rGeneral')}</p></section></article>`;
@@ -306,7 +258,7 @@ export function openInfo(c: Controller) {
 
 export function openHistory(c: Controller) {
   const m = new Modal(t('historyLink'), 'history-modal');
-  const label = (k: string) => ({ BASE: t('spin'), BOOST: t('boostName'), WITCHING: t('witchingHour'), INFERNO: t('infernoHour') })[k] ?? k;
+  const label = (k: string) => ({ BASE: t('spin'), BOOST: t('boostName'), WITCHING: t('rushHour'), INFERNO: t('lastTrain') })[k] ?? k;
   const items = c.settings.history;
   m.body.innerHTML = items.length
     ? `<table class="hist"><thead><tr><th>${t('time')}</th><th>${t('round')}</th><th>${copy.bet}</th><th>${copy.win}</th></tr></thead><tbody>${items.map((h) => `<tr><td>${new Date(h.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td><td>${label(h.mode)}${h.bonus && h.mode !== 'WITCHING' && h.mode !== 'INFERNO' ? `<small>${h.bonus}</small>` : ''}${h.maxWin ? `<small>${t('maxWin')}</small>` : ''}</td><td class="tabular">${fmtBet(h.costApi)}</td><td class="tabular ${h.winApi > 0 ? 'won' : ''}">${fmtWin(h.winApi)}</td></tr>`).join('')}</tbody></table>`
