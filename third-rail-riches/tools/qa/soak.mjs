@@ -19,7 +19,13 @@ page.on('console', (m) => (m.type() === 'error' ? errors.push(m.text()) : logs.p
 await page.goto(url, { waitUntil: 'load', timeout: 180000 });
 await page.waitForFunction(() => window.__ll && (!document.getElementById('boot') || document.getElementById('boot').classList.contains('gone')), null, { timeout: 180000 });
 await page.waitForTimeout(800);
-await page.mouse.click(720, 450); // dismiss splash (the game stays busy until the intro is over)
+// dismiss the splash (the game stays busy until the intro is over): Enter until it hands over
+await page.waitForFunction(() => window.__ll.splash && window.__ll.splash(), null, { timeout: 180000 });
+for (let i = 0; i < 40; i++) {
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(700);
+  if (await page.evaluate(() => !window.__ll.splash())) break;
+}
 await page.waitForFunction(() => !window.__ll.ctrl.busy, null, { timeout: 60000 });
 await page.waitForTimeout(600);
 
