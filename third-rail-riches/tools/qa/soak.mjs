@@ -1,7 +1,7 @@
 // Functional soak (v2, Stake flow): plays real rounds through the actual UI against the demo RGS
 // (random books + scenario books found in the demo pack) and checks money, settlement,
 // completion and page errors after every round.
-// Covers trains, Junctions, the free spins and Express Pass: scenarios found by content in the BASE
+// Covers trains, crashes, Signals, Security Checks, the free spins and Express Pass: scenarios found by content in the BASE
 // and BOOST packs, engine-built dev scenarios (ctrl.devScenario) and Express Pass rounds, whose
 // balance drops by 1.5x the bet.
 // Usage: node tools/qa/soak.mjs [url] [speed=super] [browser=chrome|webkit]
@@ -77,7 +77,11 @@ const scenarios = [
   ...Array.from({ length: 6 }, () => ({ name: 'boost random', mode: 'BOOST' })),
   ...Object.entries(found).map(([name, v]) => ({ name, mode: v.mode, book: v.id })),
   // engine-built dev scenarios (src/stake/devScenarios.ts), played through ctrl.devScenario
-  { name: 'dev junction', mode: 'BASE', dev: 'junction' },
+  { name: 'dev crash', mode: 'BASE', dev: 'crash' },
+  { name: 'dev junction crash', mode: 'BASE', dev: 'junction' },
+  { name: 'dev redirect', mode: 'BASE', dev: 'redirect' },
+  { name: 'dev security', mode: 'BASE', dev: 'security' },
+  { name: 'dev missed', mode: 'BASE', dev: 'missed' },
   { name: 'dev multi', mode: 'BASE', dev: 'multi' },
   { name: 'dev express', mode: 'BOOST', dev: 'express' },
   { name: 'dev rushBig', mode: 'WITCHING', dev: 'rushBig' },
@@ -166,8 +170,8 @@ for (const [i, sc] of scenarios.entries()) {
 }
 await page.evaluate(() => window.__ll.ctrl.setBoost(false));
 const missing = [
-  'train haul', 'junction branch', 'two locomotives', 'way win', 'bonus trigger', 'power level-up', 'no win',
-  'boost train haul', 'boost junction branch', 'boost bonus trigger',
+  'train haul', 'crash', 'signal redirect', 'security all clear', 'security incident', 'two locomotives', 'route win', 'bonus trigger', 'power level-up', 'no win',
+  'boost train haul', 'boost crash', 'boost bonus trigger',
 ].filter((k) => !(k in found));
 console.log(`\n${scenarios.length - failures}/${scenarios.length} passed in ${((Date.now() - t0) / 1000).toFixed(0)}s; page errors: ${errors.length}; console output: ${logs.length}`);
 if (missing.length) console.log(`scenarios not present in the demo pack: ${missing.join(', ')}`);

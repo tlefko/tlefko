@@ -1,5 +1,5 @@
 import { t, num, cjkScript, rtl } from '../../i18n';
-import { BitmapText, CanvasTextMetrics, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture, type FederatedPointerEvent, type Renderer } from 'pixi.js';
+import { CanvasTextMetrics, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture, type FederatedPointerEvent, type Renderer } from 'pixi.js';
 import gsap from 'gsap';
 import { Logo } from '../Logo';
 import { bitmapNum, displayText, FONT_UI, type DisplayText, type NumTone } from '../text';
@@ -9,19 +9,22 @@ import { Particles } from '../fx/Particles';
 import { quality } from '../quality';
 import { speed } from '../timing';
 import { svgTexture, softDotTexture, canvasTexture, freeTexture } from '../textures';
-import { MAX_WIN, BOOST_COST, POWER_STEPS, POWER_MULTS } from '../../math/types';
+import { MAX_WIN, BOOST_COST, POWER_MULTS, CRASH_MULT } from '../../math/types';
 import { C, nextId } from '../../art/kit';
-import { ART } from '../../art/symbols';
 import { spark as sparkArt } from '../../art/fx';
-import { locoSide } from '../../art/train';
 import stats from '../../stake/stats.json';
 import type { Conductor } from '../characters/Conductor';
 import type { Rat } from '../characters/Rat';
+import { F, hex, clamp, celDefs, svgDoc, roundRect, pill, wobble, seeded } from './splash/svg';
+import { buildDemoArt, type DemoArt, type MiniSpec } from './splash/art';
+import { setSize, type DemoKit, type ReactKind } from './splash/kit';
+import { makeDemo, MINI_SPECS, type Demo, type DemoKind } from './splash/demos';
 
 /* ============================================================================================
  * Opening sequence: the logo drops in and bounces, a light sweep runs across it, Conductor Casey
- * and Rivets pop up at their posts, and a carousel of cards runs live mini-demos of the features
- * (trains, Junctions, the POWER ladder, Express Pass, max win). A big PLAY
+ * and Rivets pop up at their posts, and a carousel of cards runs live mini-demos of the features on
+ * little stretches of the subway map (./splash/demos: trains running their line, Signals, Security
+ * Checks, crashes, Rush Hour's POWER ladder, Express Pass, max win). A big PLAY
  * plaque pulses at the bottom; a tap anywhere (the gesture that unlocks audio) hands over to the
  * game: the cards fall away, the logo flies to its corner and the shade lifts off the live scene.
  * "Don't show again" (per game, localStorage) skips straight to a single PLAY tap over the game.
@@ -54,9 +57,6 @@ const VOL_PIPS = (() => {
   return sd >= 30 ? 5 : sd >= 15 ? 4 : sd >= 8 ? 3 : sd >= 4 ? 2 : 1;
 })();
 
-const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-const F = (n: number) => n.toFixed(1);
-const hex = (c: string) => parseInt(c.slice(1), 16);
 /** Logo.layout draws the lockup into a w x 0.62w box (lettering.LOGO_BOX) and fills its height. */
 const LOGO_K = 0.62;
 const LOGO_RECT_K = 0.62;
@@ -70,78 +70,14 @@ const PLAY_MAX_K = 1.22;
 const PLAY_W = 400;
 const PLAY_H = 150;
 const PLAY_ASPECT = PLAY_W / PLAY_H;
+/** A demo's share of a tall card's panel width (the mini maps fade out at their own edges). */
+const DEMO_W = 0.95;
 /** Plaque art: the rim's centre line (the fuse spark runs round it), in art units. */
 const RIM = { x0: 70, x1: 330, cy: 67, r: 51 };
 
 /* ------------------------------------------------------------------------------------------
  * Art (house ink + cel, docs/ART.md): SVG in code, rasterised at display size at build time.
  * ---------------------------------------------------------------------------------------- */
-
-/** kit.composeSymbol's cel + drop filters for art on any viewBox; `s` scales the offsets. */
-function celDefs(id: string, s = 1, shade = 0.3, light = 0.45): string {
-  return `<filter id="${id}cel" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-    <feOffset in="SourceAlpha" dx="${F(-15 * s)}" dy="${F(-17 * s)}" result="o"/>
-    <feComposite in="SourceAlpha" in2="o" operator="out" result="rim"/>
-    <feGaussianBlur in="rim" stdDeviation="${F(1.4 * s)}" result="rimb"/>
-    <feFlood flood-color="${C.ink}" flood-opacity="${shade}"/>
-    <feComposite in2="rimb" operator="in" result="sh0"/>
-    <feComposite in="sh0" in2="SourceAlpha" operator="in" result="shade"/>
-    <feOffset in="SourceAlpha" dx="${F(7 * s)}" dy="${F(9 * s)}" result="o2"/>
-    <feComposite in="SourceAlpha" in2="o2" operator="out" result="rim2"/>
-    <feGaussianBlur in="rim2" stdDeviation="${F(3 * s)}" result="rim2b"/>
-    <feFlood flood-color="#ffffff" flood-opacity="${light}"/>
-    <feComposite in2="rim2b" operator="in" result="hl0"/>
-    <feComposite in="hl0" in2="SourceAlpha" operator="in" result="hl"/>
-    <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/><feMergeNode in="hl"/></feMerge>
-  </filter>
-  <filter id="${id}drop" x="-12%" y="-12%" width="124%" height="140%">
-    <feGaussianBlur in="SourceAlpha" stdDeviation="${F(4.5 * s)}"/>
-    <feOffset dy="${F(6 * s)}" result="d"/>
-    <feFlood flood-color="#000" flood-opacity=".5"/>
-    <feComposite in2="d" operator="in"/>
-    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-  <filter id="${id}soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${F(4 * s)}"/></filter>`;
-}
-
-const svgDoc = (w: number, h: number, defs: string, body: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><defs>${defs}</defs>${body}</svg>`;
-
-function roundRect(x0: number, y0: number, x1: number, y1: number, r: number): string {
-  return `M${F(x0 + r)} ${F(y0)} H${F(x1 - r)} Q${F(x1)} ${F(y0)} ${F(x1)} ${F(y0 + r)} V${F(y1 - r)} Q${F(x1)} ${F(y1)} ${F(x1 - r)} ${F(y1)} H${F(x0 + r)} Q${F(x0)} ${F(y1)} ${F(x0)} ${F(y1 - r)} V${F(y0 + r)} Q${F(x0)} ${F(y0)} ${F(x0 + r)} ${F(y0)} Z`;
-}
-
-function pill(x: number, y: number, w: number, h: number): string {
-  const r = h / 2;
-  return `M${F(x + r)} ${F(y)} H${F(x + w - r)} A${F(r)} ${F(r)} 0 0 1 ${F(x + w - r)} ${F(y + h)} H${F(x + r)} A${F(r)} ${F(r)} 0 0 1 ${F(x + r)} ${F(y)} Z`;
-}
-
-/** A hand-inked wobbly line (wood grain). */
-function wobble(x0: number, y0: number, x1: number, y1: number, amp: number, n: number, seed: number): string {
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
-  let d = `M${F(x0)} ${F(y0)}`;
-  for (let i = 1; i <= n; i++) {
-    const tm = (i - 0.5) / n;
-    const te = i / n;
-    const o = Math.sin(seed * 1.7 + i * 2.3) * amp;
-    d += ` Q${F(x0 + dx * tm + nx * o)} ${F(y0 + dy * tm + ny * o)} ${F(x0 + dx * te)} ${F(y0 + dy * te)}`;
-  }
-  return d;
-}
-
-function seeded(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let x = Math.imul(s ^ (s >>> 15), 1 | s);
-    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * Feature card: a maroon enamel frame ruled in brass, with art-deco brass corner plates and rivets,
@@ -353,45 +289,6 @@ function skullPipSvg(lit: boolean): string {
   return svgDoc(64, 64, '', `<path d="M36 4 L14 36 H30 L24 60 L50 26 H34 L42 4 Z" fill="${lit ? C.voltLight : C.g4}" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/>`);
 }
 
-function leverBaseSvg(on: boolean): string {
-  const id = nextId('lv');
-  const plate = pill(8, 44, 144, 44);
-  const slot = pill(34, 58, 92, 16);
-  const screw = (x: number) => `<circle cx="${x}" cy="66" r="5.5" fill="${C.goldLight}" stroke="${C.ink}" stroke-width="2.2"/><path d="M${x - 3} ${66 - 3} L${x + 3} ${66 + 3}" stroke="${C.goldDeep}" stroke-width="1.8"/>`;
-  return svgDoc(
-    160,
-    100,
-    celDefs(id, 0.6),
-    `<g filter="url(#${id}drop)">
-    ${on ? `<path d="${pill(0, 36, 160, 60)}" fill="${C.volt}" opacity=".3"/>` : ''}
-    <path d="${plate}" fill="${C.iron}" filter="url(#${id}cel)"/>
-    <path d="${pill(13, 48, 134, 36)}" fill="none" stroke="${C.gold}" stroke-width="2" opacity=".8"/>
-    <path d="${slot}" fill="${on ? C.volt : C.tunnel}"/>
-    ${on ? `<path d="${pill(40, 61.5, 80, 9)}" fill="${C.voltCore}"/>` : ''}
-    <path d="${slot}" fill="none" stroke="${C.ink}" stroke-width="3"/>
-    ${screw(22)}${screw(138)}
-    <path d="${plate}" fill="none" stroke="${C.ink}" stroke-width="4.5"/>
-  </g>`,
-  );
-}
-
-/** Lever handle: steel rod and maroon knob; pivot at (32, 116). 64 x 128. */
-function leverHandleSvg(): string {
-  const id = nextId('lh');
-  return svgDoc(
-    64,
-    128,
-    celDefs(id, 0.4),
-    `<path d="M32 116 L32 34" stroke="${C.ink}" stroke-width="13" stroke-linecap="round"/>
-    <path d="M32 116 L32 34" stroke="${C.steel}" stroke-width="7" stroke-linecap="round"/>
-    <path d="M30 108 L30 40" stroke="${C.steelLight}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
-    <circle cx="32" cy="26" r="19" fill="${C.maroon}" filter="url(#${id}cel)"/>
-    <circle cx="32" cy="26" r="19" fill="none" stroke="${C.ink}" stroke-width="4.5"/>
-    <path d="M21 21 Q25 12 34 11" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>
-    <circle cx="32" cy="116" r="8" fill="${C.gold}" stroke="${C.ink}" stroke-width="3.5"/>`,
-  );
-}
-
 /* ------------------------------------------------------------------------------------------
  * Lettering
  * ---------------------------------------------------------------------------------------- */
@@ -426,8 +323,6 @@ function bodyStyle(size: number, width: number, align: 'left' | 'center' | 'righ
  * Cards and their live demos
  * ---------------------------------------------------------------------------------------- */
 
-type DemoKind = 'train' | 'junction' | 'power' | 'boost' | 'max';
-
 interface CardSpec {
   kind: DemoKind;
   title: string;
@@ -455,636 +350,11 @@ interface Art {
   dotOff: Texture;
   pipOn: Texture;
   pipOff: Texture;
-  train: Texture;
-  leverOff: Texture;
-  leverOn: Texture;
-  handle: Texture;
-  rays: Texture;
   spark: Texture;
   sweep: Texture;
   vignette: Texture;
-}
-
-interface DemoKit {
-  sym: SymbolTextures;
-  art: Art;
-  fx: Particles;
-  /** A demo hit a big beat: the characters may react (the splash rate-limits it). */
-  react(kind: 'train' | 'loot' | 'boost' | 'power'): void;
-}
-
-const setSize = (s: Sprite, px: number) => s.scale.set(px / Math.max(1, s.texture.width));
-
-abstract class Demo {
-  /** The demo's art. */
-  view = new Container();
-  /**
-   * Its numbers (fuse, size, multipliers): drawn in the card text layer, above every particle, at
-   * the same place as `view`, so no puff or spark ever crosses a glyph.
-   */
-  labels = new Container();
-  featured = false;
-  protected tl?: gsap.core.Timeline;
-  private running = false;
-  private stopAtLoop = false;
-  constructor(
-    protected k: DemoKit,
-    protected D: number,
-  ) {}
-  /**
-   * Play while on screen (in low quality only the featured card). A card that must stop while it
-   * is still visible finishes its loop first (it ends on a settled board, nothing freezes mid-air);
-   * one that has left the screen stops at once and snaps to its settled board.
-   */
-  run(on: boolean, visible: boolean) {
-    if (!this.tl) {
-      this.running = on;
-      return;
-    }
-    if (on) {
-      this.stopAtLoop = false;
-      if (!this.running) {
-        this.running = true;
-        this.tl.restart();
-      }
-      return;
-    }
-    if (!this.running) return;
-    if (visible) {
-      this.stopAtLoop = true;
-      return;
-    }
-    this.running = false;
-    this.stopAtLoop = false;
-    this.tl.pause();
-    this.settle();
-  }
-  /** Timelines call this on every repeat: the place to stop a card that was asked to. */
-  protected loopEnd() {
-    if (!this.stopAtLoop) return;
-    this.stopAtLoop = false;
-    this.running = false;
-    this.tl?.pause();
-  }
-  /** Snap to the loop's resting board (called when a card stops off screen). */
-  protected settle() {}
-  /** Hold still where it is (the handoff: the cards fall away as they are). */
-  freeze() {
-    this.running = false;
-    this.stopAtLoop = false;
-    this.tl?.pause();
-  }
-  get on() {
-    return this.running;
-  }
-  update(_dtMs: number) {}
-  protected at(o: Container, dx = 0, dy = 0) {
-    return o.toGlobal({ x: dx, y: dy });
-  }
-  destroy() {
-    this.tl?.kill();
-  }
-}
-
-/** A strip of board cells for the demos: `cols` x `rows`, cell pitch p, sprites with art keys. */
-class Strip {
-  cells: Sprite[] = [];
-  home: { x: number; y: number }[] = [];
-  readonly p: number;
-  readonly size: number;
-  constructor(
-    parent: Container,
-    private sym: SymbolTextures,
-    D: number,
-    readonly cols: number,
-    readonly rows: number,
-  ) {
-    this.p = D / (Math.max(cols, rows) + 0.15);
-    this.size = this.p * 0.94;
-    for (let c = 0; c < cols; c++)
-      for (let r = 0; r < rows; r++) {
-        const s = new Sprite(Texture.EMPTY);
-        s.anchor.set(0.5);
-        const h = { x: (c - (cols - 1) / 2) * this.p, y: (r - (rows - 1) / 2) * this.p };
-        s.position.set(h.x, h.y);
-        this.cells.push(s);
-        this.home.push(h);
-        parent.addChild(s);
-      }
-  }
-  i(c: number, r: number) {
-    return c * this.rows + r;
-  }
-  set(i: number, key: number, pose: 'idle' | 'win' = 'idle') {
-    const set = this.sym.sets.get(key);
-    if (!set) return;
-    const s = this.cells[i];
-    s.texture = pose === 'win' ? (set.win ?? set.idle) : set.idle;
-    setSize(s, this.size);
-    s.alpha = 1;
-  }
-  scaleOf(i: number) {
-    return this.size / Math.max(1, this.cells[i].texture.width);
-  }
-  reset() {
-    this.cells.forEach((c, i) => {
-      c.position.set(this.home[i].x, this.home[i].y);
-      c.alpha = 1;
-      c.rotation = 0;
-      c.scale.set(this.scaleOf(i));
-    });
-  }
-}
-
-/** A coin value label that rides on a demo coin. */
-function coinTag(v: number, p: number): BitmapText {
-  const b = bitmapNum(`${v}x`, 'white', p * 0.3);
-  return b;
-}
-
-/**
- * All aboard: a Locomotive on reel 1 lights its headlamp, a train pulls out along the row and each
- * Fare Coin hops into it while the tally above the cab counts up.
- */
-class TrainDemo extends Demo {
-  private s: Strip;
-  private train = new Sprite();
-  private beam = new Sprite(softDotTexture());
-  private tally: BitmapText;
-  private tags: BitmapText[] = [];
-  private coins: { c: number; v: number; key: number }[] = [
-    { c: 1, v: 2, key: ART.COIN_SILVER },
-    { c: 3, v: 0.5, key: ART.COIN_BRONZE },
-    { c: 4, v: 10, key: ART.COIN_GOLD },
-  ];
-  constructor(k: DemoKit, D: number) {
-    super(k, D);
-    this.s = new Strip(this.view, k.sym, D, 5, 1);
-    const p = this.s.p;
-    this.train.texture = k.art.train;
-    this.train.anchor.set(1, 0.6);
-    this.train.height = p * 0.72;
-    this.train.scale.x = this.train.scale.y;
-    this.beam.anchor.set(0, 0.5);
-    this.beam.blendMode = 'add';
-    this.beam.tint = hex(C.amberLight);
-    this.beam.width = p * 1.4;
-    this.beam.height = p * 0.5;
-    this.view.addChild(this.beam, this.train);
-    this.tally = bitmapNum('0x', 'gold', p * 0.42);
-    this.tally.position.set(0, -p * 1.05);
-    this.labels.addChild(this.tally);
-    for (const c of this.coins) {
-      const t = coinTag(c.v, p);
-      t.position.set(this.s.home[this.s.i(c.c, 0)].x, 0);
-      this.tags.push(t);
-      this.labels.addChild(t);
-    }
-    this.fill();
-    this.timeline();
-  }
-  private fill() {
-    const s = this.s;
-    s.set(s.i(0, 0), ART.LOCO);
-    s.set(s.i(2, 0), 5);
-    for (const c of this.coins) s.set(s.i(c.c, 0), c.key);
-    s.reset();
-    this.tags.forEach((t) => (t.visible = true));
-    this.train.visible = false;
-    this.beam.visible = false;
-    this.tally.alpha = 0;
-    this.tally.text = '0x';
-  }
-  protected override settle() {
-    this.fill();
-  }
-  private timeline() {
-    const s = this.s;
-    const p = s.p;
-    const x0 = s.home[0].x;
-    const xEnd = s.home[s.home.length - 1].x + p * 2.4;
-    const beat = 0.34;
-    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    tl.call(() => this.fill(), [], 0);
-    tl.call(() => {
-      s.set(0, ART.LOCO, 'win');
-      const g = this.at(s.cells[0]);
-      this.k.fx.glint(g.x, g.y, 0.5);
-    }, [], 0.5);
-    tl.call(() => {
-      this.train.visible = true;
-      this.beam.visible = !quality.low;
-      this.train.position.set(x0 - p * 0.2, p * 0.1);
-      if (this.featured) this.k.react('train');
-    }, [], 0.85);
-    tl.to(s.cells[0], { alpha: 0.3, duration: 0.2 }, 0.85);
-    tl.to(this.tally, { alpha: 1, duration: 0.2 }, 0.9);
-    const move = { x: x0 - p * 0.2 };
-    tl.to(move, {
-      x: xEnd,
-      duration: beat * 6.5,
-      ease: 'power1.in',
-      onUpdate: () => {
-        this.train.x = move.x;
-        this.beam.position.set(move.x - p * 0.05, p * 0.02);
-      },
-    }, 0.85);
-    let sum = 0;
-    this.coins.forEach((c, j) => {
-      const cell = s.cells[s.i(c.c, 0)];
-      const at = 0.85 + (c.c + 0.15) * beat * 1.05;
-      tl.call(() => {
-        sum = Math.round((sum + c.v) * 100) / 100;
-        this.tally.text = `${sum}x`;
-        const tk = this.tally.scale.x;
-        gsap.fromTo(this.tally.scale, { x: tk * 1.4, y: tk * 1.4 }, { x: tk, y: tk, duration: 0.3, ease: 'back.out(3)' });
-        this.tags[j].visible = false;
-        const g = this.at(cell);
-        this.k.fx.coins(g.x, g.y, 3, 2, 0.5);
-      }, [], at);
-      tl.to(cell, { y: -p * 0.5, alpha: 0, duration: 0.25, ease: 'power2.out' }, at);
-      tl.to(cell.scale, { x: () => s.scaleOf(s.i(c.c, 0)) * 0.4, y: () => s.scaleOf(s.i(c.c, 0)) * 0.4, duration: 0.25 }, at);
-    });
-    const tk = this.tally.scale.x;
-    tl.to(this.tally.scale, { x: tk * 1.15, y: tk * 1.15, duration: 0.3, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 3.4);
-    tl.to(this.tally, { alpha: 0, duration: 0.3 }, 4.2);
-    tl.to({}, { duration: 0.01 }, 4.6);
-    this.tl = tl;
-  }
-}
-
-/**
- * Junctions: the train reaches a Junction, the lever throws and two branch trains switch across
- * into the rows above and below; the route lights up behind them.
- */
-class JunctionDemo extends Demo {
-  private s: Strip;
-  private route = new Graphics();
-  private trains: Sprite[] = [];
-  private prog = { a: 0, b: 0 };
-  constructor(k: DemoKit, D: number) {
-    super(k, D);
-    this.s = new Strip(this.view, k.sym, D, 4, 3);
-    this.view.addChildAt(this.route, 0);
-    for (let i = 0; i < 3; i++) {
-      const t = new Sprite(k.art.train);
-      t.anchor.set(1, 0.6);
-      t.height = this.s.p * 0.55;
-      t.scale.x = t.scale.y;
-      t.visible = false;
-      this.trains.push(t);
-      this.view.addChild(t);
-    }
-    this.fill();
-    this.timeline();
-  }
-  private fill() {
-    const s = this.s;
-    const board = [
-      [1, ART.LOCO, 2],
-      [ART.COIN_SILVER, 6, 3],
-      [7, ART.SIGNAL, 0],
-      [ART.COIN_GOLD, ART.COIN_SILVER, ART.COIN_BRONZE],
-    ];
-    board.forEach((col, c) => col.forEach((key, r) => s.set(s.i(c, r), key)));
-    s.reset();
-    this.route.clear();
-    this.prog.a = this.prog.b = 0;
-    for (const t of this.trains) t.visible = false;
-  }
-  protected override settle() {
-    this.fill();
-  }
-  private draw() {
-    const s = this.s;
-    const p = s.p;
-    const g = this.route;
-    g.clear();
-    const y = (r: number) => s.home[s.i(0, r)].y;
-    const x = (c: number) => s.home[s.i(c, 0)].x;
-    const w = Math.max(2, p * 0.08);
-    const col = hex(C.volt);
-    const a = this.prog.a;
-    if (a > 0) {
-      g.moveTo(x(0), y(1)).lineTo(x(0) + (x(3) + p * 0.5 - x(0)) * a, y(1)).stroke({ width: w, color: col, alpha: 0.9 });
-    }
-    const b = this.prog.b;
-    if (b > 0) {
-      for (const r of [0, 2]) {
-        const yy = y(1) + (y(r) - y(1)) * Math.min(1, b * 3);
-        g.moveTo(x(2), y(1)).lineTo(x(2), yy).stroke({ width: w, color: col, alpha: 0.9 });
-        if (b > 0.34) g.moveTo(x(2), y(r)).lineTo(x(2) + (x(3) + p * 0.5 - x(2)) * ((b - 0.34) / 0.66), y(r)).stroke({ width: w, color: col, alpha: 0.9 });
-      }
-    }
-  }
-  private timeline() {
-    const s = this.s;
-    const p = s.p;
-    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    const x = (c: number) => s.home[s.i(c, 0)].x;
-    const y = (r: number) => s.home[s.i(0, r)].y;
-    tl.call(() => this.fill(), [], 0);
-    tl.call(() => {
-      s.set(s.i(0, 1), ART.LOCO, 'win');
-      const t = this.trains[0];
-      t.visible = true;
-      t.position.set(x(0), y(1) + p * 0.1);
-      if (this.featured) this.k.react('train');
-    }, [], 0.4);
-    tl.to(this.prog, { a: 1, duration: 1.4, ease: 'none', onUpdate: () => this.draw() }, 0.6);
-    tl.to(this.trains[0], { x: x(3) + p * 1.6, duration: 1.6, ease: 'none' }, 0.6);
-    // the junction (column 2) throws
-    tl.call(() => {
-      s.set(s.i(2, 1), ART.SIGNAL, 'win');
-      const g = this.at(s.cells[s.i(2, 1)]);
-      this.k.fx.sparks(g.x, g.y, 10, 0.7);
-      [1, 2].forEach((j) => {
-        const t = this.trains[j];
-        t.visible = true;
-        t.position.set(x(2), y(1) + p * 0.1);
-      });
-    }, [], 1.35);
-    tl.to(this.prog, { b: 1, duration: 1.1, ease: 'none', onUpdate: () => this.draw() }, 1.35);
-    [0, 2].forEach((r, j) => {
-      const t = this.trains[j + 1];
-      tl.to(t, { y: y(r) + p * 0.1, duration: 0.3, ease: 'power2.inOut' }, 1.35);
-      tl.to(t, { x: x(3) + p * 1.6, duration: 0.9, ease: 'power1.in' }, 1.65);
-    });
-    // coins collected: (1,0) by the main train, (3,0) (3,1) (3,2) by all three
-    const pop = (c: number, r: number, at: number) => {
-      const cell = s.cells[s.i(c, r)];
-      tl.call(() => {
-        const g = this.at(cell);
-        this.k.fx.coins(g.x, g.y, 3, 2, 0.5);
-      }, [], at);
-      tl.to(cell, { alpha: 0, y: s.home[s.i(c, r)].y - p * 0.4, duration: 0.25 }, at);
-    };
-    pop(1, 0, 0.95);
-    pop(3, 1, 1.95);
-    pop(3, 0, 2.1);
-    pop(3, 2, 2.1);
-    tl.to({}, { duration: 0.01 }, 3.8);
-    this.tl = tl;
-  }
-}
-
-/**
- * Rush Hour: passengers board and the POWER train runs along the ladder; each stop it reaches lights
- * and the multiplier steps up x2, x3, x5, x10.
- */
-class PowerDemo extends Demo {
-  private track = new Graphics();
-  private stops: { x: number; g: Graphics; t: BitmapText }[] = [];
-  private train = new Sprite();
-  private big: BitmapText;
-  private pos = { p: 0 };
-  private x0: number;
-  private x1: number;
-  constructor(k: DemoKit, D: number) {
-    super(k, D);
-    this.x0 = -D * 0.42;
-    this.x1 = D * 0.42;
-    this.view.addChild(this.track);
-    const ty = D * 0.18;
-    POWER_STEPS.forEach((need, i) => {
-      const x = this.x0 + (this.x1 - this.x0) * (need / POWER_STEPS[POWER_STEPS.length - 1]);
-      const g = new Graphics();
-      g.position.set(x, ty - D * 0.12);
-      this.view.addChild(g);
-      const t = bitmapNum(`x${POWER_MULTS[i + 1]}`, 'white', D * 0.085);
-      t.position.set(x, ty - D * 0.12);
-      this.labels.addChild(t);
-      this.stops.push({ x, g, t });
-    });
-    this.train.texture = k.art.train;
-    this.train.anchor.set(0.9, 0.85);
-    this.train.height = D * 0.11;
-    this.train.scale.x = this.train.scale.y;
-    this.view.addChild(this.train);
-    this.big = bitmapNum('x1', 'gold', D * 0.28);
-    this.big.position.set(0, -D * 0.2);
-    this.labels.addChild(this.big);
-    this.reset();
-    this.timeline();
-  }
-  private drawTrack(lit: number) {
-    const D = this.D;
-    const g = this.track;
-    const y = D * 0.18;
-    g.clear();
-    g.roundRect(this.x0 - D * 0.04, y - D * 0.03, this.x1 - this.x0 + D * 0.08, D * 0.06, D * 0.02).fill({ color: hex(C.ironDeep) });
-    g.rect(this.x0, y - D * 0.012, this.x1 - this.x0, D * 0.008).fill({ color: hex(C.steel) });
-    g.rect(this.x0, y + D * 0.006, this.x1 - this.x0, D * 0.008).fill({ color: hex(C.steel) });
-    if (lit > this.x0) g.rect(this.x0, y - D * 0.016, lit - this.x0, D * 0.032).fill({ color: hex(C.volt), alpha: 0.85 });
-  }
-  private drawStop(i: number, on: boolean) {
-    const s = this.stops[i];
-    const r = this.D * 0.075;
-    s.g.clear();
-    s.g.circle(0, 0, r).fill({ color: hex(on ? C.gold : C.steelDeep) }).stroke({ width: 3, color: hex(C.ink) });
-    s.g.circle(0, 0, r * 0.78).fill({ color: hex(on ? C.emerald : C.iron) });
-  }
-  private reset() {
-    this.pos.p = 0;
-    this.place();
-    this.stops.forEach((_, i) => this.drawStop(i, false));
-    this.big.text = 'x1';
-  }
-  private place() {
-    const x = this.x0 + (this.x1 - this.x0) * this.pos.p;
-    this.train.position.set(x, this.D * 0.18);
-    this.drawTrack(x);
-  }
-  protected override settle() {
-    this.reset();
-  }
-  private timeline() {
-    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    tl.call(() => this.reset(), [], 0);
-    const full = POWER_STEPS[POWER_STEPS.length - 1];
-    let at = 0.4;
-    let prev = 0;
-    POWER_STEPS.forEach((need, i) => {
-      const dur = 0.25 + ((need - prev) / full) * 1.6;
-      tl.to(this.pos, { p: need / full, duration: dur, ease: 'power1.inOut', onUpdate: () => this.place() }, at);
-      at += dur;
-      tl.call(() => {
-        this.drawStop(i, true);
-        this.big.text = `x${POWER_MULTS[i + 1]}`;
-        const k = this.big.scale.x;
-        gsap.fromTo(this.big.scale, { x: k * 1.5, y: k * 1.5 }, { x: k, y: k, duration: 0.4, ease: 'back.out(3)' });
-        const g = this.at(this.stops[i].g);
-        this.k.fx.sparks(g.x, g.y, 8, 0.6);
-        if (i === POWER_STEPS.length - 1 && this.featured) this.k.react('power');
-      }, [], at);
-      at += 0.25;
-      prev = need;
-    });
-    tl.to({}, { duration: 0.01 }, at + 1.2);
-    this.tl = tl;
-  }
-}
-
-/** Express Pass: the lever goes on and every spin reel 1 brings a Locomotive. */
-class BoostDemo extends Demo {
-  private base: Sprite;
-  private handle: Sprite;
-  private cost: BitmapText;
-  private s: Strip;
-  constructor(k: DemoKit, D: number) {
-    super(k, D);
-    const leverW = D * 0.5;
-    this.base = new Sprite(k.art.leverOff);
-    this.base.anchor.set(0.5, 0.66);
-    setSize(this.base, leverW);
-    this.base.position.set(-D * 0.22, D * 0.05);
-    this.handle = new Sprite(k.art.handle);
-    this.handle.anchor.set(0.5, 116 / 128);
-    this.handle.scale.set(this.base.scale.x * 1.05);
-    this.handle.position.set(-D * 0.22, D * 0.05);
-    this.handle.rotation = -0.62;
-    this.cost = bitmapNum(`${BOOST_COST}x`, 'gold', D * 0.18);
-    this.cost.position.set(-D * 0.22, -D * 0.38);
-    const col = new Container();
-    col.position.set(D * 0.26, 0);
-    this.view.addChild(this.base, this.handle, col);
-    this.s = new Strip(col, k.sym, D * 0.85, 1, 4);
-    this.labels.addChild(this.cost);
-    this.reset();
-    this.timeline();
-  }
-  private reset() {
-    this.base.texture = this.k.art.leverOff;
-    this.handle.rotation = -0.62;
-    this.cost.alpha = 0.4;
-    [0, 4, 2, 7].forEach((k, r) => this.s.set(r, k));
-    this.s.reset();
-  }
-  protected override settle() {
-    this.reset();
-  }
-  private timeline() {
-    const D = this.D;
-    const s = this.s;
-    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    tl.call(() => this.reset(), [], 0);
-    tl.to(this.handle, { rotation: 0.62, duration: 0.3, ease: 'back.out(3)' }, 0.5);
-    tl.call(() => {
-      this.base.texture = this.k.art.leverOn;
-      const g = this.at(this.handle);
-      this.k.fx.sparks(g.x, g.y - D * 0.05, 8, 0.6);
-      if (this.featured) this.k.react('boost');
-    }, [], 0.65);
-    const ck = this.cost.scale.x;
-    tl.to(this.cost, { alpha: 1, duration: 0.2 }, 0.65);
-    tl.fromTo(this.cost.scale, { x: ck * 1.35, y: ck * 1.35 }, { x: ck, y: ck, duration: 0.4, ease: 'back.out(3)', immediateRender: false }, 0.65);
-    // three spins: the column drops in, always with a Locomotive
-    const rows = [1, 3, 0];
-    rows.forEach((lr, k) => {
-      const at = 1.1 + k * 0.9;
-      tl.call(() => {
-        for (let r = 0; r < 4; r++) s.set(r, r === lr ? ART.LOCO : [0, 1, 3, 5, 6, 4][(r + k * 2) % 6]);
-      }, [], at);
-      for (let r = 0; r < 4; r++) {
-        const c = s.cells[r];
-        tl.fromTo(c, { y: s.home[r].y - D * 0.5, alpha: 0 }, { y: s.home[r].y, alpha: 1, duration: 0.32, ease: 'land', immediateRender: false }, at + (3 - r) * 0.04);
-      }
-      tl.call(() => {
-        s.set(lr, ART.LOCO, 'win');
-        const g = this.at(s.cells[lr]);
-        this.k.fx.glint(g.x, g.y, 0.45);
-      }, [], at + 0.45);
-    });
-    tl.to(this.handle, { rotation: -0.62, duration: 0.3, ease: 'back.out(2.5)' }, 4.0);
-    tl.call(() => void (this.base.texture = this.k.art.leverOff), [], 4.1);
-    tl.to(this.cost, { alpha: 0.4, duration: 0.3 }, 4.0);
-    tl.to({}, { duration: 0.01 }, 4.6);
-    this.tl = tl;
-  }
-}
-
-/** Max win: the Golden Ticket flips in a burst of gold and the max win pops. */
-class MaxDemo extends Demo {
-  private rays: Sprite;
-  private chest = new Sprite(Texture.EMPTY);
-  private big: BitmapText;
-  private ck = 1;
-  constructor(k: DemoKit, D: number) {
-    super(k, D);
-    this.rays = new Sprite(k.art.rays);
-    this.rays.anchor.set(0.5);
-    setSize(this.rays, D * 1.1);
-    this.rays.blendMode = 'add';
-    this.rays.position.set(0, -D * 0.08);
-    this.rays.alpha = 0.15;
-    const set = k.sym.sets.get(ART.LOCO_GOLD);
-    this.chest.texture = set?.idle ?? Texture.EMPTY;
-    this.chest.anchor.set(0.5);
-    setSize(this.chest, D * 0.66);
-    this.ck = this.chest.scale.x;
-    this.chest.position.set(0, -D * 0.08);
-    this.big = bitmapNum(`${MAX_WIN.toLocaleString('en-US')}x`, 'gold', D * 0.25);
-    const maxW = D * 0.9;
-    if (this.big.width > maxW) this.big.scale.set(this.big.scale.x * (maxW / this.big.width));
-    this.big.position.set(0, D * 0.36);
-    this.view.addChild(this.rays, this.chest);
-    this.labels.addChild(this.big);
-    this.timeline();
-  }
-  private timeline() {
-    const D = this.D;
-    const set = this.k.sym.sets.get(ART.LOCO_GOLD);
-    const bk = this.big.scale.x;
-    const tl = gsap.timeline({ repeat: -1, paused: true, onRepeat: () => this.loopEnd() });
-    tl.call(() => {
-      if (set) this.chest.texture = set.idle;
-    }, [], 0);
-    tl.set(this.big, { alpha: 0.55 }, 0);
-    tl.set(this.big.scale, { x: bk * 0.86, y: bk * 0.86 }, 0);
-    tl.to(this.chest, { rotation: 0.05, duration: 0.06, yoyo: true, repeat: 7, ease: 'sine.inOut' }, 0.45);
-    tl.call(() => {
-      if (set?.win) this.chest.texture = set.win;
-      const g = this.at(this.chest, 0, -D * 0.12);
-      this.k.fx.coins(g.x, g.y, 9, 2, 0.8);
-      this.k.fx.glint(g.x + D * 0.15, g.y - D * 0.05, 0.4);
-      if (this.featured) this.k.react('loot');
-    }, [], 1.0);
-    tl.set(this.chest, { rotation: 0 }, 1.0);
-    tl.fromTo(this.chest.scale, { x: this.ck * 1.16, y: this.ck * 0.9 }, { x: this.ck, y: this.ck, duration: 0.45, ease: 'elastic.out(1, .45)', immediateRender: false }, 1.0);
-    tl.to(this.rays, { alpha: 0.95, duration: 0.25 }, 1.0);
-    tl.to(this.big, { alpha: 1, duration: 0.15 }, 1.05);
-    tl.fromTo(this.big.scale, { x: bk * 1.18, y: bk * 1.18 }, { x: bk, y: bk, duration: 0.45, ease: 'back.out(3)', immediateRender: false }, 1.05);
-    tl.to(this.big.scale, { x: bk * 1.05, y: bk * 1.05, duration: 0.35, yoyo: true, repeat: 2, ease: 'sine.inOut' }, 1.6);
-    tl.to(this.rays, { alpha: 0.15, duration: 0.4 }, 2.9);
-    tl.call(() => {
-      if (set) this.chest.texture = set.idle;
-    }, [], 3.05);
-    tl.to(this.big, { alpha: 0.55, duration: 0.3 }, 3.05);
-    tl.to({}, { duration: 0.01 }, 3.7);
-    this.tl = tl;
-  }
-  protected override settle() {
-    const set = this.k.sym.sets.get(ART.LOCO_GOLD);
-    if (set) this.chest.texture = set.idle;
-    this.chest.rotation = 0;
-    this.chest.scale.set(this.ck);
-    this.rays.alpha = 0.15;
-    this.big.alpha = 0.55;
-  }
-  override update(dtMs: number) {
-    if (this.on) this.rays.rotation += dtMs * 0.00018;
-  }
-}
-
-/** Sunburst rays behind the max-win demo. */
-function raysSvg(): string {
-  let rays = '';
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
-    const b = a + Math.PI / 32;
-    rays += `<path d="M128 128 L${F(128 + Math.cos(a) * 128)} ${F(128 + Math.sin(a) * 128)} L${F(128 + Math.cos(b) * 128)} ${F(128 + Math.sin(b) * 128)} Z" fill="${C.goldLight}" opacity="${i % 2 ? 0.55 : 0.85}"/>`;
-  }
-  return svgDoc(256, 256, '', rays);
+  /** The feature demos' art (mini maps, trains, symbols at card size). */
+  demo: DemoArt;
 }
 
 /** Optional rig extras (track C): a glance toward a global point, null to look ahead again. */
@@ -1254,7 +524,7 @@ export class IntroSplash extends Container {
     this.P = this.plan(specs);
     const P = this.P;
     const unit = clamp((P.fit?.D ?? P.play.h * 1.6) / 3.1, 18, 96);
-    await Promise.all([this.buildArt(), this.fx.build(unit, res), this.demoFx.build(unit, res)]);
+    await Promise.all([this.buildArt(specs), this.fx.build(unit, res), this.demoFx.build(unit, res)]);
     // Text is never under a particle or a moving sprite: every layer that carries lettering (card
     // text, badges, PLAY, the toggle, the lockup) sits above both particle systems and the flyer.
     for (const l of [this.cardLayer, this.cardTextLayer, this.demoFxLayer, this.flyLayer, this.fxLayer, this.charLayer, this.backdrop]) l.eventMode = 'none';
@@ -1271,7 +541,7 @@ export class IntroSplash extends Container {
     this.buildToggle();
     this.car.offset = this.o.index ?? (P.n === 3 ? -1 : 0);
     if (this.full) this.placeCards();
-    this.autoT = 5;
+    this.autoT = this.dwell() + (this.o.intro ? 1.2 : 0);
     this.offQuality = quality.onChange(() => this.applyQuality());
     if (this.o.intro) this.prepareIntro();
     else this.idle();
@@ -1279,24 +549,29 @@ export class IntroSplash extends Container {
 
   private specs(): CardSpec[] {
     const list: CardSpec[] = [
-      { kind: 'train', title: t('splashTrainTitle'), body: t('splashTrain'), tone: 'gold', accent: hex(C.amber) },
-      { kind: 'junction', title: t('splashJunctionTitle'), body: t('splashJunction'), tone: 'green', accent: hex(C.emeraldLight) },
-      { kind: 'power', title: t('splashPowerTitle'), body: t('splashPower', { mult: POWER_MULTS[POWER_MULTS.length - 1] }), tone: 'crimson', accent: hex(C.volt) },
+      { kind: 'run', title: t('splashTrainTitle'), body: t('splashRun'), tone: 'gold', accent: hex(C.amber) },
+      { kind: 'signal', title: t('splashSignalTitle'), body: t('splashSignal'), tone: 'green', accent: hex(C.emeraldLight) },
+      { kind: 'security', title: t('splashSecurityTitle'), body: t('splashSecurity'), tone: 'sea', accent: 0x6ff0ff },
+      { kind: 'crash', title: t('splashCrashTitle'), body: t('splashCrash', { mult: CRASH_MULT }), tone: 'fire', accent: hex(C.fire) },
+      { kind: 'power', title: t('splashPowerTitle'), body: t('splashRush', { mult: POWER_MULTS[POWER_MULTS.length - 1] }), tone: 'crimson', accent: hex(C.volt) },
       { kind: 'boost', title: t('splashBoostTitle'), body: t('splashBoost', { cost: num(BOOST_COST) }), tone: 'silver', accent: hex(C.voltLight) },
       { kind: 'max', title: t('splashMaxTitle'), body: t('splashMax', { max: num(MAX_WIN) }), tone: 'gold', accent: hex(C.gold) },
     ];
     return list.filter((s) => s.kind !== 'boost' || this.o.boost);
   }
 
-  private async buildArt() {
+  private async buildArt(specs: CardSpec[]) {
     const P = this.P;
     const r = this.res;
     const cw = Math.max(40, P.cw);
-    const trainPx = Math.round(Math.max(64, (P.fit?.D ?? 120) * 0.5) * r);
     const arrowPx = Math.max(24, P.arrow) * r;
     const badgeH = P.badges?.h ?? 40;
     const pip = badgeH * 0.42 * r;
-    const [board, playTop, playBase, box, tick, arrow, dotOn, dotOff, pipOn, pipOff, train, leverOff, leverOn, handle, rays, spark] = await Promise.all([
+    // the demos' art (mini maps, cars, symbols at card size): only for the cards this build shows
+    const kinds = this.full && P.fit ? specs.map((s) => s.kind) : [];
+    const minis = kinds.map((k) => MINI_SPECS[k]).filter((m): m is MiniSpec => !!m);
+    const demoArt = buildDemoArt({ D: P.fit?.D ?? 100, res: r, specs: minis, needs: new Set(kinds) });
+    const [board, playTop, playBase, box, tick, arrow, dotOn, dotOff, pipOn, pipOff, spark, demo] = await Promise.all([
       this.full && P.fit ? svgTexture(`splash-board-${Math.round((P.ch / cw) * 100)}`, boardSvg(P.ch / cw), cw * r, P.ch * r) : Promise.resolve(Texture.EMPTY),
       svgTexture('splash-play-top', playTopSvg(), P.play.h * PLAY_ASPECT * r),
       svgTexture('splash-play-base', playBaseSvg(), P.play.h * PLAY_ASPECT * r),
@@ -1307,12 +582,8 @@ export class IntroSplash extends Container {
       svgTexture('splash-dot-off', dotSvg(false), Math.max(12, P.dotR * 3.2) * r),
       svgTexture('splash-pip-on', skullPipSvg(true), pip),
       svgTexture('splash-pip-off', skullPipSvg(false), pip),
-      svgTexture('splash-train', locoSide(false, false), trainPx, trainPx / 2),
-      svgTexture('splash-lever-off', leverBaseSvg(false), (P.fit?.D ?? 100) * 0.7 * r),
-      svgTexture('splash-lever-on', leverBaseSvg(true), (P.fit?.D ?? 100) * 0.7 * r),
-      svgTexture('splash-lever-handle', leverHandleSvg(), (P.fit?.D ?? 100) * 0.3 * r),
-      svgTexture('splash-rays', raysSvg(), (P.fit?.D ?? 100) * 1.1 * r),
       svgTexture('splash-spark', sparkArt(), P.play.h * 0.5 * r),
+      demoArt,
     ]);
     this.art = {
       board,
@@ -1325,14 +596,10 @@ export class IntroSplash extends Container {
       dotOff,
       pipOn,
       pipOff,
-      train,
-      leverOff,
-      leverOn,
-      handle,
-      rays,
       spark,
       sweep: sweepTexture(),
       vignette: vignetteTexture(),
+      demo,
     };
   }
 
@@ -1505,7 +772,7 @@ export class IntroSplash extends Container {
       for (let bs = clamp(Math.max(cw * 0.048, U * 0.0155), 12.5, 19); bs >= 12; bs -= 0.5) {
         const bodyH = measure(bs, aw * 0.94);
         const rest = ah - titleH - title * 0.55 - bodyH;
-        if (rest >= Math.min(aw, ah) * 0.34) return { vertical: true, D: Math.min(aw * 0.86, rest), title, body: bs };
+        if (rest >= Math.min(aw, ah) * 0.34) return { vertical: true, D: Math.min(aw * DEMO_W, rest), title, body: bs };
       }
       return null;
     };
@@ -1524,7 +791,7 @@ export class IntroSplash extends Container {
     const fit = vertical ? tryV() ?? tryH() : tryH() ?? tryV();
     if (fit) return fit;
     // no room for the blurb: art and title only
-    return vertical || ch / cw >= 0.62 ? { vertical: true, D: Math.min(aw * 0.86, ah - titleH - title * 0.3), title, body: 0 } : { vertical: false, D: Math.min(ah * 0.92, aw * 0.42), title, body: 0 };
+    return vertical || ch / cw >= 0.62 ? { vertical: true, D: Math.min(aw * DEMO_W, ah - titleH - title * 0.3), title, body: 0 } : { vertical: false, D: Math.min(ah * 0.92, aw * 0.42), title, body: 0 };
   }
 
   /* --------------------------------------- pieces --------------------------------------- */
@@ -1595,8 +862,9 @@ export class IntroSplash extends Container {
     const res = this.res;
     const kit: DemoKit = {
       sym: this.o.symTex,
-      art: this.art,
+      art: this.art.demo,
       fx: this.demoFx,
+      res,
       react: (k) => this.react(k),
     };
     const pk = Math.min(P.cw, P.ch) / 300;
@@ -1618,7 +886,7 @@ export class IntroSplash extends Container {
       glow.tint = spec.accent;
       glow.alpha = 0.3;
       glow.width = glow.height = fit.D * 1.55;
-      const demo = this.makeDemo(spec.kind, kit, fit.D);
+      const demo = makeDemo(spec.kind, kit, fit.D);
       swing.addChild(frame, glow, demo.view);
       const tview = new Container();
       const tswing = new Container();
@@ -1668,21 +936,6 @@ export class IntroSplash extends Container {
       this.cardLayer.addChild(view);
       this.cardTextLayer.addChild(tview);
       this.cards.push({ spec, view, swing, tview, tswing, demo, glow });
-    }
-  }
-
-  private makeDemo(kind: DemoKind, kit: DemoKit, D: number): Demo {
-    switch (kind) {
-      case 'train':
-        return new TrainDemo(kit, D);
-      case 'junction':
-        return new JunctionDemo(kit, D);
-      case 'power':
-        return new PowerDemo(kit, D);
-      case 'boost':
-        return new BoostDemo(kit, D);
-      default:
-        return new MaxDemo(kit, D);
     }
   }
 
@@ -2020,6 +1273,12 @@ export class IntroSplash extends Container {
     this.userStep(dir);
   }
 
+  /** How long the carousel rests on a card: long enough for the featured demo's loop. */
+  private dwell(): number {
+    const d = this.cards[this.featured]?.demo.loop ?? 5;
+    return clamp(d + 0.5, 5, 8);
+  }
+
   /** The text layer follows each card exactly (called every frame, after the tweens ran). */
   private syncCardText() {
     for (const c of this.cards) {
@@ -2085,7 +1344,14 @@ export class IntroSplash extends Container {
       for (const c of this.cards) if (c.view.visible) gsap.fromTo(c.swing, { alpha: 0 }, { alpha: 1, duration: 0.3 });
       return;
     }
-    this.carTween = gsap.to(this.car, { offset: target, duration: 0.62, ease: 'power3.inOut', onUpdate: () => this.placeCards() });
+    this.carTween = gsap.to(this.car, {
+      offset: target,
+      duration: 0.62,
+      ease: 'power3.inOut',
+      onUpdate: () => this.placeCards(),
+      // the next card waits for its demo to play a whole loop
+      onComplete: () => void (this.autoT = this.dwell()),
+    });
   }
 
   /* ------------------------------------- interaction ------------------------------------ */
@@ -2174,19 +1440,41 @@ export class IntroSplash extends Container {
   }
 
   /** Characters react to what the featured card just did (rate-limited, never in low quality). */
-  private react(kind: 'train' | 'loot' | 'boost' | 'power' | 'card') {
+  private react(kind: ReactKind | 'card') {
     const cast = this.o.cast;
     if (!cast || this.closing || quality.low || this.t < this.reactAt) return;
     this.reactAt = this.t + 2.6;
-    if (kind === 'train') {
-      void cast.conductor.dispatch();
-      cast.rat.react('happy', 0.7);
-    } else if (kind === 'loot') {
-      cast.conductor.react('cheer', 1);
-      cast.rat.react('happy', 0.9);
-    } else if (kind === 'boost') cast.conductor.react('cheer', 0.7);
-    else if (kind === 'power') cast.rat.react('happy', 0.6);
-    else cast.rat.react('squeak', 0.45);
+    switch (kind) {
+      case 'train':
+        void cast.conductor.dispatch();
+        cast.rat.react('happy', 0.7);
+        break;
+      case 'loot':
+        cast.conductor.react('cheer', 1);
+        cast.rat.react('happy', 0.9);
+        break;
+      case 'boost':
+      case 'signal':
+        cast.conductor.react('cheer', 0.7);
+        break;
+      case 'power':
+        cast.rat.react('happy', 0.6);
+        break;
+      case 'clear':
+        cast.conductor.react('smug', 0.9);
+        cast.rat.react('happy', 0.7);
+        break;
+      case 'incident':
+        cast.conductor.react('worried', 1.1);
+        cast.rat.react('worried', 0.9);
+        break;
+      case 'crash':
+        cast.conductor.react('shock', 1);
+        cast.rat.react('duck', 0.8);
+        break;
+      default:
+        cast.rat.react('squeak', 0.45);
+    }
   }
 
   /** Both rigs glance at a point for a moment (C's lookAt, when the rigs have it). */
