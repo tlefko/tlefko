@@ -136,7 +136,8 @@ for (const [i, sc] of scenarios.entries()) {
   }, { sc, COST });
   const started = Date.now();
   let done = false;
-  while (Date.now() - started < 240000) {
+  // long bonuses take minutes headless: software GL draws ~1 frame a second and every beat waits a frame
+  while (Date.now() - started < 600000) {
     await page.waitForTimeout(400);
     // tap through title cards (bonus intro / end) like a player would
     done = await page.evaluate((n) => (window.__ll.ctrl.presenter.skipCard(), window.__ll.ctrl.rounds > n && !window.__ll.ctrl.busy), before.rounds);
@@ -165,7 +166,7 @@ for (const [i, sc] of scenarios.entries()) {
   const expect = before.b - Math.round(COST[sc.mode] * before.bet) + (r?.winApi ?? 0);
   const problems = [];
   if (!before.boostOk) problems.push('ctrl.setBoost did not set the spin mode');
-  if (!done) problems.push('round did not finish within 240s');
+  if (!done) problems.push('round did not finish within 600s');
   if (r?.mode !== sc.mode) problems.push(`round mode ${r?.mode} != ${sc.mode}`);
   if (r && Math.abs(r.winApi - winApi) > 1) problems.push(`win ${r.winApi} != ${pm}x bet (${winApi})`);
   if (res.after !== expect) problems.push(`balance ${res.after} != expected ${expect}`);
@@ -173,7 +174,7 @@ for (const [i, sc] of scenarios.entries()) {
   if (res.hudBalance !== fmt(res.after)) problems.push(`HUD balance "${res.hudBalance}" != ${fmt(res.after)}`);
   if (res.busyHud) problems.push('HUD still busy');
   if ((!['BASE', 'BOOST'].includes(sc.mode) || /bonus trigger|free spins/.test(sc.name)) && !r?.bonus) problems.push('no bonus played');
-  if (sc.name === 'max win' && pm < 50_000) problems.push(`max win book paid ${pm}x`);
+  if (sc.name.endsWith('max win') && pm < 10_000) problems.push(`max win book paid ${pm}x (expected the 10,000x cap)`);
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   const line = `${String(i + 1).padStart(2)} ${sc.name.padEnd(24)}${sc.book ? ` #${sc.book}`.padEnd(9) : ''.padEnd(9)} ${sc.mode.padEnd(8)} win ${pm.toFixed(2).padStart(10)}x${r?.bonus ? ' [bonus]' : ''} ${secs}s`;
   if (problems.length) {
