@@ -58,6 +58,24 @@ function linePts(spec: MiniSpec, l: MiniLine, full: boolean): [number, number][]
   return pts;
 }
 
+/**
+ * The map window's soft edge: two crossed gradient masks (a soft rounded rectangle). Returns the
+ * defs and a wrapper that fades its content out at the window's edges.
+ */
+function windowFade(id: string, D: number): { defs: string; wrap: (body: string) => string } {
+  const W = D * (1 + MINI_PAD * 2);
+  const w0 = MINI_PAD * D;
+  const w1 = (1 + MINI_PAD) * D;
+  const fade = 0.11;
+  const grad = (n: string, horiz: boolean) =>
+    `<linearGradient id="${id}${n}" gradientUnits="userSpaceOnUse" x1="${horiz ? F(w0) : 0}" y1="${horiz ? 0 : F(w0)}" x2="${horiz ? F(w1) : 0}" y2="${horiz ? 0 : F(w1)}"><stop offset="0" stop-color="#000"/><stop offset="${fade}" stop-color="#fff"/><stop offset="${1 - fade}" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>`;
+  const mask = (n: string) => `<mask id="${id}m${n}" maskUnits="userSpaceOnUse" x="0" y="0" width="${F(W)}" height="${F(W)}"><rect width="${F(W)}" height="${F(W)}" fill="url(#${id}${n})"/></mask>`;
+  return {
+    defs: `${grad('gx', true)}${grad('gy', false)}${mask('gx')}${mask('gy')}`,
+    wrap: (body) => `<g mask="url(#${id}mgx)"><g mask="url(#${id}mgy)">${body}</g></g>`,
+  };
+}
+
 /** The plate: map field window, the lines and the station housings. */
 export function miniMapSvg(spec: MiniSpec, D: number): string {
   const W = D * (1 + MINI_PAD * 2);
@@ -67,11 +85,7 @@ export function miniMapSvg(spec: MiniSpec, D: number): string {
   const path = (pts: [number, number][]) => pts.map(([x, y], i) => `${i ? 'L' : 'M'}${F(X(x))} ${F(X(y))}`).join(' ');
   const w0 = MINI_PAD * D;
   const w1 = (1 + MINI_PAD) * D;
-  const fade = 0.11;
-  // the window fades out at its edges (two crossed gradients make a soft rounded rectangle)
-  const grad = (n: string, horiz: boolean) =>
-    `<linearGradient id="${id}${n}" gradientUnits="userSpaceOnUse" x1="${horiz ? F(w0) : 0}" y1="${horiz ? 0 : F(w0)}" x2="${horiz ? F(w1) : 0}" y2="${horiz ? 0 : F(w1)}"><stop offset="0" stop-color="#000"/><stop offset="${fade}" stop-color="#fff"/><stop offset="${1 - fade}" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>`;
-  const mask = (n: string) => `<mask id="${id}m${n}" maskUnits="userSpaceOnUse" x="0" y="0" width="${F(W)}" height="${F(W)}"><rect width="${F(W)}" height="${F(W)}" fill="url(#${id}${n})"/></mask>`;
+  const win = windowFade(id, D);
   // city blocks and the survey grid (seeded, so every build draws the same streets)
   let seed = spec.id.length * 97 + 13;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -148,17 +162,16 @@ export function miniMapSvg(spec: MiniSpec, D: number): string {
       badges.push(`<g><rect x="${F(px - bw / 2)}" y="${F(py - bw / 2)}" width="${F(bw)}" height="${F(bw)}" rx="${F(bw * 0.22)}" transform="rotate(45 ${F(px)} ${F(py)})" fill="${main}" stroke="${deep}" stroke-width="${F(S * 0.025)}"/><text x="${F(px)}" y="${F(py + S * 0.06)}" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="${F(S * 0.17)}" fill="#fffaf0">${LINE_NUMERALS[LINE_INDEX[l.key]]}</text></g>`);
     }
   });
-  const defs = `${grad('gx', true)}${grad('gy', false)}${mask('gx')}${mask('gy')}
+  const defs = `${win.defs}
     <radialGradient id="${id}field" cx="0.5" cy="0.45" r="0.72"><stop offset="0" stop-color="#1e4373"/><stop offset="0.6" stop-color="#14305a"/><stop offset="1" stop-color="#0c1d3d"/></radialGradient>
     <radialGradient id="${id}face" cx="0.4" cy="0.3" r="0.8"><stop offset="0" stop-color="#2a3446"/><stop offset="0.7" stop-color="#121822"/><stop offset="1" stop-color="#07090e"/></radialGradient>
     <linearGradient id="${id}brass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1c2"/><stop offset="0.5" stop-color="#c9922e"/><stop offset="1" stop-color="#7d5313"/></linearGradient>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${F(W)} ${F(W)}" width="${F(W)}" height="${F(W)}"><defs>${defs}</defs>
-    <g mask="url(#${id}mgx)"><g mask="url(#${id}mgy)">
+    ${win.wrap(`
       <rect x="${F(w0)}" y="${F(w0)}" width="${F(D)}" height="${F(D)}" fill="url(#${id}field)"/>
       <g fill="#2f5486" opacity="0.24">${blocks.join('')}</g>
       <path d="${grid.join(' ')}" stroke="#8fc0e4" stroke-width="${F(Math.max(0.6, S * 0.018))}" opacity="0.12"/>
-      ${network(true)}
-    </g></g>
+      ${network(true)}`)}
     ${network(false)}
     ${housings.join('')}
     ${badges.join('')}
@@ -174,10 +187,12 @@ export function miniGlowSvg(spec: MiniSpec, D: number, li: number): string {
   const d = linePts(spec, spec.lines[li], true)
     .map(([x, y], i) => `${i ? 'L' : 'M'}${F(X(x))} ${F(X(y))}`)
     .join(' ');
+  const id = nextId('mg');
+  const win = windowFade(id, D);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${F(W)} ${F(W)}" width="${F(W)}" height="${F(W)}">
-    <defs><filter id="b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${F(S * 0.17)}"/></filter></defs>
-    <path d="${d}" fill="none" stroke="${main}" stroke-width="${F(S * 0.6)}" stroke-linejoin="round" stroke-linecap="round" filter="url(#b)"/>
-    <path d="${d}" fill="none" stroke="${light}" stroke-width="${F(S * 0.09)}" stroke-linejoin="round" stroke-linecap="round" opacity="0.55"/>
+    <defs>${win.defs}<filter id="${id}b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${F(S * 0.14)}"/></filter></defs>
+    ${win.wrap(`<path d="${d}" fill="none" stroke="${main}" stroke-width="${F(S * 0.5)}" stroke-linejoin="round" stroke-linecap="round" filter="url(#${id}b)"/>
+    <path d="${d}" fill="none" stroke="${light}" stroke-width="${F(S * 0.08)}" stroke-linejoin="round" stroke-linecap="round" opacity="0.5"/>`)}
   </svg>`;
 }
 
@@ -271,7 +286,7 @@ export async function buildDemoArt(o: { D: number; res: number; specs: MiniSpec[
   const { D, res, specs, needs } = o;
   const maxS = Math.max(0.12, ...specs.map((s) => s.S)) * D;
   const symPx = Math.max(24, maxS * SYM_K * res * 1.08);
-  const carW = Math.max(24, maxS * 1.15 * res);
+  const carW = Math.max(24, maxS * 1.3 * res);
   const jobs: Promise<unknown>[] = [];
   const art: DemoArt = {
     cars: new Map(),

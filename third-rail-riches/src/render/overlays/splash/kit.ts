@@ -47,6 +47,19 @@ export function lerpColor(a: number, b: number, u: number): number {
   return ch(16) | ch(8) | ch(0);
 }
 
+/**
+ * Kill the stray one-off tweens on these targets (pops started from callbacks), never the ones
+ * inside `owner` (a demo's looping timeline): killing those would strip them from every later loop.
+ */
+export function calm(owner: gsap.core.Animation | undefined, ...targets: object[]) {
+  for (const o of targets)
+    for (const tw of gsap.getTweensOf(o)) {
+      let mine = false;
+      for (let p: gsap.core.Animation | null = tw.parent; p; p = p.parent) if (p === owner) mine = true;
+      if (!mine) tw.kill();
+    }
+}
+
 /** Coin values on faces and in tallies: bet multiples, up to two decimals. */
 export const fmtX = (v: number) => `${Math.round(v * 100) / 100}x`;
 
@@ -114,6 +127,10 @@ export abstract class Demo {
   protected prime() {}
   /** Snap to the loop's resting board (called when a card stops off screen). */
   protected settle() {}
+  /** Stop stray one-off tweens on these targets (the loop's own are kept). */
+  protected calm(...targets: object[]) {
+    calm(this.tl, ...targets);
+  }
   /** Hold still where it is (the handoff: the cards fall away as they are). */
   freeze() {
     this.running = false;
@@ -193,6 +210,7 @@ export class Face {
     private labels: Container,
     readonly home: Pt,
     readonly S: number,
+    private owner: () => gsap.core.Animation | undefined = () => undefined,
   ) {
     this.holder.position.set(home.x, home.y);
     this.aura.anchor.set(0.5);
@@ -233,7 +251,8 @@ export class Face {
     this.setLabel(isCoin ? this.value : null);
   }
   private setLabel(v: number | null) {
-    if (v === null) {
+    // a face too small for legible figures shows its coin alone
+    if (v === null || this.S * 0.34 < 7.5) {
       if (this.label) this.label.visible = false;
       return;
     }
@@ -268,8 +287,7 @@ export class Face {
   }
   /** Back to its resting transform. */
   home0() {
-    gsap.killTweensOf(this.holder);
-    gsap.killTweensOf(this.holder.scale);
+    calm(this.owner(), this.holder, this.holder.scale);
     this.holder.position.set(this.home.x, this.home.y);
     this.holder.scale.set(1);
     this.holder.rotation = 0;
@@ -439,11 +457,15 @@ export class Tally extends Container {
   chip?: BitmapText;
   value = 0;
   repay = 1;
+  private S: number;
   constructor(
-    private S: number,
+    S: number,
     private color: number,
   ) {
     super();
+    // (never so small its figures stop reading: on a tiny card the tally stays legible)
+    this.S = Math.max(S, 26);
+    S = this.S;
     this.num = bitmapNum(fmtX(0), 'gold', S * 0.4);
     this.addChild(this.bg, this.num);
     this.redraw();
@@ -519,6 +541,8 @@ export class MiniMap {
   private linePaths: Path[];
   private t = Math.random() * 10;
   private pulseAt = 0.6;
+  /** The demo's looping timeline (its tweens are never killed by a reset). */
+  owner: () => gsap.core.Animation | undefined = () => undefined;
   constructor(
     k: DemoKit,
     readonly spec: MiniSpec,
@@ -539,7 +563,7 @@ export class MiniMap {
       const s = new Sprite(k.art.glows.get(`${spec.id}:${li}`) ?? Texture.EMPTY);
       s.anchor.set(0.5);
       s.width = s.height = D * (1 + MINI_PAD * 2);
-      s.alpha = 0.1;
+      s.alpha = 0.08;
       this.glowLayer.addChild(s);
       this.glows.push(s);
       this.level.push(0);
@@ -550,7 +574,7 @@ export class MiniMap {
       if (l.tail) p.push({ x: l.tail[0] * D, y: l.tail[1] * D });
       return makePath(p, 0);
     });
-    this.pts.forEach((p) => this.faces.push(new Face(k, this.faceLayer, labels, p, this.S)));
+    this.pts.forEach((p) => this.faces.push(new Face(k, this.faceLayer, labels, p, this.S, () => this.owner())));
   }
   lineIndex(key: LineKey) {
     return this.spec.lines.findIndex((l) => l.key === key);
@@ -563,14 +587,14 @@ export class MiniMap {
     this.level[li] = level;
     const s = this.glows[li];
     if (!s) return;
-    gsap.to(s, { alpha: 0.1 + level * 0.55, duration: dur, ease: 'sine.inOut', overwrite: true });
+    gsap.to(s, { alpha: 0.08 + level * 0.42, duration: dur, ease: 'sine.inOut', overwrite: true });
   }
   /** Lines back to their idle glow at once (a loop restarts). */
   unlight() {
     this.glows.forEach((s, li) => {
       gsap.killTweensOf(s);
       this.level[li] = 0;
-      s.alpha = 0.1;
+      s.alpha = 0.08;
     });
   }
   /** Two strong pulses race along a line (a train lit it). */
@@ -610,7 +634,7 @@ export class MiniMap {
     // the lines breathe a little, each on its own phase, and idle current runs along them
     this.glows.forEach((s, li) => {
       if (this.level[li] > 0 || gsap.isTweening(s)) return;
-      s.alpha = 0.1 + 0.05 * Math.sin(this.t * 1.3 + li * 1.7);
+      s.alpha = 0.08 + 0.04 * Math.sin(this.t * 1.3 + li * 1.7);
     });
     if (this.t > this.pulseAt) {
       this.pulseAt = this.t + 0.9 + Math.random() * 1.2;
@@ -632,10 +656,10 @@ export class MiniMap {
  * Trains
  * ---------------------------------------------------------------------------------------- */
 
-/** Car length, coupling pitch and nose-to-centre, in station sizes (a touch shorter than the board's, for small maps). */
-export const CAR_K = 1.15;
-export const CAR_GAP = 1.0;
-export const CAR_NOSE = 0.5;
+/** Car length, coupling pitch and nose-to-centre, in station sizes (TrainRunner's). */
+export const CAR_K = 1.3;
+export const CAR_GAP = 1.12;
+export const CAR_NOSE = 0.55;
 
 /**
  * A top-down two-car set on a path (TrainRunner's look): the lead car's nose sits at
@@ -656,6 +680,8 @@ export class MiniTrain {
   /** The cars are flung (crash): placement stops. */
   wrecked = false;
   readonly gap: number;
+  /** The cars' resting tint: a breath of the line colour, so a small set still reads as its line. */
+  private tint0: number;
   constructor(
     private map: MiniMap,
     k: DemoKit,
@@ -666,6 +692,7 @@ export class MiniTrain {
   ) {
     const S = map.S;
     this.gap = S * CAR_GAP;
+    this.tint0 = lerpColor(0xffffff, hex(LINE_COLORS[golden ? 'gold' : line][0]), 0.22);
     for (let i = 0; i < 2; i++) {
       const c = new Sprite(k.art.cars.get(`${golden ? 'gold' : line}${i === 0 ? 'L' : 'C'}`) ?? Texture.EMPTY);
       c.anchor.set(0.5);
@@ -721,8 +748,8 @@ export class MiniTrain {
       const D = this.map.D;
       const edge = clamp((D * 0.5 - Math.max(Math.abs(q.x), Math.abs(q.y))) / (D * 0.12), 0, 1);
       c.alpha = inFade * edge * (k === 0 ? exitFade : Math.min(1, exitFade * 1.6)) * this.dim;
-      if (k === 0) lead = inFade * edge;
-      c.tint = this.grey > 0 ? lerpColor(0xffffff, 0x7d828c, this.grey) : 0xffffff;
+      if (k === 0) lead = inFade;
+      c.tint = this.grey > 0 ? lerpColor(this.tint0, 0x7d828c, this.grey) : this.tint0;
     });
     const nose = pointAt(p, this.s);
     const back = pointAt(p, this.s - S * 0.3);
@@ -741,19 +768,19 @@ export class MiniTrain {
     this.wrecked = false;
     this.grey = 0;
     this.dim = 1;
+    const own = this.map.owner();
     for (const c of this.cars) {
-      gsap.killTweensOf(c);
+      calm(own, c);
       c.alpha = 0;
       c.tint = 0xffffff;
       c.scale.set(Math.abs(c.scale.x), Math.abs(c.scale.y));
       c.width = this.map.S * CAR_K;
       c.height = this.map.S * CAR_K * (96 / 240);
     }
-    gsap.killTweensOf(this.lamp);
+    calm(own, this.lamp);
     this.lamp.alpha = 0;
     if (this.tally) {
-      gsap.killTweensOf(this.tally);
-      gsap.killTweensOf(this.tally.scale);
+      calm(own, this.tally, this.tally.scale);
       this.tally.visible = false;
       this.tally.set(0, 1);
     }

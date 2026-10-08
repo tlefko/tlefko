@@ -79,8 +79,8 @@ const SIGNAL: MiniSpec = {
 const SEC_Y = 0.14;
 const SECURITY: MiniSpec = {
   id: 'security',
-  S: 0.26 / 1.2,
-  stations: [-0.39, -0.13, 0.13, 0.39].map((x, i) => ({ x, y: SEC_Y, kind: i === 0 ? 'terminal' : 'stop' })),
+  S: 0.27 / 1.2,
+  stations: [-0.405, -0.135, 0.135, 0.405].map((x, i) => ({ x, y: SEC_Y, kind: i === 0 ? 'terminal' : 'stop' })),
   lines: [{ key: 'blue', stops: [0, 1, 2, 3], tail: [0.8, SEC_Y] }],
 };
 
@@ -148,6 +148,7 @@ abstract class MapDemo extends Demo {
   constructor(k: DemoKit, D: number, spec: MiniSpec) {
     super(k, D);
     this.map = new MiniMap(k, spec, D, this.view, this.labels);
+    this.map.owner = () => this.tl;
   }
   protected P(i: number): Pt {
     return this.map.pts[i];
@@ -209,8 +210,10 @@ abstract class MapDemo extends Demo {
       at,
       () => {
         const tt = tally();
+        // the tally pops up over the train with its first coin
+        if (!tt.visible) tr.showTally();
+        else gsap.fromTo(tt.scale, { x: 1.32, y: 1.32 }, { x: 1, y: 1, duration: 0.3, ease: 'back.out(3)' });
         tt.set(tt.value + f.value);
-        gsap.fromTo(tt.scale, { x: 1.32, y: 1.32 }, { x: 1, y: 1, duration: 0.3, ease: 'back.out(3)' });
       },
       {
         onStart: () => {
@@ -228,7 +231,7 @@ abstract class MapDemo extends Demo {
     tl.call(
       () => {
         const tt = tally();
-        gsap.killTweensOf(tt.scale);
+        this.calm(tt.scale);
         from = { x: tt.x, y: tt.y };
         if (value) tt.set(value(), 1);
       },
@@ -354,15 +357,6 @@ class RunDemo extends MapDemo {
     // every coin hops into the tally as the nose reaches its station
     this.coins.forEach(([i], n) => {
       const at = t0 + beat * (2 + n);
-      if (n === 0)
-        tl.call(
-          () => {
-            this.tally.visible = true;
-            tr.showTally();
-          },
-          [],
-          at,
-        );
       this.collect(tl, i, tr, () => this.tally, at);
     });
     // the haul pulls in and is won
@@ -393,7 +387,7 @@ class SignalDemo extends MapDemo {
     const X = this.P(1);
     const v = SIG_V * D;
     // in off the map from the north-east, out to the south-east
-    const path = makePath([{ x: X.x + v * 2.3, y: X.y - v * 2.3 }, this.P(0), X, this.P(4), { x: X.x + v * 2.6, y: X.y + v * 2.6 }], this.map.S * 0.55);
+    const path = makePath([{ x: X.x + v * 2.3, y: X.y - v * 2.3 }, this.P(0), X, this.P(4), { x: X.x + v * 4.4, y: X.y + v * 4.4 }], this.map.S * 0.55);
     this.train = new MiniTrain(this.map, k, path, 'gold', this.labels);
     this.tally = new Tally(this.map.S, this.map.lineColor(0));
     this.tally.visible = false;
@@ -418,7 +412,7 @@ class SignalDemo extends MapDemo {
     this.tally.visible = false;
     this.tally.setColor(this.map.lineColor(0));
     this.map.unlight();
-    gsap.killTweensOf(this.arc);
+    this.calm(this.arc);
     this.arc.alpha = 0;
   }
   protected override settle() {
@@ -477,14 +471,6 @@ class SignalDemo extends MapDemo {
     const inDur = (s0 / unit) * beat;
     this.roll(tl, tr, 0, s0, inDur, 'none', t0);
     const tc = t0 + inDur;
-    tl.call(
-      () => {
-        this.tally.visible = true;
-        tr.showTally();
-      },
-      [],
-      tc,
-    );
     this.collect(tl, 0, tr, () => this.tally, tc);
     // into the junction, easing down: the Signal throws
     this.roll(tl, tr, s0, sx, beat * 1.5, 'power2.out', tc);
@@ -558,7 +544,7 @@ class SecurityDemo extends MapDemo {
   constructor(k: DemoKit, D: number) {
     super(k, D, SECURITY);
     const S = this.map.S;
-    this.train = new MiniTrain(this.map, k, this.path([0, 1, 2, 3], [{ x: D * 0.85, y: this.P(3).y }]), 'blue', this.labels);
+    this.train = new MiniTrain(this.map, k, this.path([0, 1, 2, 3], [{ x: D * 1.1, y: this.P(3).y }]), 'blue', this.labels);
     this.tally = new Tally(S, this.map.lineColor(0));
     this.tally.visible = false;
     this.strobe.anchor.set(0.5);
@@ -599,8 +585,7 @@ class SecurityDemo extends MapDemo {
   }
   private hideWords() {
     for (const d of [this.clear, this.incident, this.repay, this.missed]) {
-      gsap.killTweensOf(d);
-      gsap.killTweensOf(d.scale);
+      this.calm(d, d.scale);
       d.visible = false;
       d.alpha = 1;
     }
@@ -616,7 +601,7 @@ class SecurityDemo extends MapDemo {
     this.tally.visible = false;
     this.map.unlight();
     this.hideWords();
-    gsap.killTweensOf(this.strobe);
+    this.calm(this.strobe);
     this.strobe.alpha = 0;
     this.ring.clear();
     for (const f of this.map.faces) f.holder.rotation = 0;
@@ -690,14 +675,6 @@ class SecurityDemo extends MapDemo {
     const [s1, s2] = [1, 2].map((i) => arcOf(p, this.P(i)));
     const beat = 0.5;
     this.roll(tl, tr, 0, s1, beat * 2, 'power1.in', t0);
-    tl.call(
-      () => {
-        this.tally.visible = true;
-        tr.showTally();
-      },
-      [],
-      t0 + beat * 2,
-    );
     this.collect(tl, 1, tr, () => this.tally, t0 + beat * 2);
     // into the checkpoint: stopped
     const t1 = t0 + beat * 2;
@@ -918,22 +895,20 @@ class CrashDemo extends MapDemo {
     this.a.tally = this.ta;
     this.b.tally = this.tb;
     for (const x of [this.ta, this.tb, this.pile]) {
-      gsap.killTweensOf(x);
-      gsap.killTweensOf(x.scale);
+      this.calm(x, x.scale);
       x.visible = false;
       x.alpha = 1;
       x.set(0, 1);
     }
     this.map.unlight();
     for (const o of [this.boom, this.word, this.x2]) {
-      gsap.killTweensOf(o);
-      gsap.killTweensOf(o.scale);
+      this.calm(o, o.scale);
       o.visible = false;
       o.alpha = 1;
     }
     this.flash.alpha = 0;
     this.shock.clear();
-    gsap.killTweensOf(this.scorch);
+    this.calm(this.scorch);
     this.scorch.alpha = 0;
   }
   protected override settle() {
@@ -980,14 +955,6 @@ class CrashDemo extends MapDemo {
       const s1 = arcOf(tr.path, this.P(ti));
       const inDur = (s1 / (CR_U * this.D)) * beat;
       this.roll(tl, tr, 0, s1, inDur, 'none', t0);
-      tl.call(
-        () => {
-          tally.visible = true;
-          tr.showTally();
-        },
-        [],
-        t0 + inDur,
-      );
       this.collect(tl, ti, tr, () => tally, t0 + inDur);
       // closing: they run at each other, faster and faster, sparks off the rails
       const o = { s: s1 };
@@ -1224,7 +1191,7 @@ class PowerDemo extends MapDemo {
     this.x1 = D * 0.4;
     this.ty = D * 0.31;
     const y = this.P(0).y;
-    this.train = new MiniTrain(this.map, k, makePath([{ x: -D * 0.68, y }, ...[0, 1, 2, 3].map((i) => this.P(i)), { x: D * 0.72, y }], 0), 'red', this.labels);
+    this.train = new MiniTrain(this.map, k, makePath([{ x: -D * 0.68, y }, ...[0, 1, 2, 3].map((i) => this.P(i)), { x: D * 1.0, y }], 0), 'red', this.labels);
     void S;
     this.view.addChild(this.track);
     POWER_STEPS.forEach((need, i) => {
